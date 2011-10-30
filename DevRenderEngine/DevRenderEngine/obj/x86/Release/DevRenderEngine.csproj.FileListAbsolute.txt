@@ -1,0 +1,6 @@
+C:\devel\DevRenderEngine\DevRenderEngine\DevRenderEngine\DevRenderEngine\bin\x86\Release\ShapeRenderingSample.exe
+C:\devel\DevRenderEngine\DevRenderEngine\DevRenderEngine\DevRenderEngine\bin\x86\Release\ShapeRenderingSample.pdb
+C:\devel\DevRenderEngine\DevRenderEngine\DevRenderEngine\DevRenderEngine\obj\x86\Release\ResolveAssemblyReference.cache
+C:\devel\DevRenderEngine\DevRenderEngine\DevRenderEngine\DevRenderEngine\obj\x86\Release\Microsoft.Xna.Framework.RuntimeProfile.txt
+C:\devel\DevRenderEngine\DevRenderEngine\DevRenderEngine\DevRenderEngine\obj\x86\Release\ShapeRenderingSample.exe
+C:\devel\DevRenderEngine\DevRenderEngine\DevRenderEngine\DevRenderEngine\obj\x86\Release\ShapeRenderingSample.pdb

@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="Xyglo.DebugShapeRenderer" Collapsed="true">
+    <Position X="0.5" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AggADABAAACAAwAAQACAAAAAgMAAAIgAAAAgAFAgAAA=</HashCode>
+      <FileName>DebugShapeRenderer.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Xyglo.DevRenderEngine" Collapsed="true">
+    <Position X="2.25" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAYABEAQAAAABgBAACAAAgAAAAAAAAgAAAAQAQAAAAQ=</HashCode>
+      <FileName>DevRenderEngine.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Xyglo.FileRenderer" Collapsed="true">
+    <Position X="4" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAACEBAAACAAQAAACAAAAAAAAAAAAwAAEAAAAAAAAA=</HashCode>
+      <FileName>FileRenderer.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Xyglo.Program" Collapsed="true">
+    <Position X="0.5" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAA=</HashCode>
+      <FileName>Program.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Xyglo.Quad" Collapsed="true">
+    <Position X="2.25" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAgQAAAAAAACgAAAQAAAQAAEICAgAHAgAQQwAQAI=</HashCode>
+      <FileName>Quad.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="Xyglo.SubjectRenderer" Collapsed="true">
+    <Position X="4" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AhIAGEAAABCAgwACQACAAAEAgEAAAIgAAQAAAEQBAAA=</HashCode>
+      <FileName>SubjectRenderer.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
