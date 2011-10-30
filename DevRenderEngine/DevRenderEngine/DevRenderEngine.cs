@@ -152,19 +152,27 @@ namespace Xyglo
 
             if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Up))
             {
-                m_eye.X += 1;
+                m_eye.Z -= 0.1f;
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Down))
             {
-                m_eye.X -= 1;
+                m_eye.Z += 0.1f;
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Left))
             {
-                m_eye.Y += 1;
+                m_eye.X += 0.1f;
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Right))
             {
-                m_eye.Y -= 1;
+                m_eye.X -= 0.1f;
+            }
+            else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.A))
+            {
+                m_eye.Y += 0.1f;
+            }
+            else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Z))
+            {
+                m_eye.Y -= 0.1f;
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Space)) // Reset
             {
@@ -178,12 +186,12 @@ namespace Xyglo
 
         // Our POV - original postion
         //
-        Vector3 m_eye = new Vector3(12f, 5f, 0f);
+        Vector3 m_eye = new Vector3(0f, 0f, 18f);
         Vector3 m_lastEyePosition = new Vector3(-1f, -1f, -1f);
 
         // Are we spinning?
         //
-        bool spinning = true;
+        bool spinning = false;
 
         Vector2 FontPos = new Vector2(150, 150);
 
@@ -202,6 +210,7 @@ namespace Xyglo
                 //return;
             //}
 
+            /*
             spriteBatch.Begin();
 
             // Draw Hello World
@@ -213,10 +222,8 @@ namespace Xyglo
             // Draw the string
             spriteBatch.DrawString(spriteFont, output, FontPos, Color.LightGreen,
                 0, FontOrigin, 1.0f, SpriteEffects.None, 0.5f);
-
-            
-
             spriteBatch.End();
+             */
             
 
             // If spinning then spin around current position based on time.
@@ -232,6 +239,11 @@ namespace Xyglo
             //
             Matrix view = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
             Matrix projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, .1f, 1000f);
+
+
+            //basicEffect.World = Matrix.CreateScale(1, -1, 1);// *Matrix.CreateTranslation(textPosition);
+            basicEffect.View = view;
+            basicEffect.Projection = projection;
 
             // Add our shapes to be rendered
             //
@@ -255,14 +267,25 @@ namespace Xyglo
 
             // Subject renderer work
             //
-            SubjectRenderer.AddSubjectShape(new Vector3(-0f, -0f, 0f), Color.Pink, basicEffect);
+            SubjectRenderer.AddSubjectShape(new Vector3(-0f, -0f, 0f), Color.Pink, basicEffect, "My pink Shape");
+            SubjectRenderer.AddSubjectShape(new Vector3(-4f, -2f, 5f), Color.Blue, basicEffect, "My BLUE shape");
 
-            SubjectRenderer.AddSubjectShape(new Vector3(-4f, -2f, 5f), Color.Blue, basicEffect);
+            /*
+            for (float i = 0; i < 100; i++)
+            {
+                Color myColour = new Color(100 + i, 200 - i, i, 1);
+
+                float X = 50 -  400f / i * 10; 
+                float Y = 200f / i;
+                float Z = 100f / i;
+                SubjectRenderer.AddSubjectShape(new Vector3(X, Y, Z), myColour, basicEffect, "New shape");
+            }
+*/
 
             SubjectRenderer.Draw(gameTime, view, projection);
 
 
-            Vector2 position = new Vector2(50, 50);
+            //Vector2 position = new Vector2(50, 50);
 
 
             // Store this
@@ -270,14 +293,9 @@ namespace Xyglo
             m_lastEyePosition = m_eye;
 
 
-
-
             /* NEW TEST */
+            /*
             Vector3 textPosition = new Vector3(-2, 3, -1);
-
-            basicEffect.World = Matrix.CreateScale(1, -1, 1) * Matrix.CreateTranslation(textPosition);
-            basicEffect.View = view;
-            basicEffect.Projection = projection;
 
             const string message = "hello, world!";
             Vector2 textOrigin = spriteFont.MeasureString(message) / 2;
@@ -286,7 +304,7 @@ namespace Xyglo
             spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, basicEffect);
             spriteBatch.DrawString(spriteFont, message, Vector2.Zero, Color.White, 0, textOrigin, textSize, 0, 0);
             spriteBatch.End();
-
+            */
 
             base.Draw(gameTime);
         }

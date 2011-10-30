@@ -201,9 +201,9 @@ namespace Xyglo
             }
         }
 
-        public static void AddSubjectShape(Vector3 v, Color color, BasicEffect basicEffect)
+        public static void AddSubjectShape(Vector3 v, Color color, BasicEffect basicEffect, String text)
         {
-            AddSubjectShape(v, color, 0f, basicEffect);
+            AddSubjectShape(v, color, 0f, basicEffect, text);
         }
 
         public static Vector3 horizontalUnit = new Vector3(5f, 0f, 0f);
@@ -220,7 +220,7 @@ namespace Xyglo
         /// <summary>
         /// Adds a SubjectShape to be rendered.
         /// </summary>
-        public static void AddSubjectShape(Vector3 v, Color color, float life, BasicEffect basicEffect)
+        public static void AddSubjectShape(Vector3 v, Color color, float life, BasicEffect basicEffect, String text)
         {
 
             // Get a DebugShape we can use to draw the triangle
@@ -280,12 +280,11 @@ namespace Xyglo
 
             basicEffect.World = Matrix.CreateScale(1, -1, 1) * Matrix.CreateTranslation(textPosition);
 
-            const string message = "rotating in a Subject Renderer";
-            Vector2 textOrigin = font.MeasureString(message) / 2;
+            Vector2 textOrigin = font.MeasureString(text) / 2;
             const float textSize = 0.009f;
 
             spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, basicEffect);
-            spriteBatch.DrawString(font, message, Vector2.Zero, Color.White, 0, textOrigin, textSize, 0, 0);
+            spriteBatch.DrawString(font, text, Vector2.Zero, Color.White, 0, textOrigin, textSize, 0, 0);
 
             spriteBatch.End();
 
