@@ -97,6 +97,9 @@ namespace Xyglo
             return false;
         }
 
+        // Set the 3D model to draw.
+        Model myModel;
+
         /// <summary>
         /// LoadContent will be called once per game and is the place to load
         /// all of your content.
@@ -106,6 +109,8 @@ namespace Xyglo
             // Create a new SpriteBatch, which can be used to draw textures.
             spriteBatch = new SpriteBatch(GraphicsDevice);
             spriteFont = Content.Load<SpriteFont>("Courier New");
+
+            //myModel = Content.Load<Model>("Models\\untitled");
 
             // Create a box that is centered on the origin and extends from (-3, -3, -3) to (3, 3, 3)
             box = new BoundingBox(new Vector3(-3f), new Vector3(3f));

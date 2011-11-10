@@ -67,7 +67,7 @@ namespace Xyglo
         /// <summary>
         /// Initializes the renderer.
         /// </summary>
-        /// <param name="graphicsDevice">The GraphicsDevice to use for rendering.</param>
+        /// <param name="graphicsDevice">The GraphicsDevice to use for renderinm_graph.</param>
         public static void Initialize(GraphicsDevice graphicsDevice, SpriteFont subjectFont)
         {
             // If we already have a graphics device, we've already initialized once. We don't allow that.
@@ -148,7 +148,7 @@ namespace Xyglo
             effect.View = view;
             effect.Projection = projection;
 
-            // Calculate the total number of vertices we're going to be rendering.
+            // Calculate the total number of vertices we're going to be renderinm_graph.
             int vertexCount = 0;
             foreach (var shape in activeShapes)
                 vertexCount += shape.LineCount * 2;
@@ -176,7 +176,7 @@ namespace Xyglo
                         verts[vertIndex++] = shape.Vertices[i];
                 }
 
-                // Start our effect to begin rendering.
+                // Start our effect to begin renderinm_graph.
                 effect.CurrentTechnique.Passes[0].Apply();
 
                 // We draw in a loop because the Reach profile only supports 65,535 primitives. While it's

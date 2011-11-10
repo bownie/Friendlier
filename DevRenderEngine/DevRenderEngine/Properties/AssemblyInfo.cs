@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("DevRenderEngine")]
-[assembly: AssemblyProduct("DevRenderEngine")]
+[assembly: AssemblyTitle("Friendlier")]
+[assembly: AssemblyProduct("Friendlier")]
 [assembly: AssemblyDescription("")]
-[assembly: AssemblyCompany("Microsoft")]
-[assembly: AssemblyCopyright("Copyright © Microsoft 2011")]
+[assembly: AssemblyCompany("Xyglo")]
+[assembly: AssemblyCopyright("Copyright © Xyglo 2011")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

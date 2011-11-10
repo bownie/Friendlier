@@ -88,7 +88,7 @@ namespace Xyglo
             graphics_Device.Clear(Color.TransparentBlack);
 
             // Render the sprite font  
-            string string_SpriteFont = string.Format(text);
+            string string_SpriteFont = strinm_graph.Format(text);
             sprite_Batch.Begin(SpriteBlendMode.AlphaBlend, SpriteSortMode.Immediate, SaveStateMode.None);
             sprite_Batch.DrawString(spriteFont, string_SpriteFont, Vector2.Zero, Color.White);
             sprite_Batch.End();

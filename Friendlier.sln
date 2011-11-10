@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DevRenderEngine", "DevRenderEngine\DevRenderEngine\DevRenderEngine.csproj", "{2524C458-53CD-44D9-B7F6-8085387982D4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Friendlier", "DevRenderEngine\DevRenderEngine\Friendlier.csproj", "{2524C458-53CD-44D9-B7F6-8085387982D4}"
 EndProject
-Project("{96E2B04D-8817-42C6-938A-82C39BA4D311}") = "DevRenderEngineContent", "DevRenderEngine\DevRenderEngineContent\DevRenderEngineContent.contentproj", "{5EED741A-A368-4B81-AE67-091B673F893C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FriendlierContent", "DevRenderEngine\DevRenderEngineContent\FriendlierContent.contentproj", "{5EED741A-A368-4B81-AE67-091B673F893C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
