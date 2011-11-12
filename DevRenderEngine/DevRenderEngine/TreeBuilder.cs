@@ -21,7 +21,7 @@ namespace Xyglo
 {
     class TreeBuilder
     {
-        private BidirectionalGraph<string, Edge<string>> m_graph = null;
+        public BidirectionalGraph<string, Edge<string>> m_graph = null;
 
 
         public TreeBuilder()
@@ -45,6 +45,7 @@ namespace Xyglo
             m_graph.AddVertex("E");
             m_graph.AddVertex("F");
             m_graph.AddVertex("G");
+            m_graph.AddVertex("H");
             m_graph.AddVertex("1A");
             m_graph.AddVertex("1B");
             m_graph.AddVertex("1C");
@@ -63,6 +64,20 @@ namespace Xyglo
             m_graph.AddEdge(new Edge<string>("1A", "1C"));
             m_graph.AddEdge(new Edge<string>("1B", "D"));
 
+            m_graph.AddEdge(new Edge<string>("H", "1A"));
+        }
+
+        public void topologicalSort()
+        {
+            foreach (string v in m_graph.TopologicalSort())
+            {
+                Console.WriteLine("TOP SORT = " + v);
+            }
+        }
+
+        public int getTotalNodes()
+        {
+            return m_graph.Vertices.Count<string>();
         }
 
         public void buildTree()

@@ -18,10 +18,29 @@ namespace Xyglo
         /// </summary>
         static void Main(string[] args)
         {
-            using (DevRenderEngine game = new DevRenderEngine())
-            {
-                game.Run();
-            }
+            //using (Friendlier game = new Friendlier())
+            //{
+                //game.Run();
+            //}
+
+            // File parser - extract relationships
+            //
+
+
+            // Build a list of Files/Entities/Fragments and label them and extact some basic information
+            //
+
+            // Build a tree from the relationships
+            //
+            TreeBuilder tb = new TreeBuilder();
+            tb.topologicalSort();
+
+            // Render the tree
+            //
+            ModelBuilder mb = new ModelBuilder(tb);
+            mb.build();
+
+
         }
     }
 #endif

@@ -54,10 +54,10 @@ namespace Xyglo
 
 
 
-        GraphicsDevice graphics_Device;
-        RenderTarget2D  rtFont;             // Render Target to render sprite font to  
-        Texture3D       shadowMap;
-        SpriteBatch spriteBatch;
+        //GraphicsDevice graphics_Device;
+        //RenderTarget2D  rtFont;             // Render Target to render sprite font to  
+        //Texture3D       shadowMap;
+        //SpriteBatch spriteBatch;
 
         void doit()
         {
