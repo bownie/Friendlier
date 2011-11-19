@@ -163,6 +163,13 @@
     <None Include="ClassDiagram1.cd" />
     <None Include="ClassDiagram2.cd" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DevRenderEngineContent\FriendlierContent.contentproj">
+      <Project>{5EED741A-A368-4B81-AE67-091B673F893C}</Project>
+      <Name>FriendlierContent %28Content%29</Name>
+      <XnaReferenceType>Content</XnaReferenceType>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\Microsoft.Xna.GameStudio.targets" />
   <!--

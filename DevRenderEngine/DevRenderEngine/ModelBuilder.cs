@@ -23,8 +23,12 @@ namespace Xyglo
     /// <summary>
     /// Builds a 3D ready model from an arbitrary acyclic directed or undirected graph
     /// </summary>
-    class ModelBuilder
+    public class ModelBuilder
     {
+        public ModelBuilder()
+        {
+        }
+
         public ModelBuilder(TreeBuilder tb)
         {
             treeBuilder = tb;
@@ -93,7 +97,7 @@ namespace Xyglo
         /// <summary>
         /// Increment amount for Z buffer
         /// </summary>
-        protected float incrementZ = -1.0f;
+        protected float incrementZ = -3.0f;
 
         /// <summary>
         /// Default ModelItem Width
@@ -123,6 +127,14 @@ namespace Xyglo
 
             ModelCodeFragment mcf = new ModelCodeFragment(vertex, placePosition);
 
+            currentZ += incrementZ;
+
+            // Now add the item to the itemList
+            //
+            itemList.Add(vertex, mcf);
+
+            return true;
+
             // Distance to current Z from EyePosition - assume currentZ is backing
             // away from origin (negative) and Eye is positive Z.
             //
@@ -148,6 +160,7 @@ namespace Xyglo
 
             bool stillPlacing = true;
             ArrayList avoid = new ArrayList();
+            int placementAttempt = 0;
 
             while (stillPlacing)
             {
@@ -157,7 +170,12 @@ namespace Xyglo
                 {
                     // Is the position of the new item overlapping an existing one?
                     //
-                    if (itemList[itemName].getBoundingBox().Intersects(mcf.getBoundingBox()))
+
+                    BoundingBox itemListBB = itemList[itemName].getBoundingBox();
+                    BoundingBox mcfBB = mcf.getBoundingBox();
+
+                    //if (itemList[itemName].getBoundingBox().Intersects(mcf.getBoundingBox()))
+                    if(itemListBB.Intersects(mcfBB))
                     {
                         // Move outside the bounding box of the item but make sure we're still inside
                         // the view area box.
@@ -183,13 +201,24 @@ namespace Xyglo
                         mcf.position.X += mcf.getBoundingBox().Max.X;
                     }
 
-                    
+                    placementAttempt++;
                 }
                 else
                 {
                     stillPlacing = false;
+                    placementAttempt = 0;
                 }
 
+                if (placementAttempt > 10)
+                {
+                    currentZ += incrementZ;
+
+                    mcf.position.X = itemWidth / 2;
+                    mcf.position.Y = itemHeight / 2;
+                    mcf.position.Z = currentZ;
+
+                    placementAttempt = 0;
+                }
             }
 
             // Now add the item to the itemList
@@ -210,7 +239,7 @@ namespace Xyglo
         /// <summary>
         /// our list of items
         /// </summary>
-        Dictionary<string, ModelItem> itemList = new Dictionary<string, ModelItem>();
+        public Dictionary<string, ModelItem> itemList = new Dictionary<string, ModelItem>();
 
 
         /// <summary>

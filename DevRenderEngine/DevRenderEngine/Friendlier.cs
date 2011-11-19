@@ -21,21 +21,25 @@ namespace Xyglo
         GraphicsDeviceManager   graphics;
         SpriteBatch             spriteBatch;
 
-        SpriteFont spriteFont;// new font variable
-        BasicEffect basicEffect; // new basic effect
+        SpriteFont spriteFont;      // new font variable
+        BasicEffect basicEffect;    // new basic effect
 
         // The shapes that we'll be drawing
+        //
         BoundingBox             box;
         BoundingFrustum         frustum;
         BoundingSphere          sphere;
+        ModelBuilder            modelBuilder;
 
-        public Friendlier()
+        public Friendlier(ModelBuilder mB)
         {
             graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
 
             graphics.PreferMultiSampling = true;
-            
+
+            modelBuilder = mB;
+
             //graphics.IsFullScreen = true;
 
             //PresentationParameters pp = GraphicsDevice.PresentationParameters;
@@ -196,7 +200,7 @@ namespace Xyglo
 
         // Are we spinning?
         //
-        bool spinning = false;
+        bool spinning = false ;
 
         Vector2 FontPos = new Vector2(150, 150);
 
@@ -207,6 +211,46 @@ namespace Xyglo
         protected override void Draw(GameTime gameTime)
         {
             GraphicsDevice.Clear(Color.Black);
+
+            // Construct our view and projection matrices
+            //
+            Matrix view = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
+            Matrix projection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, .1f, 1000f);
+
+
+            //basicEffect.World = Matrix.CreateScale(1, -1, 1);// *Matrix.CreateTranslation(textPosition);
+            basicEffect.View = view;
+            basicEffect.Projection = projection;
+
+            Color myColor = new Color(120, 150, 40, 1000);
+            int colIncrement = 100;
+
+            foreach (string itemName in modelBuilder.itemList.Keys)
+            {
+                ModelItem item = modelBuilder.itemList[itemName];
+
+                myColor.R += (byte)colIncrement;
+
+                if (item.itemType == ModelItem.ItemType.CodeFragment)
+                {
+                    
+                    SubjectRenderer.AddSubjectShape(item.position, myColor, basicEffect, item.itemName);
+                }
+
+            }
+
+            // If spinning then spin around current position based on time.
+            //
+            if (spinning)
+            {
+                float angle = (float)gameTime.TotalGameTime.TotalSeconds;
+                m_eye.X = (float)Math.Cos(angle * .5f) * 12f;
+                m_eye.Z = (float)Math.Sin(angle * .5f) * 12f;
+            }
+
+            SubjectRenderer.Draw(gameTime, view, projection);
+
+#if ORIGINAL_METHOD
 
             // Set last eye position
             //
@@ -310,6 +354,7 @@ namespace Xyglo
             spriteBatch.DrawString(spriteFont, message, Vector2.Zero, Color.White, 0, textOrigin, textSize, 0, 0);
             spriteBatch.End();
             */
+#endif
 
             base.Draw(gameTime);
         }

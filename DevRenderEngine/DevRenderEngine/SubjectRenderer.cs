@@ -284,7 +284,7 @@ namespace Xyglo
             const float textSize = 0.009f;
 
             spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, basicEffect);
-            spriteBatch.DrawString(font, text, Vector2.Zero, Color.White, 0, textOrigin, textSize, 0, 0);
+            spriteBatch.DrawString(font, text, Vector2.Zero, color, 0, textOrigin, textSize, 0, 0);
 
             spriteBatch.End();
 

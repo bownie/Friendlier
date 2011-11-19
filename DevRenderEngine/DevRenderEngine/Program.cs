@@ -40,6 +40,9 @@ namespace Xyglo
             ModelBuilder mb = new ModelBuilder(tb);
             mb.build();
 
+            Friendlier friendlier = new Friendlier(mb);
+
+            friendlier.Run();
 
         }
     }

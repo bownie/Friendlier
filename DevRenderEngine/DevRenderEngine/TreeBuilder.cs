@@ -19,7 +19,7 @@ using QuickGraph.Graphviz;
 
 namespace Xyglo
 {
-    class TreeBuilder
+    public class TreeBuilder
     {
         public BidirectionalGraph<string, Edge<string>> m_graph = null;
 

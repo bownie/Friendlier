@@ -10,7 +10,7 @@ namespace Xyglo
     /// <summary>
     /// A base Item for inclusion in a Model
     /// </summary>
-    abstract class ModelItem
+    public abstract class ModelItem
     {
         public ModelItem(string name)
         {
