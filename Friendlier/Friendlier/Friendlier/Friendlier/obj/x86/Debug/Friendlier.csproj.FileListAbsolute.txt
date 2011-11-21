@@ -1,0 +1,11 @@
+C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\obj\x86\Debug\ResolveAssemblyReference.cache
+C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\obj\x86\Debug\Microsoft.Xna.Framework.RuntimeProfile.txt
+C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Friendlier.exe
+C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Friendlier.pdb
+C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Microsoft.Contracts.dll
+C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\QuickGraph.dll
+C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\QuickGraph.Graphviz.dll
+C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\obj\x86\Debug\Friendlier.exe
+C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\obj\x86\Debug\Friendlier.pdb
+C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Courier New.xnb
+C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Effects\Ambient.xnb
