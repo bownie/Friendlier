@@ -7,8 +7,8 @@
       <Importer>FontDescriptionImporter</Importer>
       <Processor>FontDescriptionProcessor</Processor>
       <Options>None</Options>
-      <Output>C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Courier New.xnb</Output>
-      <Time>2011-11-19T12:15:01.731227+01:00</Time>
+      <Output>C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Courier New.xnb</Output>
+      <Time>2011-11-21T20:13:23.4143506+01:00</Time>
     </Item>
     <Item>
       <Source>Effects\Ambient.fx</Source>
@@ -16,8 +16,8 @@
       <Importer>EffectImporter</Importer>
       <Processor>EffectProcessor</Processor>
       <Options>None</Options>
-      <Output>C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Effects\Ambient.xnb</Output>
-      <Time>2011-11-19T12:15:57.8317123+01:00</Time>
+      <Output>C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Effects\Ambient.xnb</Output>
+      <Time>2011-11-21T20:13:23.3563473+01:00</Time>
     </Item>
     <BuildSuccessful>true</BuildSuccessful>
     <Settings>
@@ -25,10 +25,10 @@
       <TargetProfile>HiDef</TargetProfile>
       <BuildConfiguration>Debug</BuildConfiguration>
       <CompressContent>false</CompressContent>
-      <RootDirectory>C:\devel\Friendlier\Friendlier\Friendlier\FriendlierContent\</RootDirectory>
-      <LoggerRootDirectory>C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\</LoggerRootDirectory>
-      <IntermediateDirectory>C:\devel\Friendlier\Friendlier\Friendlier\FriendlierContent\obj\x86\Debug\</IntermediateDirectory>
-      <OutputDirectory>C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\</OutputDirectory>
+      <RootDirectory>C:\devel\SubFriendly\Friendlier\Friendlier\FriendlierContent\</RootDirectory>
+      <LoggerRootDirectory>C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\</LoggerRootDirectory>
+      <IntermediateDirectory>C:\devel\SubFriendly\Friendlier\Friendlier\FriendlierContent\obj\x86\Debug\</IntermediateDirectory>
+      <OutputDirectory>C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\</OutputDirectory>
     </Settings>
     <Assemblies>
       <Assembly>

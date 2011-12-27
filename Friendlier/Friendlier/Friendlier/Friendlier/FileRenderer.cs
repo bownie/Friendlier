@@ -55,8 +55,8 @@ namespace Xyglo
 
         // Font to store
         //
-        private static SpriteFont font;
-        private static SpriteBatch spriteBatch;
+        private static SpriteFont       m_font;
+        private static SpriteBatch      m_spriteBatch;
 
 
         public static Vector3 horizontalUnit = new Vector3(5f, 0f, 0f);
@@ -84,11 +84,11 @@ namespace Xyglo
 
             // Set up our font
             //
-            font = subjectFont;
+            m_font = subjectFont;
 
             // And a SpriteBatch
             //
-            spriteBatch = new SpriteBatch(graphicsDevice);
+            m_spriteBatch = new SpriteBatch(graphicsDevice);
         }
 
         /// <summary>
@@ -196,25 +196,22 @@ namespace Xyglo
             }
         }
 
-        /// <summary>
-        /// Edit a File in our rendered with infinite life
-        /// </summary>
-        /// <param name="v">Position</param>
-        /// <param name="v">Pitch, Roll, Yaw</param>
-        /// <param name="color">Colour</param>
-        /// <param name="basicEffect">BasicEffect</param>
-        /// <param name="fileIn">Input File</param>
-        public static void editFile(Vector3 v, Vector3 pry, Color color, BasicEffect basicEffect, String fileIn)
+        public static void startBatch(BasicEffect basicEffect)
         {
-            editFile(v, pry, color, 0f, basicEffect, fileIn);
+            //m_spriteBatch.Begin(SpriteSortMode.BackToFront, BlendState.Additive, SamplerState.PointWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, basicEffect);
+            m_spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, basicEffect);
         }
 
+        public static void endBatch()
+        {
+            m_spriteBatch.End();
+        }
 
         /// <summary>
         /// Edit a File in our renderer
         /// </summary>
         /// <param name="fileIn"></param>
-        public static void editFile(Vector3 v, Vector3 pry, Color color, float life, BasicEffect basicEffect, string fileIn)
+        public static void editFile(Vector3 v, Vector3 pry, Color color, float life, string fileIn)
         {
             // Set our editing filename
             //
@@ -236,17 +233,26 @@ namespace Xyglo
 
             Vector3 textPosition = v + horizontalUnit / 2 - verticalUnit / 2;
 
-            basicEffect.World = Matrix.CreateScale(1, -1, 1) * Matrix.CreateTranslation(textPosition);
+            //basicEffect.World = Matrix.CreateScale(1, -1, 1) * Matrix.CreateTranslation(textPosition);
 
+
+            // OLD METHOD
+            
             //spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, basicEffect);
             //spriteBatch.Begin(0, BlendState.AlphaBlend, null, DepthStencilState.DepthRead, RasterizerState.CullNone, basicEffect);
-            spriteBatch.Begin(SpriteSortMode.BackToFront, BlendState.Additive, SamplerState.PointWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, basicEffect);
+            //m_spriteBatch.Begin(SpriteSortMode.BackToFront, BlendState.Additive, SamplerState.PointWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, basicEffect);
+
+            // Nice looking
+            //
+            //m_spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, basicEffect);
+
+            Matrix invertY = new Matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 
             float yPosition = 0.0f;
 
             // textSize is going to define everything
             //
-            const float textSize = 0.01f;
+            const float textSize = 0.05f;
 
             float xAdjust = textSize * 10.0f;
             float yAdjust = textSize * 10.0f;
@@ -256,45 +262,71 @@ namespace Xyglo
 
             float maxWidth = 0.0f;
 
-            foreach(string line in list)
+            foreach (string line in list)
             {
-                if (  font.MeasureString(line).X > maxWidth )
+                if (m_font.MeasureString(line).X > maxWidth)
                 {
-                    maxWidth = font.MeasureString(line).X;
+                    maxWidth = m_font.MeasureString(line).X;
                 }
 
-                spriteBatch.DrawString(font, line, new Vector2(0, yPosition), Color.White, 0, lineOrigin, textSize, 0, 0);
+                Vector3 viewSpaceTextPosition = Vector3.Transform(textPosition, basicEffect.View * invertY);
 
-                yPosition += font.MeasureString(line).Y * textSize;
+                m_spriteBatch.DrawString(m_font, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), Color.White, 0, lineOrigin, textSize, 0, 0);
+
+                //Vector2 textOrigin = m_font.MeasureString(line) / 2;
+                //m_spriteBatch.DrawString(m_font, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y), Color.White, 0, textOrigin, textSize, 0, viewSpaceTextPosition.Z);
+                yPosition += m_font.MeasureString(line).Y * textSize;
+
             }
 
-            spriteBatch.End();
-
-#if DEBUG_CONSOLE
-            // Fetch the position of the view
+            //m_spriteBatch.End();
+            
+            /*
+            // NEW METHOD
             //
-            Console.WriteLine("VIEW = " + basicEffect.View.Translation.ToString());
+            float yPosition = 0.0f;
 
-            Matrix projection = basicEffect.Projection;
-            Console.WriteLine("PROJECTION = " + basicEffect.Projection.ToString());
+            // textSize is going to define everything
+            //
+            const float textSize = 0.1f;
 
-            Console.WriteLine("Text Width = " + maxWidth * textSize);
-            Console.WriteLine("Determinant = " + basicEffect.World.Determinant());
-            Vector3 scale;
-            Quaternion rotation;
-            Vector3 translate;
-            basicEffect.World.Decompose(out scale, out rotation, out translate);
+            float xAdjust = textSize * 10.0f;
+            float yAdjust = textSize * 10.0f;
 
-            Console.WriteLine("Scale = " + scale.ToString());
-            Console.WriteLine("Rotation = " + rotation.ToString());
-            Console.WriteLine("Translate = " + translate.ToString());
-#endif
+            Vector2 adjustOrigin = new Vector2(xAdjust, yAdjust);
+            Vector2 lineOrigin = new Vector2(v.X, v.Y) + adjustOrigin;
+
+            float maxWidth = 0.0f;
+
+            Matrix invertY = new Matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+            basicEffect.World = Matrix.CreateScale(1, -1, 1) * Matrix.CreateTranslation(textPosition);
+
+
+            foreach(string line in list)
+            {
+                if (  m_font.MeasureString(line).X > maxWidth )
+                {
+                    maxWidth = m_font.MeasureString(line).X;
+                }
+
+                Vector3 viewSpaceTextPosition = Vector3.Transform(textPosition, basicEffect.View * invertY);
+
+                m_spriteBatch.DrawString(m_font, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), Color.White, 0, lineOrigin, textSize, 0, 0);
+                
+                //Vector2 textOrigin = m_font.MeasureString(line) / 2;
+                //m_spriteBatch.DrawString(m_font, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y), Color.White, 0, textOrigin, textSize, 0, viewSpaceTextPosition.Z);
+                yPosition += m_font.MeasureString(line).Y * textSize;
+
+            }
+            */
+
 
             // Get a DebugShape we can use to draw the triangle
+            //
             SubjectShape shape = GetShapeForLines(8, life);
 
             Vector3 boxWidth = new Vector3(maxWidth * textSize + xAdjust / textSize * 2.0f, 0, 0);
-            Vector3 boxHeight = new Vector3(0, font.MeasureString(list[0]).Y * textSize * list.Count + yAdjust / textSize * 2.0f, 0);
+            Vector3 boxHeight = new Vector3(0, m_font.MeasureString(list[0]).Y * textSize * list.Count + yAdjust / textSize * 2.0f, 0);
 
             // Add the vertices to the shape
             //
@@ -306,7 +338,7 @@ namespace Xyglo
             shape.Vertices[5] = new VertexPositionColor(v - boxHeight, color);
             shape.Vertices[6] = new VertexPositionColor(v - boxHeight, color);
             shape.Vertices[7] = new VertexPositionColor(v, color);
-
         }
+
     }
 }

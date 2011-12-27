@@ -329,6 +329,7 @@ namespace Xyglo
             // Update our effect with the matrices.
 			effect.View = view;
 			effect.Projection = projection;
+            effect.World = Matrix.CreateScale(1, -1, 1);
 
             // Calculate the total number of vertices we're going to be renderinm_graph.
             int vertexCount = 0;
@@ -355,7 +356,12 @@ namespace Xyglo
                     lineCount += shape.LineCount;
                     int shapeVerts = shape.LineCount * 2;
                     for (int i = 0; i < shapeVerts; i++)
+                    {
+                        //verts[vertIndex] = shape.Vertices[i];
+                        //verts[vertIndex].Position = Vector3.Transform(verts[vertIndex].Position, view);
+                        //vertIndex++;
                         verts[vertIndex++] = shape.Vertices[i];
+                    }
                 }
 
                 // Start our effect to begin renderinm_graph.

@@ -1,1 +1,2 @@
 C:\devel\Friendlier\Friendlier\Friendlier\FriendlierContent\obj\x86\Debug\ResolveAssemblyReference.cache
+C:\devel\SubFriendly\Friendlier\Friendlier\FriendlierContent\obj\x86\Debug\ResolveAssemblyReference.cache

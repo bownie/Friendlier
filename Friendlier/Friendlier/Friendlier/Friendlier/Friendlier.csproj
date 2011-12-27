@@ -116,7 +116,10 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Command.cs" />
     <Compile Include="DebugShapeRenderer.cs" />
+    <Compile Include="DeleteTextCommand.cs" />
+    <Compile Include="FileBuffer.cs" />
     <Compile Include="FileRenderer.cs" />
     <Compile Include="Friendlier.cs" />
     <Compile Include="ModelBuilder.cs" />
@@ -126,8 +129,10 @@
     <Compile Include="Program.cs" />
     <Compile Include="Game1.cs" />
     <Compile Include="Quad.cs" />
+    <Compile Include="SnippetFactory.cs" />
     <Compile Include="SubjectRenderer.cs" />
     <Compile Include="TreeBuilder.cs" />
+    <Compile Include="Undoable.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Game.ico" />
