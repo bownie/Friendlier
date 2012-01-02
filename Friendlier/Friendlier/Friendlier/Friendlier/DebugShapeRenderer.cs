@@ -238,6 +238,20 @@ namespace Xyglo
 		}
 
         /// <summary>
+        /// Add a CursorHighlight which is a polygon with a step of lineHeight - we specify the top left
+        /// and bottom right corners and any in line lengths (in characters) and also line heights and
+        /// character width.  From this we can construct the full cursor.
+        /// </summary>
+        /// <param name="start"></param>
+        /// <param name="end"></param>
+        /// <param name="lineHeight"></param>
+        /// <param name="lineLengths"></param>
+        /// <param name="colour"></param>
+        public static void addCursorHighlight(Vector3 start, Vector3 end, float lineHeight, float charWidth, List<int> lineLengths, Color colour)
+        {
+        }
+
+        /// <summary>
         /// Adds a bounding box to be rendered for a set amount of time.
         /// </summary>
         /// <param name="box">The bounding box to render.</param>

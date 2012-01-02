@@ -116,6 +116,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BufferView.cs" />
     <Compile Include="Command.cs" />
     <Compile Include="DebugShapeRenderer.cs" />
     <Compile Include="DeleteTextCommand.cs" />
@@ -131,6 +132,7 @@
     <Compile Include="Quad.cs" />
     <Compile Include="SnippetFactory.cs" />
     <Compile Include="SubjectRenderer.cs" />
+    <Compile Include="TextSnippet.cs" />
     <Compile Include="TreeBuilder.cs" />
     <Compile Include="Undoable.cs" />
   </ItemGroup>

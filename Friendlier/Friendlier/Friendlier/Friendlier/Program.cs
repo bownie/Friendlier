@@ -40,9 +40,8 @@ namespace Xyglo
             //ModelBuilder mb = new ModelBuilder(tb);
             //mb.build();
 
-            string editFile = @"C:\devel\QuickGraph New\DRE\DevRenderEngine\DevRenderEngine\Friendlier.cs";
-            editFile = @"C:\FinanceIT\FiRE\Server\scripts\appSchemaInstall.ksh";
-            editFile = @"C:\devel\Friendlier\Friendlier\Friendlier\Friendlier\Friendlier.cs";
+            string editFile = @"C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\Friendlier.cs";
+            //editFile = @"C:\FinanceIT\FiRE\Server\scripts\appSchemaInstall.ksh";
 
             Friendlier friendlier = new Friendlier(editFile);
             friendlier.Run();

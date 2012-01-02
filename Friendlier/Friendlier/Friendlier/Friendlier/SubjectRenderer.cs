@@ -281,7 +281,7 @@ namespace Xyglo
             basicEffect.World = Matrix.CreateScale(1, -1, 1) * Matrix.CreateTranslation(textPosition);
 
             Vector2 textOrigin = font.MeasureString(text) / 2;
-            const float textSize = 0.009f;
+            const float textSize = 1.0f;
 
             spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, basicEffect);
             spriteBatch.DrawString(font, text, Vector2.Zero, Color.White, 0, textOrigin, textSize, 0, 0);

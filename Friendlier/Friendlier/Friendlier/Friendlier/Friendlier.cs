@@ -25,6 +25,7 @@ namespace Xyglo
         //
         GraphicsDeviceManager m_graphics;
         SpriteBatch m_spriteBatch;
+        SpriteBatch m_overlaySpriteBatch;
         SpriteFont m_spriteFont;
 
         // Our effects - one with textures for fonts, one without for lines
@@ -45,17 +46,12 @@ namespace Xyglo
         /// <summary>
         /// The unit position in a text file (character and line) 
         /// </summary>
-        Vector2 m_cursorPosition /*= new FilePosition(); */ = new Vector2(0, 0);
+        Vector2 m_cursorPosition = new Vector2(0, 0);
 
         /// <summary>
         /// Cursor coordinates in 3D
         /// </summary>
         Vector3 m_cursorCoords = Vector3.Zero;
-
-        /// <summary>
-        /// 3d coordinates of the top left hand of the file
-        /// </summary>
-        Vector3 m_fileCoords = new Vector3(-180f, -100f, 0f);
 
         // textSize is going to define everything
         //
@@ -126,22 +122,15 @@ namespace Xyglo
         /// </summary>
         List<FileBuffer> m_fileBuffers = new List<FileBuffer>();
 
-        //Vector3 m_filePosition = new Vector3(-200f, -20f, 0f);
-        //public Vector3 horizontalUnit = new Vector3(5f, 0f, 0f);
-        //public Vector3 verticalUnit = new Vector3(0f, 5f, 0f);
-        //public Vector3 depthUnit = new Vector3(0f, 0f, -0.5f);
+        /// <summary>
+        /// List of BufferViews - views on 
+        /// </summary>
+        List<BufferView> m_bufferViews = new List<BufferView>();
 
-        // Let's start playing with some Shader effects
-        //
-        //Effect effect;
-
-        // The shapes that we'll be drawing
-        //BoundingBox             box;
-        //BoundingFrustum         frustum;
-        //BoundingSphere          sphere;
-
-        // Set the 3D model to draw.
-        //Model myModel;
+        /// <summary>
+        /// The buffer we are currently editing
+        /// </summary>
+        BufferView m_activeBufferView = null;
 
         public Friendlier(string file)
         {
@@ -290,11 +279,54 @@ namespace Xyglo
             //
             m_charWidth = m_spriteFont.MeasureString("X").X * m_textSize;
             m_lineHeight = m_spriteFont.MeasureString("X").Y * m_textSize;
-            m_cursorCoords = m_fileCoords;
+
+            // Create the overlay SpriteBatch
+            //
+            m_overlaySpriteBatch = new SpriteBatch(m_graphics.GraphicsDevice);
+
+
+            //  Set up some initial coordinates
+            //m_activeBufferView.m_position = new Vector3(-180f, -100f, 0f);
+            //m_cursorCoords = m_activeBufferView.m_position;
 
             // Load and buffer the file
             //
-            m_fileBuffers.Add(new FileBuffer(m_fileName));
+            FileBuffer file1 = new FileBuffer(m_fileName);
+            m_fileBuffers.Add(file1);
+
+            // Add a view
+            //
+            BufferView view1 = new BufferView(file1, new Vector3(-180f, -100f, 0f), 0, 15);
+            m_bufferViews.Add(view1);
+
+            //view = new BufferView(file1, new Vector3(-180f, 100f, 0.0f), 0, 15);
+            BufferView view2 = new BufferView(view1, BufferView.BufferPosition.Right);
+            view2.m_textColour = Color.LightBlue;
+
+            m_bufferViews.Add(view2);
+
+            // Set the active buffer view
+            //
+            setActiveBuffer(m_bufferViews[0]);
+        }
+
+        /// <summary>
+        /// Set which BufferView is the active one with a cursor in it
+        /// </summary>
+        /// <param name="view"></param>
+        protected void setActiveBuffer(BufferView view)
+        {
+            // Set active buffer
+            //
+            m_activeBufferView = view;
+
+            // Set cursor position in Buffer
+            //
+            m_cursorPosition = view.m_cursorPosition;
+
+            // Set 3D cursor position home to file position
+            //
+            m_cursorCoords = view.m_position;
         }
 
 
@@ -323,24 +355,72 @@ namespace Xyglo
         protected override void Update(GameTime gameTime)
         {
             // Allow the game to exit
+            //
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
                 Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Escape))
                 this.Exit();
 
+            // Control key state
+            //
+            if (m_ctrlDown && Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftControl) &&
+                Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightControl))
+            {
+                Console.WriteLine("CTRL UP");
+                m_ctrlDown = false;
+            }
+            else
+            {
+                if (!m_ctrlDown && (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftControl) ||
+                    Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightControl)))
+                {
+                    Console.WriteLine("CTRL DOWN");
+                    m_ctrlDown = true;
+                }
+            }
+
             if (checkKeyState(Keys.Up, gameTime))
             {
-                if (m_cursorPosition.Y > 0)
+                if (m_ctrlDown)
                 {
-                    m_cursorPosition.Y--;
+                    // Add a new BufferView above current position
+                    //
+                    BufferView newBufferView = new BufferView(m_activeBufferView, BufferView.BufferPosition.Above);
+                    newBufferView.m_textColour = Color.LawnGreen;
+                    m_bufferViews.Add(newBufferView);
                 }
+                else
+                {
+                    if (m_cursorPosition.Y > 0)
+                    {
+                        m_cursorPosition.Y--;
+                    }
+                    else
+                    {
+                        // Nudge up the buffer
+                        //
+                        if (m_activeBufferView.m_bufferShowStart > 0)
+                        {
+                            m_activeBufferView.m_bufferShowStart--;
+                        }
+                    }
 
-                fixCursor();
+                    fixCursor();
+                }
             }
             else if (checkKeyState(Keys.Down, gameTime))
             {
-                if (m_cursorPosition.Y < 80)
+                if (m_cursorPosition.Y < m_activeBufferView.m_bufferShowLength)
                 {
                     m_cursorPosition.Y++;
+                }
+                else
+                {
+                    // Nudge down the buffer
+                    //
+                    if (m_activeBufferView.m_bufferShowStart < m_fileBuffers[0].getLineCount() - 1)
+                    {
+                        m_activeBufferView.m_bufferShowStart++;
+                    }
                 }
                 fixCursor();
             }
@@ -376,21 +456,45 @@ namespace Xyglo
             {
                 m_eye.X -= 3f;
             }
-            else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.A))
+            else if (checkKeyState(Keys.A, gameTime))
             {
-                //m_eye.Y += 3f;
                 m_eye.Z -= 10.0f;
             }
-            else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Z))
+            else if (checkKeyState(Keys.Z, gameTime))
             {
-                //m_eye.Y -= 3f;
-                m_eye.Z += 10.0f;
+                // Undo
+                //
+                if (m_ctrlDown)
+                {
+                    // Undo a certain number of steps
+                    //
+                    try
+                    {
+                        m_fileBuffers[0].undo(1);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Got exception " + e.Message);
+                    }
+                }
+                else
+                {
+                    m_eye.Z += 10.0f;
+                }
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Space)) // Reset
             {
                 m_eye.X = 12f;
                 m_eye.Y = 5f;
                 m_eye.Z = 0f;
+            }
+            else if (checkKeyState(Keys.PageDown, gameTime))
+            {
+                pageDown();
+            }
+            else if (checkKeyState(Keys.PageUp, gameTime))
+            {
+                pageUp();
             }
             else if (checkKeyState(Keys.Delete, gameTime) || checkKeyState(Keys.Back, gameTime))
             {
@@ -422,7 +526,7 @@ namespace Xyglo
                             m_cursorPosition.X -= 1;
                             FilePosition cursorPosition = new FilePosition(m_cursorPosition);
                             m_fileBuffers[0].deleteSelection(cursorPosition, cursorPosition);
-                            deletionCursor(m_cursorPosition, m_cursorPosition);                            
+                            deletionCursor(m_cursorPosition, m_cursorPosition);
                         }
                         else if (m_cursorPosition.Y > 0)
                         {
@@ -459,12 +563,15 @@ namespace Xyglo
 
             // Update cursor coordinations from cursor movement
             //
-            m_cursorCoords.X = m_fileCoords.X + (m_cursorPosition.X * m_charWidth);
-            m_cursorCoords.Y = m_fileCoords.Y + (m_cursorPosition.Y * m_lineHeight);
+            m_cursorCoords.X = m_activeBufferView.m_position.X + (m_cursorPosition.X * m_charWidth);
+            m_cursorCoords.Y = m_activeBufferView.m_position.Y + (m_cursorPosition.Y * m_lineHeight);
 
-            // Save the last state
+            // Save the last state if it has changed
             //
-            m_lastKeyboardState = Keyboard.GetState();
+            if (m_lastKeyboardState != Keyboard.GetState())
+            {
+                m_lastKeyboardState = Keyboard.GetState();
+            }
 
             base.Update(gameTime);
         }
@@ -493,57 +600,42 @@ namespace Xyglo
             // Do we have any keys pressed down?  If not return
             //
             Keys[] keys = Keyboard.GetState(PlayerIndex.One).GetPressedKeys();
-            if (keys.Length == 0)
+            if (keys.Length == 0 || check == Keys.LeftControl || check == Keys.RightControl ||
+                check == Keys.LeftAlt || check == Keys.RightAlt)
                 return false;
 
             double repeatHold = 0.6; // number of seconds to wait before repeating a key
 
-            if (Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftControl) &&
-                Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightControl))
-            {
-                if (m_ctrlDown)
-                {
-                    Console.WriteLine("CTRL up");
-                    m_ctrlDown = false;
-                }
-                else
-                {
-                    if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftControl) ||
-                        Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightControl))
-                    {
-                        Console.WriteLine("CTRL down");
-                        m_ctrlDown = true;
-                    }
-                }
-            }
-
-
             // Test for shift only if we're not using other modifiers
             //
-            if (Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftControl) &&
+            /*
+             * if (Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftControl) &&
                 Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightControl) &&
                 Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftAlt) &&
                 Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightAlt))
             {
-                if (m_shiftDown)
+             */
+
+            /* } */
+
+            // Test shift here to keep valid selections alive until next key click
+            //
+            if (m_shiftDown && Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftShift) &&
+                Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightShift))
+            {
+                Console.WriteLine("SHIFT UP");
+                m_shiftDown = false;
+                m_shiftEnd = m_cursorPosition;
+                m_selectionValid = true;
+            }
+            else
+            {
+                if (!m_shiftDown && (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftShift) ||
+                    Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightShift)))
                 {
-                    if (Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftShift) &&
-                        Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightShift))
-                    {
-                        m_shiftDown = false;
-                        m_shiftEnd = m_cursorPosition;
-                        m_selectionValid = true;
-                    }
-                }
-                else
-                {
-                    if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftShift) ||
-                        Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightShift))
-                    {
-                        Console.WriteLine("SHIFT DOWN");
-                        m_shiftStart = m_cursorPosition;
-                        m_shiftDown = true;
-                    }
+                    Console.WriteLine("SHIFT DOWN");
+                    m_shiftStart = m_cursorPosition;
+                    m_shiftDown = true;
                 }
             }
 
@@ -577,7 +669,6 @@ namespace Xyglo
 
             return false;
         }
-
 
         public Ray GetPickRay()
         {
@@ -647,7 +738,9 @@ namespace Xyglo
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
-            GraphicsDevice.Clear(Color.Black);
+            // Set background colour
+            //
+            m_graphics.GraphicsDevice.Clear(Color.Black);
 
             // If spinning then spin around current position based on time.
             //
@@ -665,7 +758,7 @@ namespace Xyglo
             // http://www.toymaker.info/Games/XNA/html/xna_camera.html
             // 
             m_view = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
-            m_projection = /*Matrix.CreateTranslation(-0.5f, -0.5f, 0) * */ Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 1000f);
+            m_projection = /*Matrix.CreateTranslation(-0.5f, -0.5f, 0) * */ Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 10000f);
 
             m_basicEffect.World = Matrix.CreateScale(1, -1, 1); // *Matrix.CreateTranslation(textPosition);
             m_basicEffect.View = m_view;
@@ -675,43 +768,67 @@ namespace Xyglo
             m_lineEffect.Projection = m_projection;
             m_lineEffect.World = Matrix.CreateScale(1, -1, 1);
 
-
             // Pitch, Roll, Yaw - to rotate our rendered image in 3D
             //
             //Vector3 pry = new Vector3(0, 30, 0);
-
             //Vector3 filePos2 = new Vector3(-10f, 10f, -3f);
             //Vector3 filePos3 = new Vector3(-60f, -50f, -30f);
-
-            /*
-            FileRenderer.startBatch(m_basicEffect);
-            FileRenderer.editFile(filePos1, pry, Color.Blue, 0f, fileName);
-            FileRenderer.editFile(filePos2, pry, Color.Red, 0f, fileName);
-            FileRenderer.editFile(filePos3, pry, Color.DarkRed, 0f, fileName);
-            FileRenderer.endBatch();
-            */
             
             m_spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-            drawFileBuffer(m_fileCoords, m_fileName);
+            
+            //drawFileBuffer(m_activeBufferView.m_position, m_fileName);
 
+            for (int i = 0; i < m_bufferViews.Count; i++)
+            {
+                drawFileBuffer(m_bufferViews[i], m_bufferViews[i].m_fileBuffer);
+            }
 
             m_spriteBatch.End();
 
+            // Draw the Overlay HUD
+            //
+            drawOverlay();
+
+            // Cursor and cursor highlight
+            //
             drawCursor(m_cursorCoords, gameTime);
             drawHighlight(gameTime);
-
-            //FileRenderer.Draw(gameTime, view, projection);
-            //DebugShapeRenderer.AddLine(filePos1, filePos2, Color.Yellow);
-            //DebugShapeRenderer.AddLine(filePos2, filePos3, Color.Yellow);
 
             DebugShapeRenderer.Draw(gameTime, m_view, m_projection);
 
             base.Draw(gameTime);
         }
 
+        /// <summary>
+        /// Draw the HUD Overlay for the editor
+        /// </summary>
+        protected void drawOverlay()
+        {
+            string fileName = "";
+            if (m_activeBufferView != null)
+        {
+                // Set the filename
+                fileName = "\"" + m_activeBufferView.m_fileBuffer.getShortFileName() + "\"";
+
+                if (m_activeBufferView.m_fileBuffer.isModified())
+                {
+                    fileName += " [Modified]";
+                }
+
+                fileName += " " + m_activeBufferView.m_fileBuffer.getLineCount() + " lines";
+            }
+
+            // Convert lineHeight back to normal size by dividing by m_textSize modifier
+            //
+            float yPos = m_graphics.GraphicsDevice.Viewport.Height - m_lineHeight/m_textSize;
+
+            m_overlaySpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend);
+            m_overlaySpriteBatch.DrawString(m_spriteFont, fileName, new Vector2(0.0f, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+            m_overlaySpriteBatch.End();
+        }
 
         /// <summary>
-        /// Draw a cursor and make it blink in a position???
+        /// Draw a cursor and make it blink in position
         /// </summary>
         /// <param name="v"></param>
         protected void drawCursor(Vector3 p, GameTime gameTime)
@@ -734,60 +851,77 @@ namespace Xyglo
             v1.Y += 7.0f;
 
             Vector3 v2 = p; // Vector3.Transform(p, m_view);
-            //v2.Y += 0.0f;
 
-            //Console.WriteLine("Writing cursor at time " + tS.TotalSeconds);
-            //Vector3.Transform(verts[vertIndex].Position, view);
-
-            DebugShapeRenderer.AddBoundingBox(new BoundingBox(v1, v2), Color.Yellow);
-            /*
-            VertexPositionColor[] verts = new VertexPositionColor[2];
-
-            verts[0] = new VertexPositionColor(v1, Color.Yellow);
-            verts[1] = new VertexPositionColor(v2, Color.Yellow);
-
-            m_lineEffect.CurrentTechnique.Passes[0].Apply();
-
-            m_graphics.GraphicsDevice.DrawUserPrimitives(PrimitiveType.LineList, verts, 0, 1,
-                            VertexPositionColorTexture.VertexDeclaration);
-            */
-            //DebugShapeRenderer.AddLine(v1, v2, Color.Yellow);
+            DebugShapeRenderer.AddBoundingBox(new BoundingBox(v1, v2), m_activeBufferView.m_cursorColour);
         }
 
-        protected void drawFileBuffer(Vector3 v, string m_fileName)
+        protected void drawFileBuffer(BufferView view, FileBuffer file)
         {
-            Matrix invertY = new Matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+            //Matrix invertY = new Matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
 
             float yPosition = 0.0f;
 
-            //float xAdjust = textSize * 10.0f;
-            //float yAdjust = textSize * 10.0f;
+            Vector2 lineOrigin = new Vector2();
+            Vector3 viewSpaceTextPosition = view.m_position;
 
-            //Vector2 adjustOrigin = new Vector2();
-            Vector2 lineOrigin = new Vector2(); //v.X, v.Y) + adjustOrigin;
-            Vector3 viewSpaceTextPosition = v; // Vector3.Transform(v, m_view /* * invertY*/ );
+            int showStart = view.m_bufferShowStart;
+            int showEnd = file.getLineCount();
 
-//            float maxWidth = 0.0f;
-            //Console.WriteLine("First line at " + viewSpaceTextPosition.Y);
-
-            for (int i = 0; i < m_fileBuffers[0].getLineCount(); i++)
+            if (view.m_bufferShowStart > file.getLineCount() - 1)
             {
-                string line = m_fileBuffers[0].getLine(i);
+                showStart = file.getLineCount() - 1;
+            }
+
+            if (view.m_bufferShowStart + view.m_bufferShowLength < file.getLineCount() - 1)
+            {
+                showEnd = view.m_bufferShowStart + view.m_bufferShowLength;
+            }
+            else
+            {
+                showEnd = file.getLineCount();
+            }
+
+            //Console.WriteLine("DRAW AT " + viewSpaceTextPosition.X);
+
+            for (int i = showStart; i < showEnd; i++)
+            {
+                string line = file.getLine(i);
 
                 if (line.Length > 80)
                 {
                     line = line.Substring(0, 80);
                 }
 
-                //if (m_spriteFont.MeasureString(line).X > maxWidth)
-                //{
-                //maxWidth = m_spriteFont.MeasureString(line).X;
-                //}
-
-                m_spriteBatch.DrawString(m_spriteFont, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), Color.White, 0, lineOrigin, m_textSize, 0, 0);
+                m_spriteBatch.DrawString(m_spriteFont, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), view.m_textColour, 0, lineOrigin, m_textSize, 0, 0);
                 yPosition += m_lineHeight; // m_spriteFont.MeasureString(line).Y * m_textSize;
             }
         }
+
+        /// <summary>
+        /// Page down on the active BufferView
+        /// </summary>
+        protected void pageDown()
+        {
+            m_activeBufferView.m_bufferShowStart += 20;
+            if (m_activeBufferView.m_bufferShowStart > m_fileBuffers[0].getLineCount() - 1)
+            {
+                m_activeBufferView.m_bufferShowStart = m_fileBuffers[0].getLineCount() - 1;
+            }
+        }
+
+        /// <summary>
+        /// Page up on the active BufferView
+        /// </summary>
+        protected void pageUp()
+        {
+            m_activeBufferView.m_bufferShowStart -= 20;
+
+            if (m_activeBufferView.m_bufferShowStart < 0)
+            {
+                m_activeBufferView.m_bufferShowStart = 0;
+            }
+        }
+
 
         /// <summary>
         /// This draws a highlight area on the screen when we hold shift down
@@ -807,16 +941,15 @@ namespace Xyglo
                 {
                     // Set start position
                     //
-                    highlightStart.X = m_fileCoords.X + m_shiftStart.X * m_charWidth;
-                    highlightStart.Y = m_fileCoords.Y + m_shiftStart.Y * m_lineHeight;
+                    highlightStart.X = m_activeBufferView.m_position.X + m_shiftStart.X * m_charWidth;
+                    highlightStart.Y = m_activeBufferView.m_position.Y + m_shiftStart.Y * m_lineHeight;
 
                     // Set end position
                     //
-                    highlightEnd.X = m_fileCoords.X + m_cursorPosition.X * m_charWidth;
-                    highlightEnd.Y = m_fileCoords.Y + ( m_cursorPosition.Y + 1 ) * m_lineHeight;
+                    highlightEnd.X = m_activeBufferView.m_position.X + m_cursorPosition.X * m_charWidth;
+                    highlightEnd.Y = m_activeBufferView.m_position.Y + ( m_cursorPosition.Y + 1 ) * m_lineHeight;
 
                     renderQuad(highlightStart, highlightEnd);
-                    //DebugShapeRenderer.AddBoundingBox(new BoundingBox(highlightStart, highlightEnd), Color.Yellow);
                 }
                 else if (m_shiftStart.Y < m_cursorPosition.Y) // Highlight down
                 {
@@ -824,25 +957,24 @@ namespace Xyglo
                     {
                         if (i == m_shiftStart.Y)
                         {
-                            highlightStart.X = m_fileCoords.X + m_shiftStart.X * m_charWidth;
-                            highlightEnd.X = m_fileCoords.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
+                            highlightStart.X = m_activeBufferView.m_position.X + m_shiftStart.X * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
                         }
                         else if (i == m_cursorPosition.Y)
                         {
-                            highlightStart.X = m_fileCoords.X;
-                            highlightEnd.X = m_fileCoords.X + m_cursorPosition.X * m_charWidth;
+                            highlightStart.X = m_activeBufferView.m_position.X;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_cursorPosition.X * m_charWidth;
                         }
                         else
                         {
-                            highlightStart.X = m_fileCoords.X;
-                            highlightEnd.X = m_fileCoords.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
+                            highlightStart.X = m_activeBufferView.m_position.X;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
                         }
 
-                        highlightStart.Y = m_fileCoords.Y + i * m_lineHeight;
+                        highlightStart.Y = m_activeBufferView.m_position.Y + i * m_lineHeight;
                         highlightEnd.Y = highlightStart.Y + m_lineHeight;
 
                         renderQuad(highlightStart, highlightEnd);
-                        //DebugShapeRenderer.AddBoundingBox(new BoundingBox(highlightStart, highlightEnd), Color.Yellow);
                     }
                     //BoundingBox bb = new BoundingBox();
                 }
@@ -852,63 +984,25 @@ namespace Xyglo
                     {
                         if (i == m_cursorPosition.Y)
                         {
-                            highlightStart.X = m_fileCoords.X + m_cursorPosition.X * m_charWidth;
-                            highlightEnd.X = m_fileCoords.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
+                            highlightStart.X = m_activeBufferView.m_position.X + m_cursorPosition.X * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
                         }
                         else if (i == m_shiftStart.Y)
                         {
-                            highlightStart.X = m_fileCoords.X;
-                            highlightEnd.X = m_fileCoords.X + m_shiftStart.X * m_charWidth;
+                            highlightStart.X = m_activeBufferView.m_position.X;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_shiftStart.X * m_charWidth;
                         }
                         else
                         {
-                            highlightStart.X = m_fileCoords.X;
-                            highlightEnd.X = m_fileCoords.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
+                            highlightStart.X = m_activeBufferView.m_position.X;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
                         }
 
-                        highlightStart.Y = m_fileCoords.Y + i * m_lineHeight;
+                        highlightStart.Y = m_activeBufferView.m_position.Y + i * m_lineHeight;
                         highlightEnd.Y = highlightStart.Y + m_lineHeight;
 
                         renderQuad(highlightStart, highlightEnd);
-                        //DebugShapeRenderer.AddBoundingBox(new BoundingBox(highlightStart, highlightEnd), Color.Yellow);
                     }
-
-                    /*
-                    // We traverse right to left the whole shape of the highlight cursor
-                    //
-                    int startX = Convert.ToInt16(Math.Min(m_shiftStart.X, m_cursorCoords.X));
-                    int startY = Convert.ToInt16(Math.Min(m_shiftStart.Y, m_cursorCoords.Y));
-                    int endX = Convert.ToInt16(Math.Max(m_shiftStart.X, m_cursorCoords.X));
-                    int endY = Convert.ToInt16(Math.Max(m_shiftStart.Y, m_cursorCoords.Y));
-                    
-                    if (m_shiftStart.X < m_cursorCoords.X)
-                    {
-                        startX = m_shiftStart.X;
-                        endX = m_cursorCoords.X;
-
-                        for (int i = startY; i < endY; i++)
-                        {
-                            highlightStart.X = m_fileCoords.X + 
-                            DebugShapeRenderer.AddLine(
-                        }
-                    }
-
-                    }
-                    else
-                    {
-                    }
-
-                    
-                    for (int i = startY; i < endY; i++)
-                    {
-                        highlightStart.X = m_fileCoords.X + 
-                        DebugShapeRenderer.AddLine(
-
-                    }
-
-                    DebugShapeRenderer.AddBoundingBox(new BoundingBox(highlightStart, highlightEnd), Color.White);
-                    */
-                    //DebugShapeRenderer.addCursorHighlight(highlightStart, m_lineHeight, m_charWidth, List<int> lineLengths, Color colour)
                 }
             }
         }
@@ -945,7 +1039,7 @@ namespace Xyglo
                                                  Convert.ToInt16(topLeft.Y),
                                                  Convert.ToInt16(bottomRight.X) - Convert.ToInt16(topLeft.X),
                                                  Convert.ToInt16(bottomRight.Y) - Convert.ToInt16(topLeft.Y)),
-                                                 Color.PaleVioletRed);
+                                                 m_activeBufferView.m_highlightColour);
             m_spriteBatch.End();
         }
 
