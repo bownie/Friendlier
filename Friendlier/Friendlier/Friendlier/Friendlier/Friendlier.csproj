@@ -102,6 +102,7 @@
     <Reference Include="System">
       <Private>False</Private>
     </Reference>
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml">
       <Private>False</Private>
     </Reference>
@@ -123,6 +124,7 @@
     <Compile Include="FileBuffer.cs" />
     <Compile Include="FileRenderer.cs" />
     <Compile Include="Friendlier.cs" />
+    <Compile Include="InsertTextCommand.cs" />
     <Compile Include="ModelBuilder.cs" />
     <Compile Include="ModelCodeFragment.cs" />
     <Compile Include="ModelItem.cs" />

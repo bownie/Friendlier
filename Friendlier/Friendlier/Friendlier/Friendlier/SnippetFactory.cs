@@ -41,7 +41,7 @@ namespace Xyglo
             // Reset the internal index of this before sending it out for use - this ensures that
             // when it comes back to the heap we know where to re-use it.
             //
-            m_snippetList[m_currentSnippet].m_snippetFactoryPosition = m_currentSnippet;
+            m_snippetList[m_currentSnippet].setSnippetFactoryPosition(m_currentSnippet);
             return m_snippetList[m_currentSnippet++];
         }
 
@@ -59,15 +59,15 @@ namespace Xyglo
         /// <param name="snippet"></param>
         public static void returnSnippet(TextSnippet snippet)
         {
-            Console.WriteLine("Returning snippet to the heap : " + m_snippetList[snippet.m_snippetFactoryPosition].m_snippetFactoryPosition);
+            Console.WriteLine("Returning snippet to the heap : " + m_snippetList[snippet.getSnippetFactoryPosition()].getSnippetFactoryPosition());
             Console.WriteLine("Current snippet position = " + m_currentSnippet);
 
             // Remove from from
-            m_snippetList.RemoveAt(snippet.m_snippetFactoryPosition);
+            //m_snippetList.RemoveAt(snippet.getSnippetFactoryPosition());
 
             // Reposition index and reinsert at end
-            snippet.m_snippetFactoryPosition = -1;
-            m_snippetList.Add(snippet);
+            //snippet.setSnippetFactoryPosition(-1);
+            //m_snippetList.Add(snippet);
 
             // Decrement current snippet number
             //

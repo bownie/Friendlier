@@ -174,21 +174,13 @@ namespace Xyglo
             return false;
         }
 
-        /// <summary>
-        /// Deletes a selection from a FileBuffer - returns true if it actually deleted something.
-        /// </summary>
-        /// <param name="startSelection"></param>
-        /// <param name="endSelection"></param>
-        /// <returns></returns>
-        public bool deleteSelection(FilePosition startSelection, FilePosition endSelection)
-        {
-            //Console.WriteLine("DELETE SELECTION");
-            DeleteTextCommand command = new DeleteTextCommand("Delete Selection", this, startSelection, endSelection);
-            command.doCommand();
 
-            // If we have done a new command and the undo stack extends above the current undo position then remove
-            // everything on the undo stack above current position and push new command on at that level.
-            //
+        /// <summary>
+        /// If we have done a new command and the undo stack extends above the current undo position then remove
+        /// everything on the undo stack above current position and push new command on at that level.
+        /// </summary>
+        protected void tidyUndoStack(Command command)
+        {
             if (m_undoPosition < m_commands.Count)
             {
                 Console.WriteLine("Clearing undo position");
@@ -204,6 +196,42 @@ namespace Xyglo
             //
             m_commands.Add(command);
             m_undoPosition = m_commands.Count;
+
+        }
+
+        /// <summary>
+        /// Deletes a selection from a FileBuffer - returns true if it actually deleted something.
+        /// </summary>
+        /// <param name="startSelection"></param>
+        /// <param name="endSelection"></param>
+        /// <returns></returns>
+        public bool deleteSelection(FilePosition startSelection, FilePosition endSelection)
+        {
+            //Console.WriteLine("DELETE SELECTION");
+            DeleteTextCommand command = new DeleteTextCommand("Delete Selection", this, startSelection, endSelection);
+            command.doCommand();
+
+            // Ensure we are neat and tidy
+            //
+            tidyUndoStack(command);
+
+            return true;
+        }
+
+        /// <summary>
+        /// Insert some text into our current FileBuffer at a particular position
+        /// </summary>
+        /// <param name="insertPosition"></param>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public bool insertText(FilePosition insertPosition, string text)
+        {
+            InsertTextCommand command = new InsertTextCommand("Insert Text", this, insertPosition, text);
+            command.doCommand();
+
+            // Ensure we are neat and tidy
+            //
+            tidyUndoStack(command);
 
             return true;
         }

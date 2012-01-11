@@ -19,38 +19,12 @@ namespace Xyglo
             positionOrder();
         }
 
+        /// <summary>
+        /// Do this command
+        /// </summary>
         public override void doCommand()
         {
             string newLine, bufLine;
-
-            //Console.WriteLine("START POINT = " + m_startPos.X);
-            //Console.WriteLine("END POINT = " + m_endPos.X);
-
-            // Store the lines we're going to delete
-            //
-            for (int i = m_startPos.Y; i < m_endPos.Y; i++)
-            {
-                bufLine = m_fileBuffer.getLine(i);
-
-                // Add the whole bufLine to snippet
-                //
-                Console.WriteLine("ADDING TO SNIPPET = " + bufLine);
-                m_snippet.m_lines.Add(bufLine);
-
-                if (i == m_startPos.Y)
-                {
-                    newLine = bufLine.Substring(m_startPos.X, bufLine.Length - m_startPos.X);
-                }
-                else if (i == m_endPos.Y)
-                {
-                    newLine = bufLine.Substring(0, m_endPos.X);
-                }
-                else
-                {
-                    newLine = bufLine;
-                }
-
-            }
 
             // Are we deleting on the same line?
             //
@@ -60,7 +34,8 @@ namespace Xyglo
 
                 // Add this line to snippet as we're only editing a single line
                 //
-                m_snippet.m_lines.Add(line);
+                //m_snippet.m_lines.Add(line);
+                m_snippet.setSnippetSingle(line);
 
                 if (m_startPos.X == m_endPos.X) // deletion at cursor
                 {
@@ -89,7 +64,7 @@ namespace Xyglo
                 else
                 {
                     bufLine = line.Substring(0, m_startPos.X) +
-                              line.Substring(m_endPos.X, line.Count() - m_endPos.X);
+                              line.Substring(m_endPos.X, line.Length - m_endPos.X);
 
                     if (bufLine == "")
                     {
@@ -104,6 +79,36 @@ namespace Xyglo
             }
             else  // Multi-line delete
             {
+                // Clear the snippet and then append all the lines we're going to delete
+                //
+                //
+                m_snippet.m_lines.Clear();
+
+                for (int i = m_startPos.Y; i < m_endPos.Y; i++)
+                {
+                    bufLine = m_fileBuffer.getLine(i);
+
+                    // Add the whole bufLine to snippet
+                    //
+                    Console.WriteLine("ADDING TO SNIPPET = " + bufLine);
+
+                    m_snippet.m_lines.Add(bufLine);
+
+                    if (i == m_startPos.Y)
+                    {
+                        newLine = bufLine.Substring(m_startPos.X, bufLine.Length - m_startPos.X);
+                    }
+                    else if (i == m_endPos.Y)
+                    {
+                        newLine = bufLine.Substring(0, m_endPos.X);
+                    }
+                    else
+                    {
+                        newLine = bufLine;
+                    }
+
+                }
+
                 // Cut and append the current line and the last line and save to bufLine
                 //
                 bufLine = m_fileBuffer.getLine(m_startPos.Y).Substring(0, m_startPos.X);
@@ -125,6 +130,9 @@ namespace Xyglo
             }
         }
 
+        /// <summary>
+        /// Undo this command
+        /// </summary>
         public override void undoCommand()
         {
             Console.WriteLine("m_linesDeleted = " + m_snippet.m_linesDeleted);
@@ -136,7 +144,9 @@ namespace Xyglo
                 Console.WriteLine("INSERT LINE at " + m_startPos.Y);
                 m_fileBuffer.insertLine(m_startPos.Y, "dummy");
             }
-            
+
+            Console.WriteLine("SNIPPET LINE COUNT = " + m_snippet.m_lines.Count);
+
             // Now overwrite all the lines
             //
             int snippetLine = 0;
@@ -147,14 +157,17 @@ namespace Xyglo
             }
         }
 
+        /// <summary>
+        /// Dispose of current TextSnippet - clear it and return it
+        /// </summary>
         public override void Dispose()
         {
+            //m_snippet.clear();
             SnippetFactory.returnSnippet(m_snippet);
             Console.WriteLine("DeleteTextCommand Dispose()");
         }
 
         TextSnippet m_snippet = SnippetFactory.getSnippet();
-
         FileBuffer m_fileBuffer;
 
     }

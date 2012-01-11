@@ -12,7 +12,7 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-
+//using System.Windows.Forms;
 
 namespace Xyglo
 {
@@ -40,13 +40,6 @@ namespace Xyglo
         /// Eye location
         /// </summary>
         Vector3 m_eye = new Vector3(0f, 0f, 275f);  // 275 is good
-
-        //Vector3 m_lastEyePosition = new Vector3(-1f, -1f, -1f);
-
-        /// <summary>
-        /// The unit position in a text file (character and line) 
-        /// </summary>
-        Vector2 m_cursorPosition = new Vector2(0, 0);
 
         /// <summary>
         /// Cursor coordinates in 3D
@@ -131,6 +124,18 @@ namespace Xyglo
         /// The buffer we are currently editing
         /// </summary>
         BufferView m_activeBufferView = null;
+
+        /// <summary>
+        /// Get the actual cursor position in the current active buffer view
+        /// </summary>
+        /// <returns></returns>
+        protected FilePosition getActiveCursorPosition()
+        {
+            FilePosition fp = new FilePosition(m_activeBufferView.m_cursorPosition);
+            fp.Y += m_activeBufferView.m_bufferShowStart;
+
+            return fp;
+        }
 
         public Friendlier(string file)
         {
@@ -320,10 +325,6 @@ namespace Xyglo
             //
             m_activeBufferView = view;
 
-            // Set cursor position in Buffer
-            //
-            m_cursorPosition = view.m_cursorPosition;
-
             // Set 3D cursor position home to file position
             //
             m_cursorCoords = view.m_position;
@@ -335,16 +336,15 @@ namespace Xyglo
         /// /// </summary>
         protected void fixCursor()
         {
-            int curPosX = Convert.ToInt16(m_cursorPosition.X);
-            int curPosY = Convert.ToInt16(m_cursorPosition.Y);
+            int curPosX = Convert.ToInt16(m_activeBufferView.m_cursorPosition.X);
+            int curPosY = Convert.ToInt16(m_activeBufferView.m_cursorPosition.Y);
             string line = m_fileBuffers[0].getLine(curPosY);
             int lineLength = line.Length;
 
             if (curPosX > lineLength)
             {
-                m_cursorPosition.X = lineLength;
+                m_activeBufferView.m_cursorPosition.X = lineLength;
             }
-
         }
 
         /// <summary>
@@ -390,9 +390,9 @@ namespace Xyglo
                 }
                 else
                 {
-                    if (m_cursorPosition.Y > 0)
+                    if (m_activeBufferView.m_cursorPosition.Y > 0)
                     {
-                        m_cursorPosition.Y--;
+                        m_activeBufferView.m_cursorPosition.Y--;
                     }
                     else
                     {
@@ -401,6 +401,11 @@ namespace Xyglo
                         if (m_activeBufferView.m_bufferShowStart > 0)
                         {
                             m_activeBufferView.m_bufferShowStart--;
+
+                            if (m_shiftDown)
+                            {
+                                m_shiftStart.Y++;
+                            }
                         }
                     }
 
@@ -409,9 +414,9 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.Down, gameTime))
             {
-                if (m_cursorPosition.Y < m_activeBufferView.m_bufferShowLength)
+                if (m_activeBufferView.m_cursorPosition.Y < m_activeBufferView.m_bufferShowLength)
                 {
-                    m_cursorPosition.Y++;
+                    m_activeBufferView.m_cursorPosition.Y++;
                 }
                 else
                 {
@@ -420,34 +425,39 @@ namespace Xyglo
                     if (m_activeBufferView.m_bufferShowStart < m_fileBuffers[0].getLineCount() - 1)
                     {
                         m_activeBufferView.m_bufferShowStart++;
+                        if (m_shiftDown)
+                        {
+                            m_shiftStart.Y--;
+                        }
                     }
                 }
                 fixCursor();
             }
             else if (checkKeyState(Keys.Left, gameTime))
             {
-                if (m_cursorPosition.X > 0)
+                if (m_activeBufferView.m_cursorPosition.X > 0)
                 {
-                    m_cursorPosition.X--;
+                    m_activeBufferView.m_cursorPosition.X--;
                 }
             }
             else if (checkKeyState(Keys.Right, gameTime))
             {
-                if (m_cursorPosition.X < 80)
+                if (m_activeBufferView.m_cursorPosition.X < 80)
                 {
-                    m_cursorPosition.X++;
+                    m_activeBufferView.m_cursorPosition.X++;
                 }
 
                 fixCursor();
             }
             else if (checkKeyState(Keys.End, gameTime))
             {
-                m_cursorPosition.X = m_fileBuffers[0].getLine(Convert.ToInt16(m_cursorPosition.Y)).Length;
+                m_activeBufferView.m_cursorPosition.X = m_fileBuffers[0].getLine(Convert.ToInt16(m_activeBufferView.m_cursorPosition.Y + m_activeBufferView.m_bufferShowStart)).Length;
             }
             else if (checkKeyState(Keys.Home, gameTime))
             {
-                m_cursorPosition.X = 0;
+                m_activeBufferView.m_cursorPosition.X = 0;
             }
+                /*
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.OemPeriod))
             {
                 m_eye.X += 3f;
@@ -459,30 +469,8 @@ namespace Xyglo
             else if (checkKeyState(Keys.A, gameTime))
             {
                 m_eye.Z -= 10.0f;
-            }
-            else if (checkKeyState(Keys.Z, gameTime))
-            {
-                // Undo
-                //
-                if (m_ctrlDown)
-                {
-                    // Undo a certain number of steps
-                    //
-                    try
-                    {
-                        m_fileBuffers[0].undo(1);
-                    }
-                    catch (Exception e)
-                    {
-                        Console.WriteLine("Got exception " + e.Message);
-                    }
-                }
-                else
-                {
-                    m_eye.Z += 10.0f;
-                }
-            }
-            else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Space)) // Reset
+            } */
+            else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Insert)) // Reset
             {
                 m_eye.X = 12f;
                 m_eye.Y = 5f;
@@ -504,6 +492,9 @@ namespace Xyglo
                 {
                     FilePosition shiftStart = new FilePosition(m_shiftStart);
                     FilePosition shiftEnd = new FilePosition(m_shiftEnd);
+                    shiftStart.Y += m_activeBufferView.m_bufferShowStart;
+                    shiftEnd.Y += m_activeBufferView.m_bufferShowStart;
+
                     m_fileBuffers[0].deleteSelection(shiftStart, shiftEnd);
 
                     deletionCursor(m_shiftStart, m_shiftEnd);
@@ -515,28 +506,33 @@ namespace Xyglo
                 {
                     if (checkKeyState(Keys.Delete, gameTime))
                     {
-                        FilePosition cursorPosition = new FilePosition(m_cursorPosition);
+                        FilePosition cursorPosition = new FilePosition(m_activeBufferView.m_cursorPosition);
+                        cursorPosition.Y += m_activeBufferView.m_bufferShowStart;
+
                         m_fileBuffers[0].deleteSelection(cursorPosition, cursorPosition);
-                        deletionCursor(m_cursorPosition, m_cursorPosition);
+                        deletionCursor(m_activeBufferView.m_cursorPosition, m_activeBufferView.m_cursorPosition);
                     }
                     else if (checkKeyState(Keys.Back, gameTime))
                     {
-                        if (m_cursorPosition.X > 0)
+                        if (m_activeBufferView.m_cursorPosition.X > 0)
                         {
-                            m_cursorPosition.X -= 1;
-                            FilePosition cursorPosition = new FilePosition(m_cursorPosition);
+                            m_activeBufferView.m_cursorPosition.X -= 1;
+                            FilePosition cursorPosition = new FilePosition(m_activeBufferView.m_cursorPosition);
+                            cursorPosition.Y += m_activeBufferView.m_bufferShowStart;
+
                             m_fileBuffers[0].deleteSelection(cursorPosition, cursorPosition);
-                            deletionCursor(m_cursorPosition, m_cursorPosition);
+                            deletionCursor(m_activeBufferView.m_cursorPosition, m_activeBufferView.m_cursorPosition);
                         }
-                        else if (m_cursorPosition.Y > 0)
+                        else if (m_activeBufferView.m_cursorPosition.Y > 0)
                         {
-                            m_cursorPosition.Y -= 1;
-                            m_cursorPosition.X = m_fileBuffers[0].getLine(Convert.ToInt16(m_cursorPosition.Y)).Length;
+                            m_activeBufferView.m_cursorPosition.Y -= 1;
+                            m_activeBufferView.m_cursorPosition.X = m_fileBuffers[0].getLine(Convert.ToInt16(m_activeBufferView.m_cursorPosition.Y)).Length;
 
-                            FilePosition cursorPosition = new FilePosition(m_cursorPosition);
+                            FilePosition cursorPosition = new FilePosition(m_activeBufferView.m_cursorPosition);
+                            cursorPosition.Y += m_activeBufferView.m_bufferShowStart;
 
                             m_fileBuffers[0].deleteSelection(cursorPosition, cursorPosition);
-                            deletionCursor(m_cursorPosition, m_cursorPosition);
+                            deletionCursor(m_activeBufferView.m_cursorPosition, m_activeBufferView.m_cursorPosition);
                         }
                     }
 
@@ -544,6 +540,101 @@ namespace Xyglo
             }
             else
             {
+                if (checkKeyState(Keys.Z, gameTime))
+                {
+                    // Undo
+                    //
+                    if (m_ctrlDown)
+                    {
+                        // Undo a certain number of steps
+                        //
+                        try
+                        {
+                            m_fileBuffers[0].undo(1);
+                        }
+                        catch (Exception e)
+                        {
+                            System.Windows.Forms.MessageBox.Show("Undo stack is empty - " + e.Message);
+                            //Console.WriteLine("Got exception " + e.Message);
+                        }
+                    }
+                    else
+                    {
+                        m_eye.Z += 10.0f;
+                    }
+                }
+
+                if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftShift) ||
+                    Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightShift) ||
+                    Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightControl) ||
+                    Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftControl))
+                {
+                    // we have an action key so we ignore it for insert purposes
+                    ;
+                }
+                else
+                {
+                // Detect a key being hit
+                //
+                foreach (Keys keyDown in Keyboard.GetState().GetPressedKeys())
+                {
+                    bool testKey = true;
+
+                    foreach (Keys lastKeys in m_lastKeyboardState.GetPressedKeys())
+                    {
+                        if (keyDown == lastKeys)
+                        {
+                            testKey = false;
+                        }
+                    }
+
+                    // Test to see if we've already processed this key - if not then we can print it out
+                    if (testKey)
+                    {
+                        if (keyDown == Keys.Enter)
+                        {
+                            // Insert a line
+                            //
+                            ;
+                        }
+                        else
+                        {
+                            string key = "";
+
+                            switch (keyDown)
+                            {
+                                case Keys.Space:
+                                    key = " ";
+                                    break;
+
+                                case Keys.OemMinus:
+                                    key = "-";
+                                    break;
+
+                                case Keys.OemComma:
+                                    key = ",";
+                                    break;
+
+                                default:
+                                    key = keyDown.ToString();
+                                    if (!m_shiftDown)
+                                    {
+                                        key = key.ToLower();
+                                    }
+                                    break;
+                            }
+
+                            // Insert the text on the FileBuffer
+                            //
+                            m_fileBuffers[0].insertText(getActiveCursorPosition(), key);
+
+                            // Increment buffer position
+                            //
+                            m_activeBufferView.m_cursorPosition.X++;
+                        }
+                    }
+                }
+
                 // Do we need to do some deletion or replacing?  If shift is down and we've highlighted an area
                 // then we need to replace something.
                 //
@@ -558,13 +649,13 @@ namespace Xyglo
                     //
                     m_selectionValid = false;
                 }
-
+                    }
             }
 
             // Update cursor coordinations from cursor movement
             //
-            m_cursorCoords.X = m_activeBufferView.m_position.X + (m_cursorPosition.X * m_charWidth);
-            m_cursorCoords.Y = m_activeBufferView.m_position.Y + (m_cursorPosition.Y * m_lineHeight);
+            m_cursorCoords.X = m_activeBufferView.m_position.X + (m_activeBufferView.m_cursorPosition.X * m_charWidth);
+            m_cursorCoords.Y = m_activeBufferView.m_position.Y + (m_activeBufferView.m_cursorPosition.Y * m_lineHeight);
 
             // Save the last state if it has changed
             //
@@ -585,11 +676,11 @@ namespace Xyglo
         {
             if (shiftStart.Y < shiftEnd.Y || (shiftStart.Y == shiftEnd.Y && m_shiftStart.X < m_shiftEnd.X))
             {
-                m_cursorPosition = shiftStart;
+                m_activeBufferView.m_cursorPosition = shiftStart;
             }
             else
             {
-                m_cursorPosition = shiftEnd;
+                m_activeBufferView.m_cursorPosition = shiftEnd;
             }
         }
 
@@ -625,7 +716,7 @@ namespace Xyglo
             {
                 Console.WriteLine("SHIFT UP");
                 m_shiftDown = false;
-                m_shiftEnd = m_cursorPosition;
+                m_shiftEnd = m_activeBufferView.m_cursorPosition;
                 m_selectionValid = true;
             }
             else
@@ -634,7 +725,7 @@ namespace Xyglo
                     Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightShift)))
                 {
                     Console.WriteLine("SHIFT DOWN");
-                    m_shiftStart = m_cursorPosition;
+                    m_shiftStart = m_activeBufferView.m_cursorPosition;
                     m_shiftDown = true;
                 }
             }
@@ -645,20 +736,20 @@ namespace Xyglo
             {
                 if (m_lastKeyboardState.IsKeyUp(check))
                 {
-                    //Console.WriteLine("RESETTING HELDDOWNSTARTTIME");
                     m_heldKey = check;
                     m_heldDownStartTime = gameTime.TotalGameTime.TotalSeconds;
                     return true;
                 }
 
+                // Check to see if the key has been held down for a while
+                //
                 if (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime > repeatHold) 
                 {
-                    //Console.WriteLine("Held down = " + (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime).ToString());
                     return true;
                 }
 
-                //Console.WriteLine("TOTAL TIME = " + (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime));
-
+                // It hasn't
+                //
                 return false;
             }
 
@@ -937,7 +1028,7 @@ namespace Xyglo
 
                 // Highlight if we're on the same line
                 //
-                if (m_shiftStart.Y == m_cursorPosition.Y)
+                if (m_shiftStart.Y == m_activeBufferView.m_cursorPosition.Y)
                 {
                     // Set start position
                     //
@@ -946,29 +1037,29 @@ namespace Xyglo
 
                     // Set end position
                     //
-                    highlightEnd.X = m_activeBufferView.m_position.X + m_cursorPosition.X * m_charWidth;
-                    highlightEnd.Y = m_activeBufferView.m_position.Y + ( m_cursorPosition.Y + 1 ) * m_lineHeight;
+                    highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_cursorPosition.X * m_charWidth;
+                    highlightEnd.Y = m_activeBufferView.m_position.Y + (m_activeBufferView.m_cursorPosition.Y + 1) * m_lineHeight;
 
                     renderQuad(highlightStart, highlightEnd);
                 }
-                else if (m_shiftStart.Y < m_cursorPosition.Y) // Highlight down
+                else if (m_shiftStart.Y < m_activeBufferView.m_cursorPosition.Y) // Highlight down
                 {
-                    for (int i = Convert.ToInt16(m_shiftStart.Y); i < Convert.ToInt16(m_cursorPosition.Y) + 1; i++)
+                    for (int i = Convert.ToInt16(m_shiftStart.Y); i < Convert.ToInt16(m_activeBufferView.m_cursorPosition.Y) + 1; i++)
                     {
                         if (i == m_shiftStart.Y)
                         {
                             highlightStart.X = m_activeBufferView.m_position.X + m_shiftStart.X * m_charWidth;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
-                        else if (i == m_cursorPosition.Y)
+                        else if (i == m_activeBufferView.m_cursorPosition.Y)
                         {
                             highlightStart.X = m_activeBufferView.m_position.X;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_cursorPosition.X * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_cursorPosition.X * m_charWidth;
                         }
                         else
                         {
                             highlightStart.X = m_activeBufferView.m_position.X;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
 
                         highlightStart.Y = m_activeBufferView.m_position.Y + i * m_lineHeight;
@@ -980,12 +1071,12 @@ namespace Xyglo
                 }
                 else  // Highlight up
                 {
-                    for (int i = Convert.ToInt16(m_cursorPosition.Y); i < Convert.ToInt16(m_shiftStart.Y) + 1; i++)
+                    for (int i = Convert.ToInt16(m_activeBufferView.m_cursorPosition.Y); i < Convert.ToInt16(m_shiftStart.Y) + 1; i++)
                     {
-                        if (i == m_cursorPosition.Y)
+                        if (i == m_activeBufferView.m_cursorPosition.Y)
                         {
-                            highlightStart.X = m_activeBufferView.m_position.X + m_cursorPosition.X * m_charWidth;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
+                            highlightStart.X = m_activeBufferView.m_position.X + m_activeBufferView.m_cursorPosition.X * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
                         else if (i == m_shiftStart.Y)
                         {
@@ -995,7 +1086,7 @@ namespace Xyglo
                         else
                         {
                             highlightStart.X = m_activeBufferView.m_position.X;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i).Length * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
 
                         highlightStart.Y = m_activeBufferView.m_position.Y + i * m_lineHeight;
