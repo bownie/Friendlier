@@ -20,3 +20,14 @@ C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\obj\x86\Debug\ResolveAssem
 C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\obj\x86\Debug\Microsoft.Xna.Framework.RuntimeProfile.txt
 C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\obj\x86\Debug\Friendlier.exe
 C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\obj\x86\Debug\Friendlier.pdb
+D:\Friendlier\Friendlier\Friendlier\Friendlier\obj\x86\Debug\ResolveAssemblyReference.cache
+D:\Friendlier\Friendlier\Friendlier\Friendlier\obj\x86\Debug\Microsoft.Xna.Framework.RuntimeProfile.txt
+D:\Friendlier\Friendlier\Friendlier\Friendlier\obj\x86\Debug\Friendlier.exe
+D:\Friendlier\Friendlier\Friendlier\Friendlier\obj\x86\Debug\Friendlier.pdb
+D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Courier New.xnb
+D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Effects\Ambient.xnb
+D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Friendlier.exe
+D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Friendlier.pdb
+D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Microsoft.Contracts.dll
+D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\QuickGraph.dll
+D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\QuickGraph.Graphviz.dll

@@ -22,7 +22,7 @@ namespace Xyglo
         /// <summary>
         /// Do this command
         /// </summary>
-        public override void doCommand()
+        public override FilePosition doCommand()
         {
             string newLine, bufLine;
 
@@ -128,12 +128,14 @@ namespace Xyglo
                 m_fileBuffer.setLine(m_startPos.Y, bufLine);
 
             }
+
+            return m_startPos;
         }
 
         /// <summary>
         /// Undo this command
         /// </summary>
-        public override void undoCommand()
+        public override FilePosition undoCommand()
         {
             Console.WriteLine("m_linesDeleted = " + m_snippet.m_linesDeleted);
 
@@ -155,6 +157,10 @@ namespace Xyglo
                 Console.WriteLine("OVERWRITING = " + snippetLine);
                 m_fileBuffer.setLine(i, m_snippet.m_lines[snippetLine++]);
             }
+
+            // Return the start position for undo
+            //
+            return m_startPos;
         }
 
         /// <summary>

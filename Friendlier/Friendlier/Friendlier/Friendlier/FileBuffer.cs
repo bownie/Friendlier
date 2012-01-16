@@ -36,6 +36,29 @@ namespace Xyglo
             Y = Convert.ToInt16(vector.Y);
         }
 
+        public static bool operator ==(FilePosition a, FilePosition b)
+        {
+            return ((a.X == b.X) && (a.Y == b.Y));
+        }
+
+        public static bool operator !=(FilePosition a, FilePosition b)
+        {
+            return ((a.X != b.X) || (a.Y != b.Y));
+        }
+
+        // Needed to avoid warning
+        //
+        public override int GetHashCode()
+        {
+            return X ^ Y;
+        }
+
+        // Needed to avoid warning
+        //
+        public override bool Equals(object obj)
+        {
+            return base.Equals(obj);
+        }
 
         public int X;
         public int Y;
@@ -205,17 +228,16 @@ namespace Xyglo
         /// <param name="startSelection"></param>
         /// <param name="endSelection"></param>
         /// <returns></returns>
-        public bool deleteSelection(FilePosition startSelection, FilePosition endSelection)
+        public FilePosition deleteSelection(FilePosition startSelection, FilePosition endSelection)
         {
-            //Console.WriteLine("DELETE SELECTION");
             DeleteTextCommand command = new DeleteTextCommand("Delete Selection", this, startSelection, endSelection);
-            command.doCommand();
+            FilePosition fp = command.doCommand();
 
             // Ensure we are neat and tidy
             //
             tidyUndoStack(command);
 
-            return true;
+            return fp;
         }
 
         /// <summary>
@@ -224,17 +246,34 @@ namespace Xyglo
         /// <param name="insertPosition"></param>
         /// <param name="text"></param>
         /// <returns></returns>
-        public bool insertText(FilePosition insertPosition, string text)
+        public FilePosition insertText(FilePosition insertPosition, string text)
         {
             InsertTextCommand command = new InsertTextCommand("Insert Text", this, insertPosition, text);
-            command.doCommand();
+            FilePosition fp = command.doCommand();
 
             // Ensure we are neat and tidy
             //
             tidyUndoStack(command);
 
-            return true;
+            return fp;
         }
+
+        /// <summary>
+        /// Insert a new line
+        /// </summary>
+        /// <param name="insertPosition"></param>
+        public FilePosition insertNewLine(FilePosition insertPosition)
+        {
+            InsertTextCommand command = new InsertTextCommand("Insert new line", this, insertPosition);
+            FilePosition fp = command.doCommand();
+
+            // Ensure we are neat and tidy
+            //
+            tidyUndoStack(command);
+
+            return fp;
+        }
+
 
         public bool undo(int steps)
         {

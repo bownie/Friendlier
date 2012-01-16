@@ -19,17 +19,23 @@ namespace Xyglo
         protected string m_name;
 
         /// <summary>
-        /// Define an abstract command for (re)do
+        /// Define an abstract command for (re)do that returns a modified cursor position
         /// </summary>
-        public abstract void doCommand();
+        public abstract FilePosition doCommand();
 
         /// <summary>
-        /// Define an asbtract command for undo
+        /// Define an asbtract command for undo that returns a modified cursor position
         /// </summary>
-        public abstract void undoCommand();
+        public abstract FilePosition undoCommand();
 
+        /// <summary>
+        /// Abstract method to dispose of this object
+        /// </summary>
         public abstract void Dispose();
 
+        /// <summary>
+        /// Use this to order end points in selections
+        /// </summary>
         public void positionOrder()
         {
             FilePosition swap;

@@ -38,7 +38,37 @@ namespace Xyglo
         /// <summary>
         /// Current cursor coordinates in this BufferView
         /// </summary>
-        public Vector2 m_cursorPosition;
+        protected FilePosition m_cursorPosition;
+
+        /// <summary>
+        /// Get the current cursor position
+        /// </summary>
+        /// <returns></returns>
+        public FilePosition getCursorPosition()
+        {
+            return m_cursorPosition;
+        }
+
+        /// <summary>
+        /// Set the cursor position in this view
+        /// </summary>
+        /// <param name="fp"></param>
+        public void setCursorPosition(FilePosition fp)
+        {
+            m_cursorPosition = fp;
+        }
+
+        /// <summary>
+        /// Set cursor position from a Vector2
+        /// </summary>
+        /// <param name="vfp"></param>
+        public void setCursorPosition(Vector2 vfp)
+        {
+            int x = Convert.ToInt16(vfp.X);
+            int y = Convert.ToInt16(vfp.Y);
+            m_cursorPosition.X = x;
+            m_cursorPosition.Y = y;
+        }
 
         /// <summary>
         /// Text colour

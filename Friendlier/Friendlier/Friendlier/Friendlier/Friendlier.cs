@@ -98,12 +98,12 @@ namespace Xyglo
         /// <summary>
         /// Where did shift get initially held down?
         /// </summary>
-        Vector2 m_shiftStart = new Vector2(); // = new FilePosition();
+        FilePosition m_shiftStart = new FilePosition();
 
         /// <summary>
         /// Where did we release shift?
         /// </summary>
-        Vector2 m_shiftEnd = new Vector2(); // = new FilePosition();
+        FilePosition m_shiftEnd = new FilePosition();
 
         /// <summary>
         /// Is our current selection ready for something to happen to it?
@@ -126,12 +126,18 @@ namespace Xyglo
         BufferView m_activeBufferView = null;
 
         /// <summary>
+        /// A flat texture
+        /// </summary>
+        Texture2D m_flatTexture;
+
+
+        /// <summary>
         /// Get the actual cursor position in the current active buffer view
         /// </summary>
         /// <returns></returns>
         protected FilePosition getActiveCursorPosition()
         {
-            FilePosition fp = new FilePosition(m_activeBufferView.m_cursorPosition);
+            FilePosition fp = m_activeBufferView.getCursorPosition();
             fp.Y += m_activeBufferView.m_bufferShowStart;
 
             return fp;
@@ -289,6 +295,12 @@ namespace Xyglo
             //
             m_overlaySpriteBatch = new SpriteBatch(m_graphics.GraphicsDevice);
 
+            // Create a flat texture for drawing rectangles etc
+            //
+            Color[] foregroundColors = new Color[1];
+            foregroundColors[0] = Color.White;
+            m_flatTexture = new Texture2D(m_graphics.GraphicsDevice, 1, 1, false, SurfaceFormat.Color);
+            m_flatTexture.SetData(foregroundColors);
 
             //  Set up some initial coordinates
             //m_activeBufferView.m_position = new Vector3(-180f, -100f, 0f);
@@ -301,7 +313,7 @@ namespace Xyglo
 
             // Add a view
             //
-            BufferView view1 = new BufferView(file1, new Vector3(-180f, -100f, 0f), 0, 15);
+            BufferView view1 = new BufferView(file1, new Vector3(-180f, -100f, 0f), 0, 20);
             m_bufferViews.Add(view1);
 
             //view = new BufferView(file1, new Vector3(-180f, 100f, 0.0f), 0, 15);
@@ -336,14 +348,14 @@ namespace Xyglo
         /// /// </summary>
         protected void fixCursor()
         {
-            int curPosX = Convert.ToInt16(m_activeBufferView.m_cursorPosition.X);
-            int curPosY = Convert.ToInt16(m_activeBufferView.m_cursorPosition.Y);
+            int curPosX = m_activeBufferView.getCursorPosition().X;
+            int curPosY = m_activeBufferView.getCursorPosition().Y;
             string line = m_fileBuffers[0].getLine(curPosY);
             int lineLength = line.Length;
 
             if (curPosX > lineLength)
             {
-                m_activeBufferView.m_cursorPosition.X = lineLength;
+                m_activeBufferView.setCursorPosition(new FilePosition(lineLength, curPosY));
             }
         }
 
@@ -390,9 +402,11 @@ namespace Xyglo
                 }
                 else
                 {
-                    if (m_activeBufferView.m_cursorPosition.Y > 0)
+                    if (m_activeBufferView.getCursorPosition().Y > 0)
                     {
-                        m_activeBufferView.m_cursorPosition.Y--;
+                        FilePosition fp = m_activeBufferView.getCursorPosition();
+                        fp.Y--;
+                        m_activeBufferView.setCursorPosition(fp); ;
                     }
                     else
                     {
@@ -414,9 +428,11 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.Down, gameTime))
             {
-                if (m_activeBufferView.m_cursorPosition.Y < m_activeBufferView.m_bufferShowLength)
+                if (m_activeBufferView.getCursorPosition().Y < m_activeBufferView.m_bufferShowLength)
                 {
-                    m_activeBufferView.m_cursorPosition.Y++;
+                    FilePosition fp = m_activeBufferView.getCursorPosition();
+                    fp.Y++;
+                    m_activeBufferView.setCursorPosition(fp);
                 }
                 else
                 {
@@ -435,29 +451,37 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.Left, gameTime))
             {
-                if (m_activeBufferView.m_cursorPosition.X > 0)
+                if (m_activeBufferView.getCursorPosition().X > 0)
                 {
-                    m_activeBufferView.m_cursorPosition.X--;
+                    FilePosition fp = m_activeBufferView.getCursorPosition();
+                    fp.X--;
+                    m_activeBufferView.setCursorPosition(fp);
                 }
             }
             else if (checkKeyState(Keys.Right, gameTime))
             {
-                if (m_activeBufferView.m_cursorPosition.X < 80)
+                if (m_activeBufferView.getCursorPosition().X < 80)
                 {
-                    m_activeBufferView.m_cursorPosition.X++;
+
+                    FilePosition fp = m_activeBufferView.getCursorPosition();
+                    fp.X++;
+                    m_activeBufferView.setCursorPosition(fp);
                 }
 
                 fixCursor();
             }
             else if (checkKeyState(Keys.End, gameTime))
             {
-                m_activeBufferView.m_cursorPosition.X = m_fileBuffers[0].getLine(Convert.ToInt16(m_activeBufferView.m_cursorPosition.Y + m_activeBufferView.m_bufferShowStart)).Length;
+                FilePosition fp = m_activeBufferView.getCursorPosition();
+                fp.X = m_activeBufferView.m_fileBuffer.getLine(fp.Y + m_activeBufferView.m_bufferShowStart).Length;
+                m_activeBufferView.setCursorPosition(fp);
             }
             else if (checkKeyState(Keys.Home, gameTime))
             {
-                m_activeBufferView.m_cursorPosition.X = 0;
+                FilePosition fp = m_activeBufferView.getCursorPosition();
+                fp.X = 0;
+                m_activeBufferView.setCursorPosition(fp);
             }
-                /*
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.OemPeriod))
             {
                 m_eye.X += 3f;
@@ -466,10 +490,14 @@ namespace Xyglo
             {
                 m_eye.X -= 3f;
             }
-            else if (checkKeyState(Keys.A, gameTime))
+            else if (checkKeyState(Keys.F1, gameTime))
             {
                 m_eye.Z -= 10.0f;
-            } */
+            }
+            else if (checkKeyState(Keys.F2, gameTime))
+            {
+                m_eye.Z += 10.0f;
+            }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Insert)) // Reset
             {
                 m_eye.X = 12f;
@@ -490,8 +518,8 @@ namespace Xyglo
                 //
                 if (m_selectionValid)
                 {
-                    FilePosition shiftStart = new FilePosition(m_shiftStart);
-                    FilePosition shiftEnd = new FilePosition(m_shiftEnd);
+                    FilePosition shiftStart = m_shiftStart;
+                    FilePosition shiftEnd = m_shiftEnd;
                     shiftStart.Y += m_activeBufferView.m_bufferShowStart;
                     shiftEnd.Y += m_activeBufferView.m_bufferShowStart;
 
@@ -506,36 +534,43 @@ namespace Xyglo
                 {
                     if (checkKeyState(Keys.Delete, gameTime))
                     {
-                        FilePosition cursorPosition = new FilePosition(m_activeBufferView.m_cursorPosition);
+                        FilePosition cursorPosition = m_activeBufferView.getCursorPosition();
                         cursorPosition.Y += m_activeBufferView.m_bufferShowStart;
 
                         m_fileBuffers[0].deleteSelection(cursorPosition, cursorPosition);
-                        deletionCursor(m_activeBufferView.m_cursorPosition, m_activeBufferView.m_cursorPosition);
+                        deletionCursor(m_activeBufferView.getCursorPosition(), m_activeBufferView.getCursorPosition());
                     }
                     else if (checkKeyState(Keys.Back, gameTime))
                     {
-                        if (m_activeBufferView.m_cursorPosition.X > 0)
+                        FilePosition fp = m_activeBufferView.getCursorPosition();
+
+                        if (fp.X > 0)
                         {
-                            m_activeBufferView.m_cursorPosition.X -= 1;
-                            FilePosition cursorPosition = new FilePosition(m_activeBufferView.m_cursorPosition);
+                            // Decrement and set X
+                            //
+                            fp.X--;
+                            m_activeBufferView.setCursorPosition(fp); ;
+
+                            // Modify Y for cursor position
+                            FilePosition cursorPosition = new FilePosition(m_activeBufferView.getCursorPosition());
                             cursorPosition.Y += m_activeBufferView.m_bufferShowStart;
 
                             m_fileBuffers[0].deleteSelection(cursorPosition, cursorPosition);
-                            deletionCursor(m_activeBufferView.m_cursorPosition, m_activeBufferView.m_cursorPosition);
+                            deletionCursor(fp, fp);
                         }
-                        else if (m_activeBufferView.m_cursorPosition.Y > 0)
+                        else if (fp.Y > 0)
                         {
-                            m_activeBufferView.m_cursorPosition.Y -= 1;
-                            m_activeBufferView.m_cursorPosition.X = m_fileBuffers[0].getLine(Convert.ToInt16(m_activeBufferView.m_cursorPosition.Y)).Length;
+                            fp.Y -= 1;
+                            fp.X = m_fileBuffers[0].getLine(Convert.ToInt16(fp.Y)).Length;
+                            m_activeBufferView.setCursorPosition(fp);
 
-                            FilePosition cursorPosition = new FilePosition(m_activeBufferView.m_cursorPosition);
+                            FilePosition cursorPosition = fp;
                             cursorPosition.Y += m_activeBufferView.m_bufferShowStart;
 
                             m_fileBuffers[0].deleteSelection(cursorPosition, cursorPosition);
-                            deletionCursor(m_activeBufferView.m_cursorPosition, m_activeBufferView.m_cursorPosition);
+                            deletionCursor(fp, fp);
                         }
                     }
-
                 }
             }
             else
@@ -557,10 +592,8 @@ namespace Xyglo
                             System.Windows.Forms.MessageBox.Show("Undo stack is empty - " + e.Message);
                             //Console.WriteLine("Got exception " + e.Message);
                         }
-                    }
-                    else
-                    {
-                        m_eye.Z += 10.0f;
+
+                        fixCursor();
                     }
                 }
 
@@ -589,13 +622,16 @@ namespace Xyglo
                     }
 
                     // Test to see if we've already processed this key - if not then we can print it out
+                    //
                     if (testKey)
                     {
+                        FilePosition fp = getActiveCursorPosition();
+
                         if (keyDown == Keys.Enter)
                         {
                             // Insert a line
                             //
-                            ;
+                            fp = m_activeBufferView.m_fileBuffer.insertNewLine(getActiveCursorPosition());
                         }
                         else
                         {
@@ -611,8 +647,26 @@ namespace Xyglo
                                     key = "-";
                                     break;
 
+                                case Keys.OemPeriod:
+                                    if (m_shiftDown)
+                                    {
+                                        key = ">";
+                                    }
+                                    else
+                                    {
+                                        key = ".";
+                                    }
+                                    break;
+
                                 case Keys.OemComma:
-                                    key = ",";
+                                    if (m_shiftDown)
+                                    {
+                                        key = "<";
+                                    }
+                                    else
+                                    {
+                                        key = ",";
+                                    }
                                     break;
 
                                 default:
@@ -624,14 +678,15 @@ namespace Xyglo
                                     break;
                             }
 
-                            // Insert the text on the FileBuffer
+                            // Insert the text on the FileBuffer and capture the return position
                             //
-                            m_fileBuffers[0].insertText(getActiveCursorPosition(), key);
-
-                            // Increment buffer position
-                            //
-                            m_activeBufferView.m_cursorPosition.X++;
+                            fp = m_fileBuffers[0].insertText(getActiveCursorPosition(), key);
                         }
+
+                        // Set the cursor position to whatever was returned by the relevant command
+                        //
+                        m_activeBufferView.setCursorPosition(fp);
+                        fixCursor();
                     }
                 }
 
@@ -654,8 +709,8 @@ namespace Xyglo
 
             // Update cursor coordinations from cursor movement
             //
-            m_cursorCoords.X = m_activeBufferView.m_position.X + (m_activeBufferView.m_cursorPosition.X * m_charWidth);
-            m_cursorCoords.Y = m_activeBufferView.m_position.Y + (m_activeBufferView.m_cursorPosition.Y * m_lineHeight);
+            m_cursorCoords.X = m_activeBufferView.m_position.X + (m_activeBufferView.getCursorPosition().X * m_charWidth);
+            m_cursorCoords.Y = m_activeBufferView.m_position.Y + (m_activeBufferView.getCursorPosition().Y * m_lineHeight);
 
             // Save the last state if it has changed
             //
@@ -672,15 +727,15 @@ namespace Xyglo
         /// </summary>
         /// <param name="shiftStart"></param>
         /// <param name="shiftEnd"></param>
-        protected void deletionCursor(Vector2 shiftStart, Vector2 shiftEnd)
+        protected void deletionCursor(FilePosition shiftStart, FilePosition shiftEnd)
         {
             if (shiftStart.Y < shiftEnd.Y || (shiftStart.Y == shiftEnd.Y && m_shiftStart.X < m_shiftEnd.X))
             {
-                m_activeBufferView.m_cursorPosition = shiftStart;
+                m_activeBufferView.setCursorPosition(shiftStart);
             }
             else
             {
-                m_activeBufferView.m_cursorPosition = shiftEnd;
+                m_activeBufferView.setCursorPosition(shiftEnd);
             }
         }
 
@@ -716,7 +771,7 @@ namespace Xyglo
             {
                 Console.WriteLine("SHIFT UP");
                 m_shiftDown = false;
-                m_shiftEnd = m_activeBufferView.m_cursorPosition;
+                m_shiftEnd = m_activeBufferView.getCursorPosition();
                 m_selectionValid = true;
             }
             else
@@ -725,7 +780,7 @@ namespace Xyglo
                     Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightShift)))
                 {
                     Console.WriteLine("SHIFT DOWN");
-                    m_shiftStart = m_activeBufferView.m_cursorPosition;
+                    m_shiftStart = m_activeBufferView.getCursorPosition();
                     m_shiftDown = true;
                 }
             }
@@ -974,6 +1029,8 @@ namespace Xyglo
 
             //Console.WriteLine("DRAW AT " + viewSpaceTextPosition.X);
 
+            // Draw all the text lines to the height of the buffer
+            //
             for (int i = showStart; i < showEnd; i++)
             {
                 string line = file.getLine(i);
@@ -986,7 +1043,46 @@ namespace Xyglo
                 m_spriteBatch.DrawString(m_spriteFont, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), view.m_textColour, 0, lineOrigin, m_textSize, 0, 0);
                 yPosition += m_lineHeight; // m_spriteFont.MeasureString(line).Y * m_textSize;
             }
+
+
+            drawScrollbar(view, file);
         }
+
+        /// <summary>
+        /// Draw a scroll bar for a BufferView
+        /// </summary>
+        /// <param name="view"></param>
+        /// <param name="file"></param>
+        protected void drawScrollbar(BufferView view, FileBuffer file)
+        {
+            Vector3 sbPos = view.m_position;
+            float height = view.m_bufferShowLength * m_lineHeight;
+
+            Rectangle sbBackGround = new Rectangle(Convert.ToInt16(sbPos.X - m_textSize * 30.0f),
+                                                   Convert.ToInt16(sbPos.Y),
+                                                   1,
+                                                   Convert.ToInt16(height));
+
+            // Draw scroll bar
+            //
+            m_spriteBatch.Draw(m_flatTexture, sbBackGround, Color.DarkCyan);
+
+            // Draw viewing window
+            float start = view.m_bufferShowStart;
+            float length = view.m_fileBuffer.getLineCount();
+            float scrollStart = start / length * height;
+            float scrollLength = view.m_bufferShowLength / length * height;
+
+            Rectangle sb = new Rectangle(Convert.ToInt16(sbPos.X - m_textSize * 30.0f),
+                                         Convert.ToInt16(sbPos.Y + scrollStart),
+                                         1,
+                                         Convert.ToInt16(scrollLength));
+            // Draw scroll bar window position
+            //
+            m_spriteBatch.Draw(m_flatTexture, sb, Color.LightGoldenrodYellow);
+
+        }
+
 
         /// <summary>
         /// Page down on the active BufferView
@@ -1013,7 +1109,6 @@ namespace Xyglo
             }
         }
 
-
         /// <summary>
         /// This draws a highlight area on the screen when we hold shift down
         /// </summary>
@@ -1028,7 +1123,7 @@ namespace Xyglo
 
                 // Highlight if we're on the same line
                 //
-                if (m_shiftStart.Y == m_activeBufferView.m_cursorPosition.Y)
+                if (m_shiftStart.Y == m_activeBufferView.getCursorPosition().Y)
                 {
                     // Set start position
                     //
@@ -1037,29 +1132,29 @@ namespace Xyglo
 
                     // Set end position
                     //
-                    highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_cursorPosition.X * m_charWidth;
-                    highlightEnd.Y = m_activeBufferView.m_position.Y + (m_activeBufferView.m_cursorPosition.Y + 1) * m_lineHeight;
+                    highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.getCursorPosition().X * m_charWidth;
+                    highlightEnd.Y = m_activeBufferView.m_position.Y + (m_activeBufferView.getCursorPosition().Y + 1) * m_lineHeight;
 
                     renderQuad(highlightStart, highlightEnd);
                 }
-                else if (m_shiftStart.Y < m_activeBufferView.m_cursorPosition.Y) // Highlight down
+                else if (m_shiftStart.Y < m_activeBufferView.getCursorPosition().Y) // Highlight down
                 {
-                    for (int i = Convert.ToInt16(m_shiftStart.Y); i < Convert.ToInt16(m_activeBufferView.m_cursorPosition.Y) + 1; i++)
+                    for (int i = Convert.ToInt16(m_shiftStart.Y); i < Convert.ToInt16(m_activeBufferView.getCursorPosition().Y) + 1; i++)
                     {
                         if (i == m_shiftStart.Y)
                         {
                             highlightStart.X = m_activeBufferView.m_position.X + m_shiftStart.X * m_charWidth;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
-                        else if (i == m_activeBufferView.m_cursorPosition.Y)
+                        else if (i == m_activeBufferView.getCursorPosition().Y)
                         {
                             highlightStart.X = m_activeBufferView.m_position.X;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_cursorPosition.X * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.getCursorPosition().X * m_charWidth;
                         }
                         else
                         {
                             highlightStart.X = m_activeBufferView.m_position.X;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
 
                         highlightStart.Y = m_activeBufferView.m_position.Y + i * m_lineHeight;
@@ -1071,12 +1166,12 @@ namespace Xyglo
                 }
                 else  // Highlight up
                 {
-                    for (int i = Convert.ToInt16(m_activeBufferView.m_cursorPosition.Y); i < Convert.ToInt16(m_shiftStart.Y) + 1; i++)
+                    for (int i = Convert.ToInt16(m_activeBufferView.getCursorPosition().Y); i < Convert.ToInt16(m_shiftStart.Y) + 1; i++)
                     {
-                        if (i == m_activeBufferView.m_cursorPosition.Y)
+                        if (i == m_activeBufferView.getCursorPosition().Y)
                         {
-                            highlightStart.X = m_activeBufferView.m_position.X + m_activeBufferView.m_cursorPosition.X * m_charWidth;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
+                            highlightStart.X = m_activeBufferView.m_position.X + m_activeBufferView.getCursorPosition().X * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
                         else if (i == m_shiftStart.Y)
                         {
@@ -1086,7 +1181,7 @@ namespace Xyglo
                         else
                         {
                             highlightStart.X = m_activeBufferView.m_position.X;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_fileBuffers[0].getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
 
                         highlightStart.Y = m_activeBufferView.m_position.Y + i * m_lineHeight;
@@ -1097,7 +1192,6 @@ namespace Xyglo
                 }
             }
         }
-
 
         protected void renderQuad(Vector3 topLeft, Vector3 bottomRight)
         {
@@ -1110,11 +1204,13 @@ namespace Xyglo
 
             VertexDeclaration quadVertexDec = new VertexDeclaration()
             */
+            /*
             Color[] foregroundColors = new Color[1];
             foregroundColors[0] = Color.White;
 
             Texture2D td = new Texture2D(m_graphics.GraphicsDevice, 1, 1, false, SurfaceFormat.Color);
             td.SetData(foregroundColors);
+            */
 
             VertexPositionTexture[] vpt = new VertexPositionTexture[4];
             Vector2 tp = new Vector2(0, 1);
@@ -1126,7 +1222,7 @@ namespace Xyglo
             //m_spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
             m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.PointClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
 
-            m_spriteBatch.Draw(td, new Rectangle(Convert.ToInt16(topLeft.X),
+            m_spriteBatch.Draw(m_flatTexture, new Rectangle(Convert.ToInt16(topLeft.X),
                                                  Convert.ToInt16(topLeft.Y),
                                                  Convert.ToInt16(bottomRight.X) - Convert.ToInt16(topLeft.X),
                                                  Convert.ToInt16(bottomRight.Y) - Convert.ToInt16(topLeft.Y)),
