@@ -130,6 +130,11 @@ namespace Xyglo
         /// </summary>
         Texture2D m_flatTexture;
 
+        /// <summary>
+        /// Currently active BufferView
+        /// </summary>
+        int m_activeBufferViewId = 0;
+
 
         /// <summary>
         /// Get the actual cursor position in the current active buffer view
@@ -156,11 +161,11 @@ namespace Xyglo
             //
             m_fileName = file;
 
-            //graphics.IsFullScreen = true;
+            //m_graphics.IsFullScreen = true;
             //PresentationParameters pp = GraphicsDevice.PresentationParameters;
             //pp.BackBufferFormat = SurfaceFormat.
 
-            //InitGraphicsMode(1024, 768, true);
+            //InitGraphicsMode(1920, 1080, true);
 
             
 #if WINDOWS_PHONE
@@ -313,33 +318,32 @@ namespace Xyglo
 
             // Add a view
             //
-            BufferView view1 = new BufferView(file1, new Vector3(-180f, -100f, 0f), 0, 20);
+            BufferView view1 = new BufferView(file1, new Vector3(-180f, -100f, 0f), 0, 20, m_charWidth, m_lineHeight);
             m_bufferViews.Add(view1);
 
             //view = new BufferView(file1, new Vector3(-180f, 100f, 0.0f), 0, 15);
-            BufferView view2 = new BufferView(view1, BufferView.BufferPosition.Right);
-            view2.m_textColour = Color.LightBlue;
-
-            m_bufferViews.Add(view2);
+            //BufferView view2 = new BufferView(view1, BufferView.BufferPosition.Right);
+            //view2.m_textColour = Color.LightBlue;
+            //m_bufferViews.Add(view2);
 
             // Set the active buffer view
             //
-            setActiveBuffer(m_bufferViews[0]);
+            setActiveBuffer();
         }
 
         /// <summary>
         /// Set which BufferView is the active one with a cursor in it
         /// </summary>
         /// <param name="view"></param>
-        protected void setActiveBuffer(BufferView view)
+        protected void setActiveBuffer()
         {
             // Set active buffer
             //
-            m_activeBufferView = view;
+            m_activeBufferView = m_bufferViews[m_activeBufferViewId];
 
             // Set 3D cursor position home to file position
             //
-            m_cursorCoords = view.m_position;
+            m_cursorCoords = m_activeBufferView.m_position;
         }
 
 
@@ -428,47 +432,82 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.Down, gameTime))
             {
-                if (m_activeBufferView.getCursorPosition().Y < m_activeBufferView.m_bufferShowLength)
+                if (m_ctrlDown)
                 {
-                    FilePosition fp = m_activeBufferView.getCursorPosition();
-                    fp.Y++;
-                    m_activeBufferView.setCursorPosition(fp);
+                    // Add a new BufferView above current position
+                    //
+                    BufferView newBufferView = new BufferView(m_activeBufferView, BufferView.BufferPosition.Below);
+                    newBufferView.m_textColour = Color.LawnGreen;
+                    m_bufferViews.Add(newBufferView);
                 }
                 else
                 {
-                    // Nudge down the buffer
-                    //
-                    if (m_activeBufferView.m_bufferShowStart < m_fileBuffers[0].getLineCount() - 1)
+                    if (m_activeBufferView.getCursorPosition().Y < m_activeBufferView.m_bufferShowLength)
                     {
-                        m_activeBufferView.m_bufferShowStart++;
-                        if (m_shiftDown)
+                        FilePosition fp = m_activeBufferView.getCursorPosition();
+                        fp.Y++;
+                        m_activeBufferView.setCursorPosition(fp);
+                    }
+                    else
+                    {
+                        // Nudge down the buffer
+                        //
+                        if (m_activeBufferView.m_bufferShowStart < m_fileBuffers[0].getLineCount() - 1)
                         {
-                            m_shiftStart.Y--;
+                            m_activeBufferView.m_bufferShowStart++;
+                            if (m_shiftDown)
+                            {
+                                m_shiftStart.Y--;
+                            }
                         }
                     }
+                    fixCursor();
                 }
-                fixCursor();
             }
             else if (checkKeyState(Keys.Left, gameTime))
             {
-                if (m_activeBufferView.getCursorPosition().X > 0)
+                if (m_ctrlDown)
                 {
-                    FilePosition fp = m_activeBufferView.getCursorPosition();
-                    fp.X--;
-                    m_activeBufferView.setCursorPosition(fp);
+                    // Add a new BufferView above current position
+                    //
+                    BufferView newBufferView = new BufferView(m_activeBufferView, BufferView.BufferPosition.Left);
+                    newBufferView.m_textColour = Color.LawnGreen;
+                    m_bufferViews.Add(newBufferView);
+                }
+                else
+                {
+                    if (m_activeBufferView.getCursorPosition().X > 0)
+                    {
+                        FilePosition fp = m_activeBufferView.getCursorPosition();
+                        fp.X--;
+                        m_activeBufferView.setCursorPosition(fp);
+                    }
+                    fixCursor();
                 }
             }
             else if (checkKeyState(Keys.Right, gameTime))
             {
-                if (m_activeBufferView.getCursorPosition().X < 80)
+                if (m_ctrlDown)
+                {
+                    // Add a new BufferView above current position
+                    //
+                    BufferView newBufferView = new BufferView(m_activeBufferView, BufferView.BufferPosition.Right);
+                    newBufferView.m_textColour = Color.LawnGreen;
+                    m_bufferViews.Add(newBufferView);
+                }
+                else
                 {
 
-                    FilePosition fp = m_activeBufferView.getCursorPosition();
-                    fp.X++;
-                    m_activeBufferView.setCursorPosition(fp);
-                }
+                    if (m_activeBufferView.getCursorPosition().X < m_activeBufferView.m_bufferShowWidth)
+                    {
 
-                fixCursor();
+                        FilePosition fp = m_activeBufferView.getCursorPosition();
+                        fp.X++;
+                        m_activeBufferView.setCursorPosition(fp);
+                    }
+                    fixCursor();
+                }
+                
             }
             else if (checkKeyState(Keys.End, gameTime))
             {
@@ -497,6 +536,22 @@ namespace Xyglo
             else if (checkKeyState(Keys.F2, gameTime))
             {
                 m_eye.Z += 10.0f;
+            }
+            else if (checkKeyState(Keys.F5, gameTime))
+            {
+                if (m_activeBufferViewId > 0)
+                {
+                    m_activeBufferViewId--;
+                    setActiveBuffer();
+                }
+            }
+            else if (checkKeyState(Keys.F6, gameTime))
+            {
+                if (m_bufferViews.Count > m_activeBufferViewId)
+                {
+                    m_activeBufferViewId++;
+                    setActiveBuffer();
+                }
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Insert)) // Reset
             {
@@ -607,104 +662,104 @@ namespace Xyglo
                 }
                 else
                 {
-                // Detect a key being hit
-                //
-                foreach (Keys keyDown in Keyboard.GetState().GetPressedKeys())
-                {
-                    bool testKey = true;
-
-                    foreach (Keys lastKeys in m_lastKeyboardState.GetPressedKeys())
-                    {
-                        if (keyDown == lastKeys)
-                        {
-                            testKey = false;
-                        }
-                    }
-
-                    // Test to see if we've already processed this key - if not then we can print it out
+                    // Detect a key being hit
                     //
-                    if (testKey)
-                    {
-                        FilePosition fp = getActiveCursorPosition();
-
-                        if (keyDown == Keys.Enter)
-                        {
-                            // Insert a line
-                            //
-                            fp = m_activeBufferView.m_fileBuffer.insertNewLine(getActiveCursorPosition());
-                        }
-                        else
-                        {
-                            string key = "";
-
-                            switch (keyDown)
-                            {
-                                case Keys.Space:
-                                    key = " ";
-                                    break;
-
-                                case Keys.OemMinus:
-                                    key = "-";
-                                    break;
-
-                                case Keys.OemPeriod:
-                                    if (m_shiftDown)
-                                    {
-                                        key = ">";
-                                    }
-                                    else
-                                    {
-                                        key = ".";
-                                    }
-                                    break;
-
-                                case Keys.OemComma:
-                                    if (m_shiftDown)
-                                    {
-                                        key = "<";
-                                    }
-                                    else
-                                    {
-                                        key = ",";
-                                    }
-                                    break;
-
-                                default:
-                                    key = keyDown.ToString();
-                                    if (!m_shiftDown)
-                                    {
-                                        key = key.ToLower();
-                                    }
-                                    break;
-                            }
-
-                            // Insert the text on the FileBuffer and capture the return position
-                            //
-                            fp = m_fileBuffers[0].insertText(getActiveCursorPosition(), key);
-                        }
-
-                        // Set the cursor position to whatever was returned by the relevant command
-                        //
-                        m_activeBufferView.setCursorPosition(fp);
-                        fixCursor();
-                    }
-                }
-
-                // Do we need to do some deletion or replacing?  If shift is down and we've highlighted an area
-                // then we need to replace something.
-                //
-                if (m_shiftStart != m_shiftEnd && !m_shiftDown && m_selectionValid)
-                {
                     foreach (Keys keyDown in Keyboard.GetState().GetPressedKeys())
                     {
-                        Console.WriteLine("Replace SELECTION with " + keyDown.ToString());
+                        bool testKey = true;
+
+                        foreach (Keys lastKeys in m_lastKeyboardState.GetPressedKeys())
+                        {
+                            if (keyDown == lastKeys)
+                            {
+                                testKey = false;
+                            }
+                        }
+
+                        // Test to see if we've already processed this key - if not then we can print it out
+                        //
+                        if (testKey)
+                        {
+                            FilePosition fp = getActiveCursorPosition();
+
+                            if (keyDown == Keys.Enter)
+                            {
+                                // Insert a line
+                                //
+                                fp = m_activeBufferView.m_fileBuffer.insertNewLine(getActiveCursorPosition());
+                            }
+                            else
+                            {
+                                string key = "";
+
+                                switch (keyDown)
+                                {
+                                    case Keys.Space:
+                                        key = " ";
+                                        break;
+
+                                    case Keys.OemMinus:
+                                        key = "-";
+                                        break;
+
+                                    case Keys.OemPeriod:
+                                        if (m_shiftDown)
+                                        {
+                                            key = ">";
+                                        }
+                                        else
+                                        {
+                                            key = ".";
+                                        }
+                                        break;
+
+                                    case Keys.OemComma:
+                                        if (m_shiftDown)
+                                        {
+                                            key = "<";
+                                        }
+                                        else
+                                        {
+                                            key = ",";
+                                        }
+                                        break;
+
+                                    default:
+                                        key = keyDown.ToString();
+                                        if (!m_shiftDown)
+                                        {
+                                            key = key.ToLower();
+                                        }
+                                        break;
+                                }
+
+                                // Insert the text on the FileBuffer and capture the return position
+                                //
+                                fp = m_fileBuffers[0].insertText(getActiveCursorPosition(), key);
+                            }
+
+                            // Set the cursor position to whatever was returned by the relevant command
+                            //
+                            m_activeBufferView.setCursorPosition(fp);
+                            fixCursor();
+                        }
                     }
 
-                    // To make sure we do this only once we now invalidate this selection
+                    // Do we need to do some deletion or replacing?  If shift is down and we've highlighted an area
+                    // then we need to replace something.
                     //
-                    m_selectionValid = false;
-                }
+                    if (m_shiftStart != m_shiftEnd && !m_shiftDown && m_selectionValid)
+                    {
+                        foreach (Keys keyDown in Keyboard.GetState().GetPressedKeys())
+                        {
+                            Console.WriteLine("Replace SELECTION with " + keyDown.ToString());
+                        }
+
+                        // To make sure we do this only once we now invalidate this selection
+                        //
+                        m_selectionValid = false;
                     }
+                }
             }
 
             // Update cursor coordinations from cursor movement
@@ -1035,9 +1090,9 @@ namespace Xyglo
             {
                 string line = file.getLine(i);
 
-                if (line.Length > 80)
+                if (line.Length > m_activeBufferView.m_bufferShowWidth)
                 {
-                    line = line.Substring(0, 80);
+                    line = line.Substring(0, m_activeBufferView.m_bufferShowWidth);
                 }
 
                 m_spriteBatch.DrawString(m_spriteFont, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), view.m_textColour, 0, lineOrigin, m_textSize, 0, 0);

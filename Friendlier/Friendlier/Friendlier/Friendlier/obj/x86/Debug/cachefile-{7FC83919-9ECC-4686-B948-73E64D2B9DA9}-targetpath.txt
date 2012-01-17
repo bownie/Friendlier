@@ -1,2 +1,0 @@
-Content\Courier New.xnb
-Content\Effects\Ambient.xnb
