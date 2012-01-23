@@ -344,6 +344,14 @@ namespace Xyglo
             // Set 3D cursor position home to file position
             //
             m_cursorCoords = m_activeBufferView.m_position;
+
+            /*
+            m_newEyePosition = m_activeBufferView.m_position; ;
+            m_newEyePosition.Z -= 10.0f;
+            m_changingPositionLastGameTime = TimeSpan.Zero;
+            m_changingEyePosition = true;
+             * */
+            
         }
 
 
@@ -523,19 +531,36 @@ namespace Xyglo
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.OemPeriod))
             {
-                m_eye.X += 3f;
+                m_newEyePosition = m_eye;
+                m_newEyePosition.X += 3f;
+                m_changingPositionLastGameTime = TimeSpan.Zero;
+                m_changingEyePosition = true;
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.OemComma))
             {
-                m_eye.X -= 3f;
+                m_newEyePosition = m_eye;
+                m_newEyePosition.X -= 3f;
+                m_changingPositionLastGameTime = TimeSpan.Zero;
+                m_changingEyePosition = true;
             }
             else if (checkKeyState(Keys.F1, gameTime))
             {
-                m_eye.Z -= 10.0f;
+                m_newEyePosition = m_eye;
+                m_newEyePosition.Z -= 400.0f;
+                if (m_newEyePosition.Z < 275.0f)
+                {
+                    m_newEyePosition.Z = 275.0f;
+                }
+
+                m_changingPositionLastGameTime = TimeSpan.Zero;
+                m_changingEyePosition = true;
             }
-            else if (checkKeyState(Keys.F2, gameTime))
+            else if (checkKeyState(Keys.F2, gameTime) && m_eye.Z < 1000)
             {
-                m_eye.Z += 10.0f;
+                m_newEyePosition = m_eye;
+                m_newEyePosition.Z += 400.0f;
+                m_changingPositionLastGameTime = TimeSpan.Zero;
+                m_changingEyePosition = true;
             }
             else if (checkKeyState(Keys.F5, gameTime))
             {
@@ -694,6 +719,47 @@ namespace Xyglo
 
                                 switch (keyDown)
                                 {
+                                    case Keys.D0:
+                                        key = "0";
+                                        break;
+
+                                    case Keys.D1:
+                                        key = "1";
+                                        break;
+
+                                    case Keys.D2:
+                                        key = "2";
+                                        break;
+
+                                    case Keys.D3:
+                                        key = "3";
+                                        break;
+
+                                    case Keys.D4:
+                                        key = "4";
+                                        break;
+
+                                    case Keys.D5:
+                                        key = "5";
+                                        break;
+
+                                    case Keys.D6:
+                                        key = "6";
+                                        break;
+
+                                    case Keys.D7:
+                                        key = "7";
+                                        break;
+
+                                    case Keys.D8:
+                                        key = "8";
+                                        break;
+
+                                    case Keys.D9:
+                                        key = "9";
+                                        break;
+
+
                                     case Keys.Space:
                                         key = " ";
                                         break;
@@ -762,6 +828,10 @@ namespace Xyglo
                 }
             }
 
+            // Check for this change as necessary
+            //
+            changeEyePosition(gameTime);
+
             // Update cursor coordinations from cursor movement
             //
             m_cursorCoords.X = m_activeBufferView.m_position.X + (m_activeBufferView.getCursorPosition().X * m_charWidth);
@@ -793,6 +863,72 @@ namespace Xyglo
                 m_activeBufferView.setCursorPosition(shiftEnd);
             }
         }
+
+        /// <summary>
+        /// The new destination for our Eye position
+        /// </summary>
+        protected Vector3 m_newEyePosition;
+
+        /// <summary>
+        /// Are we changing eye position?
+        /// </summary>
+        protected bool m_changingEyePosition = false;
+
+        protected TimeSpan m_changingPositionLastGameTime;
+
+        protected TimeSpan m_movementPause = new TimeSpan(0, 0, 0, 0, 10);
+
+        protected Vector3 m_vFly;
+
+        /// <summary>
+        /// Transform current to intended
+        /// </summary>
+        /// <param name="delta"></param>
+        protected void changeEyePosition(GameTime gameTime)
+        {
+            if (m_changingEyePosition)
+            {
+                // If more than twenty ms has elapsed
+                //
+                try
+                {
+                    if (m_changingPositionLastGameTime == TimeSpan.Zero)
+                    {
+                        m_vFly = (m_newEyePosition - m_eye) / 20;
+                        //m_vFly.Normalize();
+                        m_changingPositionLastGameTime = gameTime.TotalGameTime;
+                    }
+
+
+                    if (gameTime.TotalGameTime - m_changingPositionLastGameTime > m_movementPause)
+                    {
+                        m_eye += m_vFly;
+                        m_changingPositionLastGameTime = gameTime.TotalGameTime;
+                        m_view = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
+
+                        Console.WriteLine("Eye is now at " + m_eye.ToString());
+                        Console.WriteLine("FINAL Position is " + m_newEyePosition.ToString());
+                    }
+
+                    BoundingSphere testArrived = new BoundingSphere(m_newEyePosition, 1.0f);
+
+                    ContainmentType result;
+                    testArrived.Contains(ref m_eye, out result);
+                    if (result == ContainmentType.Contains)
+                    {
+                        m_eye = m_newEyePosition;
+                        m_changingEyePosition = false;
+                    }
+
+                }
+                catch (Exception e)
+                {
+                    Console.Write("Got timing exception " + e.Message);
+                }
+            }
+        }
+
+
 
         // Gets a single key click - but also repeats if it's still held down after a while
         //
@@ -1023,8 +1159,13 @@ namespace Xyglo
             //
             float yPos = m_graphics.GraphicsDevice.Viewport.Height - m_lineHeight/m_textSize;
 
+            string eyePosition = "[EyePosition] X " + m_eye.X + ",Y " + m_eye.Y + ",Z " + m_eye.Z;
+            float xPos = m_graphics.GraphicsDevice.Viewport.Width - eyePosition.Length * m_charWidth;
+            
+            
             m_overlaySpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend);
             m_overlaySpriteBatch.DrawString(m_spriteFont, fileName, new Vector2(0.0f, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+            m_overlaySpriteBatch.DrawString(m_spriteFont, eyePosition, new Vector2(0.0f, 0.0f), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
             m_overlaySpriteBatch.End();
         }
 
