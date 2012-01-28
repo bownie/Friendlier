@@ -23,7 +23,16 @@ namespace Xyglo
         /// <summary>
         /// 3d position of the BufferView
         /// </summary>
-        public Vector3 m_position;
+        protected Vector3 m_position;
+
+        /// <summary>
+        /// Get the position in 3D space
+        /// </summary>
+        public Vector3 getPosition() { return m_position; }
+
+        public void moveX(float x) { m_position.X += x; }
+        public void moveY(float y) { m_position.Y += y; }
+        public void moveZ(float z) { m_position.Z += z; }
 
         /// <summary>
         /// Where the buffer is showing from
@@ -153,6 +162,32 @@ namespace Xyglo
                 default:
                     throw new Exception("Unknown position parameter passed");
             }
+        }
+
+        /// <summary>
+        /// Return the vector of the centre of this BufferView
+        /// </summary>
+        /// <returns></returns>
+        public Vector3 getLookPosition()
+        {
+            Vector3 rV = Vector3.Zero;
+            //rV.X += m_charWidth * m_bufferShowWidth / 2;
+            //rV.Y -= m_lineHeight * m_bufferShowLength / 2;
+            //rV.Z = -rV.Z;
+            return rV;
+        }
+
+        /// <summary>
+        /// Return the eye vector of the centre of this BufferView
+        /// </summary>
+        /// <returns></returns>
+        public Vector3 getEyePosition()
+        {
+            Vector3 rV = m_position;
+            rV.X += m_charWidth * m_bufferShowWidth / 2;
+            rV.Y += m_lineHeight * m_bufferShowLength / 2;
+            rV.Z += 500.0f;
+            return rV;
         }
     }
 }

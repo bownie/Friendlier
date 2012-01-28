@@ -16,6 +16,14 @@ using Microsoft.Xna.Framework.Input;
 
 namespace Xyglo
 {
+    public enum FriendlierState
+    {
+        TextEditing,
+        FileOpen,
+        FileSaveAs,
+        BrowseDirectory
+    };
+
     /// <summary>
     /// This is the main type for your game
     /// </summary>
@@ -28,18 +36,25 @@ namespace Xyglo
         SpriteBatch m_overlaySpriteBatch;
         SpriteFont m_spriteFont;
 
+        /// <summary>
+        /// The state of our application - what we're doing at the moment
+        /// </summary>
+        FriendlierState m_state;
+
         // Our effects - one with textures for fonts, one without for lines
         //
         BasicEffect m_basicEffect;
         BasicEffect m_lineEffect;
 
-        Matrix m_view;
+        /// <summary>
+        /// Projection Matrix
+        /// </summary>
         Matrix m_projection;
 
         /// <summary>
-        /// Eye location
+        /// Eye/Camera location
         /// </summary>
-        Vector3 m_eye = new Vector3(0f, 0f, 275f);  // 275 is good
+        Vector3 m_eye = new Vector3(0f, 0f, 500f);  // 275 is good
 
         /// <summary>
         /// Cursor coordinates in 3D
@@ -135,6 +150,15 @@ namespace Xyglo
         /// </summary>
         int m_activeBufferViewId = 0;
 
+        /// <summary>
+        /// Rotations are stored in this vector
+        /// </summary>
+        Vector3 m_rotations = new Vector3();
+
+        /// <summary>
+        /// Our view matrix
+        /// </summary>
+        Matrix m_viewMatrix = new Matrix();
 
         /// <summary>
         /// Get the actual cursor position in the current active buffer view
@@ -160,6 +184,10 @@ namespace Xyglo
             // File name
             //
             m_fileName = file;
+
+            // Set the editing state
+            //
+            m_state = FriendlierState.TextEditing;
 
             //m_graphics.IsFullScreen = true;
             //PresentationParameters pp = GraphicsDevice.PresentationParameters;
@@ -234,7 +262,8 @@ namespace Xyglo
             // Font loading
             //
             m_spriteFont = Content.Load<SpriteFont>("Courier New");
-            //spriteFont = Content.Load<SpriteFont>("Miramonte");
+            //m_spriteFont = Content.Load<SpriteFont>("courier");
+            //m_spriteFont = Content.Load<SpriteFont>("Miramonte");
             //spriteFont = Content.Load<SpriteFont>("cn");
             //spriteFont.Spacing = 10;
 
@@ -318,7 +347,7 @@ namespace Xyglo
 
             // Add a view
             //
-            BufferView view1 = new BufferView(file1, new Vector3(-180f, -100f, 0f), 0, 20, m_charWidth, m_lineHeight);
+            BufferView view1 = new BufferView(file1, new Vector3(0f, 0f, 0f), 0, 20, m_charWidth, m_lineHeight);
             m_bufferViews.Add(view1);
 
             //view = new BufferView(file1, new Vector3(-180f, 100f, 0.0f), 0, 15);
@@ -330,6 +359,7 @@ namespace Xyglo
             //
             setActiveBuffer();
         }
+
 
         /// <summary>
         /// Set which BufferView is the active one with a cursor in it
@@ -343,17 +373,100 @@ namespace Xyglo
 
             // Set 3D cursor position home to file position
             //
-            m_cursorCoords = m_activeBufferView.m_position;
+            //m_cursorCoords = m_activeBufferView.getPosition();
 
-            /*
-            m_newEyePosition = m_activeBufferView.m_position; ;
-            m_newEyePosition.Z -= 10.0f;
-            m_changingPositionLastGameTime = TimeSpan.Zero;
-            m_changingEyePosition = true;
-             * */
+            //m_newEyePosition = m_activeBufferView.getLookPosition;
+//            m_newEyePosition.Z -= 10.0f;
+            //Vector3 newPosition = m_eye;
+            //newPosition.Y = -newPosition.Y;
+            //newPosition -= m_look * 10;
+            //flyToPosition(newPosition);
             
         }
 
+        Vector3 m_up = new Vector3(0, 1, 0);
+        Vector3 m_look = new Vector3(0, 0, -1);
+        Vector3 m_right = new Vector3(1, 0, 0);
+
+        protected void calculateViewMatrix()
+            
+        {   
+            /*
+             * m_up = new Vector3(0, 1, 0);
+            m_look = new Vector3(0, 0, -1);
+            m_right = new Vector3(1, 0, 0);
+
+            Matrix rollMatrix = Matrix.CreateFromAxisAngle(m_look, m_rotations.Z);
+            m_up = Vector3.Transform(m_up, rollMatrix);
+            m_right = Vector3.Transform(m_right, rollMatrix);
+
+            Matrix yawMatrix = Matrix.CreateFromAxisAngle(m_up, m_rotations.Y);
+            m_look = Vector3.Transform(m_look, yawMatrix);
+            m_right = Vector3.Transform(m_right, yawMatrix);
+
+            Matrix pitchMatrix = Matrix.CreateFromAxisAngle(m_right, m_rotations.X);
+            m_look = Vector3.Transform(m_look, pitchMatrix);
+            m_up = Vector3.Transform(m_up, pitchMatrix);
+
+            // Now create the view matrix
+            //
+             * */
+
+            // New method doesn't work
+            //
+            //Vector3 target = m_activeBufferView.getPosition() - m_look;
+            //m_eye.X -= target.X;
+            //m_eye.Y = -target.Y;
+            //m_viewMatrix = Matrix.CreateLookAt(m_eye, target, m_up);
+
+            // Move eye to correct position above active view window
+            //
+            //
+            m_eye.X = m_activeBufferView.getLookPosition().X;
+            m_eye.Y = m_activeBufferView.getLookPosition().Y;
+
+            flyToPosition(m_eye);
+
+            // This is the original
+            //
+            m_viewMatrix = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
+
+        }
+
+        // Y axis rotation - also known as Yaw
+        //
+        private void RotateAroundY(float angle)
+        {
+            m_rotations.Y += angle;
+
+            // keep the value in the range 0-360 (0 - 2 PI radians)
+            if (m_rotations.Y > Math.PI * 2)
+                m_rotations.Y -= MathHelper.Pi * 2;
+            else if (m_rotations.Y < 0)
+                m_rotations.Y += MathHelper.Pi * 2;
+        }
+
+        private void RotateAroundX(float angle)
+        {
+            m_rotations.X += angle;
+
+            // keep the value in the range 0-360 (0 - 2 PI radians)
+            if (m_rotations.X > Math.PI * 2)
+                m_rotations.X -= MathHelper.Pi * 2;
+            else if (m_rotations.Y < 0)
+                m_rotations.X += MathHelper.Pi * 2;
+        }
+
+        private void RotateAroundZ(float angle)
+        {
+            m_rotations.Z += angle;
+
+            // keep the value in the range 0-360 (0 - 2 PI radians)
+            if (m_rotations.Z > Math.PI * 2)
+                m_rotations.Z -= MathHelper.Pi * 2;
+            else if (m_rotations.Y < 0)
+                m_rotations.Z += MathHelper.Pi * 2;
+        }
 
         /// <summary>
         /// Ensure the cursor is within the boundaries set by the file and not floating in space
@@ -378,6 +491,21 @@ namespace Xyglo
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            /*
+            if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.F1))
+            {
+                Console.WriteLine("F1");
+                Vector3 newPosition = m_eye;
+                newPosition -= m_look * 10;
+                flyToPosition(newPosition);
+            }
+            
+            changeEyePosition(gameTime);
+            base.Update(gameTime);
+
+            return;
+            */
+            
             // Allow the game to exit
             //
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
@@ -411,6 +539,14 @@ namespace Xyglo
                     BufferView newBufferView = new BufferView(m_activeBufferView, BufferView.BufferPosition.Above);
                     newBufferView.m_textColour = Color.LawnGreen;
                     m_bufferViews.Add(newBufferView);
+                    
+                    // Move eye to new position
+                    //
+//                    Vector3 newPosition = newBufferView.getPosition();
+                    //newPosition.Y = - newPosition.Y;
+                    //newPosition.Z = m_eye.Z + 500.0f;
+                    //flyToPosition(newPosition);
+
                 }
                 else
                 {
@@ -531,52 +667,59 @@ namespace Xyglo
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.OemPeriod))
             {
+#if OLD_MOVEMENT
                 m_newEyePosition = m_eye;
                 m_newEyePosition.X += 3f;
                 m_changingPositionLastGameTime = TimeSpan.Zero;
                 m_changingEyePosition = true;
+#else
+                Vector3 newPosition = m_eye;
+                newPosition += m_up;
+                flyToPosition(newPosition);
+                //RotateAroundZ(0.005f);
+#endif
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.OemComma))
             {
+#if OLD_MOVEMENT
                 m_newEyePosition = m_eye;
                 m_newEyePosition.X -= 3f;
                 m_changingPositionLastGameTime = TimeSpan.Zero;
                 m_changingEyePosition = true;
+#else
+                Vector3 newPosition = m_eye;
+                newPosition -= m_up;
+                flyToPosition(newPosition);
+                //RotateAroundZ(0.005f);
+#endif
             }
-            else if (checkKeyState(Keys.F1, gameTime))
+            else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.F1))
             {
-                m_newEyePosition = m_eye;
-                m_newEyePosition.Z -= 400.0f;
-                if (m_newEyePosition.Z < 275.0f)
-                {
-                    m_newEyePosition.Z = 275.0f;
-                }
-
-                m_changingPositionLastGameTime = TimeSpan.Zero;
-                m_changingEyePosition = true;
+                Vector3 newPosition = m_eye;
+                newPosition -= m_look * 10;
+                flyToPosition(newPosition);
             }
             else if (checkKeyState(Keys.F2, gameTime) && m_eye.Z < 1000)
             {
-                m_newEyePosition = m_eye;
-                m_newEyePosition.Z += 400.0f;
-                m_changingPositionLastGameTime = TimeSpan.Zero;
-                m_changingEyePosition = true;
+                Vector3 newPosition = m_eye;
+                newPosition += m_look;
+                flyToPosition(newPosition);
             }
             else if (checkKeyState(Keys.F5, gameTime))
             {
-                if (m_activeBufferViewId > 0)
+                m_activeBufferViewId--;
+
+                if (m_activeBufferViewId < 0)
                 {
-                    m_activeBufferViewId--;
-                    setActiveBuffer();
+                    m_activeBufferViewId += m_bufferViews.Count;
                 }
+                setActiveBuffer();
             }
             else if (checkKeyState(Keys.F6, gameTime))
             {
-                if (m_bufferViews.Count > m_activeBufferViewId)
-                {
-                    m_activeBufferViewId++;
-                    setActiveBuffer();
-                }
+                m_activeBufferViewId = (m_activeBufferViewId + 1) % m_bufferViews.Count;
+                setActiveBuffer();
+
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Insert)) // Reset
             {
@@ -802,6 +945,11 @@ namespace Xyglo
                                 // Insert the text on the FileBuffer and capture the return position
                                 //
                                 fp = m_fileBuffers[0].insertText(getActiveCursorPosition(), key);
+
+                                // Want to make sure that the current active bufferview has the focus
+                                //
+                                m_eye = m_activeBufferView.getLookPosition();
+                                m_eye.Z += 275.0f;
                             }
 
                             // Set the cursor position to whatever was returned by the relevant command
@@ -834,8 +982,8 @@ namespace Xyglo
 
             // Update cursor coordinations from cursor movement
             //
-            m_cursorCoords.X = m_activeBufferView.m_position.X + (m_activeBufferView.getCursorPosition().X * m_charWidth);
-            m_cursorCoords.Y = m_activeBufferView.m_position.Y + (m_activeBufferView.getCursorPosition().Y * m_lineHeight);
+            m_cursorCoords.X = m_activeBufferView.getPosition().X + (m_activeBufferView.getCursorPosition().X * m_charWidth);
+            m_cursorCoords.Y = m_activeBufferView.getPosition().Y + (m_activeBufferView.getCursorPosition().Y * m_lineHeight);
 
             // Save the last state if it has changed
             //
@@ -845,6 +993,41 @@ namespace Xyglo
             }
 
             base.Update(gameTime);
+
+        }
+
+        /// <summary>
+        /// Move the eye to a new position
+        /// </summary>
+        /// <param name="newPosition"></param>
+        protected void flyToPosition(Vector3 newPosition)
+        {
+            m_newEyePosition = newPosition;
+            /*
+            if (newPosition.X != m_eye.X)
+            {
+                m_activeBufferView.moveX(m_eye.X - newPosition.X);
+            }
+
+            if (newPosition.Y != m_eye.Y)
+            {
+                m_activeBufferView.moveY(m_eye.Y - newPosition.Y);
+            }
+
+            if (newPosition.Z != m_eye.Z)
+            {
+                m_activeBufferView.moveX(m_eye.Z - newPosition.Z);
+            }
+             * */
+            if (m_newEyePosition.Z < 275.0f)
+            {
+                m_newEyePosition.Z = 275.0f;
+            }
+
+            m_changingPositionLastGameTime = TimeSpan.Zero;
+            m_changingEyePosition = true;
+
+            calculateViewMatrix();
         }
 
         /// <summary>
@@ -904,7 +1087,7 @@ namespace Xyglo
                     {
                         m_eye += m_vFly;
                         m_changingPositionLastGameTime = gameTime.TotalGameTime;
-                        m_view = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
+                        //m_view = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
 
                         Console.WriteLine("Eye is now at " + m_eye.ToString());
                         Console.WriteLine("FINAL Position is " + m_newEyePosition.ToString());
@@ -928,7 +1111,12 @@ namespace Xyglo
             }
         }
 
-
+        /// <summary>
+        /// Ensure that we have the active buffer filling the frame of the view window
+        /// </summary>
+        protected void frameActiveBuffer()
+        {
+        }
 
         // Gets a single key click - but also repeats if it's still held down after a while
         //
@@ -1019,9 +1207,9 @@ namespace Xyglo
 
             Matrix world = Matrix.CreateTranslation(0, 0, 0);
 
-            Vector3 nearPoint = m_graphics.GraphicsDevice.Viewport.Unproject(nearsource, m_projection, m_view, world);
+            Vector3 nearPoint = m_graphics.GraphicsDevice.Viewport.Unproject(nearsource, m_projection, m_viewMatrix, world);
 
-            Vector3 farPoint = m_graphics.GraphicsDevice.Viewport.Unproject(farsource, m_projection, m_view, world);
+            Vector3 farPoint = m_graphics.GraphicsDevice.Viewport.Unproject(farsource, m_projection, m_viewMatrix, world);
 
             // Create a ray from the near clip plane to the far clip plane.
             Vector3 direction = farPoint - nearPoint;
@@ -1094,14 +1282,19 @@ namespace Xyglo
             // 
             // http://www.toymaker.info/Games/XNA/html/xna_camera.html
             // 
-            m_view = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
-            m_projection = /*Matrix.CreateTranslation(-0.5f, -0.5f, 0) * */ Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 10000f);
+            
+
+            // This is the alternative
+            //
+            calculateViewMatrix();
+
+            m_projection = Matrix.CreateTranslation(-0.5f, -0.5f, 0) * Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 10000f);
 
             m_basicEffect.World = Matrix.CreateScale(1, -1, 1); // *Matrix.CreateTranslation(textPosition);
-            m_basicEffect.View = m_view;
+            m_basicEffect.View = m_viewMatrix;
             m_basicEffect.Projection = m_projection;
 
-            m_lineEffect.View = m_view;
+            m_lineEffect.View = m_viewMatrix;
             m_lineEffect.Projection = m_projection;
             m_lineEffect.World = Matrix.CreateScale(1, -1, 1);
 
@@ -1131,7 +1324,7 @@ namespace Xyglo
             drawCursor(m_cursorCoords, gameTime);
             drawHighlight(gameTime);
 
-            DebugShapeRenderer.Draw(gameTime, m_view, m_projection);
+            DebugShapeRenderer.Draw(gameTime, m_viewMatrix, m_projection);
 
             base.Draw(gameTime);
         }
@@ -1159,13 +1352,42 @@ namespace Xyglo
             //
             float yPos = m_graphics.GraphicsDevice.Viewport.Height - m_lineHeight/m_textSize;
 
+            // Debug eye position
+            //
             string eyePosition = "[EyePosition] X " + m_eye.X + ",Y " + m_eye.Y + ",Z " + m_eye.Z;
             float xPos = m_graphics.GraphicsDevice.Viewport.Width - eyePosition.Length * m_charWidth;
-            
-            
+
+            string modeString = "none";
+
+            switch (m_state)
+            {
+                case FriendlierState.TextEditing:
+                    modeString = "edit";
+                    break;
+
+                case FriendlierState.FileOpen:
+                    modeString = "browse";
+                    break;
+
+                case FriendlierState.FileSaveAs:
+                    modeString = "save";
+                    break;
+
+                default:
+                    modeString = "free";
+                    break;
+            }
+
+            float modeStringXPos = m_graphics.GraphicsDevice.Viewport.Width - modeString.Length * m_charWidth * 2;
+
+
+            // http://forums.create.msdn.com/forums/p/61995/381650.aspx
+            //
             m_overlaySpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend);
-            m_overlaySpriteBatch.DrawString(m_spriteFont, fileName, new Vector2(0.0f, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
-            m_overlaySpriteBatch.DrawString(m_spriteFont, eyePosition, new Vector2(0.0f, 0.0f), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+            //m_overlaySpriteBatch.Begin(SpriteSortMode.FrontToBack, BlendState.NonPremultiplied, SamplerState.LinearWrap, DepthStencilState.None,RasterizerState.CullCounterClockwise);
+            m_overlaySpriteBatch.DrawString(m_spriteFont, fileName, new Vector2(0.0f, yPos), Color.White, 0, Vector2.Zero, 0.9f, 0, 0);
+            m_overlaySpriteBatch.DrawString(m_spriteFont, eyePosition, new Vector2(0.0f, 0.0f), Color.White, 0, Vector2.Zero, 0.9f, 0, 0);
+            m_overlaySpriteBatch.DrawString(m_spriteFont, modeString, new Vector2(modeStringXPos, 0.0f), Color.White, 0, Vector2.Zero, 0.9f, 0, 0);
             m_overlaySpriteBatch.End();
         }
 
@@ -1204,7 +1426,7 @@ namespace Xyglo
             float yPosition = 0.0f;
 
             Vector2 lineOrigin = new Vector2();
-            Vector3 viewSpaceTextPosition = view.m_position;
+            Vector3 viewSpaceTextPosition = view.getPosition();
 
             int showStart = view.m_bufferShowStart;
             int showEnd = file.getLineCount();
@@ -1251,7 +1473,7 @@ namespace Xyglo
         /// <param name="file"></param>
         protected void drawScrollbar(BufferView view, FileBuffer file)
         {
-            Vector3 sbPos = view.m_position;
+            Vector3 sbPos = view.getPosition();
             float height = view.m_bufferShowLength * m_lineHeight;
 
             Rectangle sbBackGround = new Rectangle(Convert.ToInt16(sbPos.X - m_textSize * 30.0f),
@@ -1323,13 +1545,13 @@ namespace Xyglo
                 {
                     // Set start position
                     //
-                    highlightStart.X = m_activeBufferView.m_position.X + m_shiftStart.X * m_charWidth;
-                    highlightStart.Y = m_activeBufferView.m_position.Y + m_shiftStart.Y * m_lineHeight;
+                    highlightStart.X = m_activeBufferView.getPosition().X + m_shiftStart.X * m_charWidth;
+                    highlightStart.Y = m_activeBufferView.getPosition().Y + m_shiftStart.Y * m_lineHeight;
 
                     // Set end position
                     //
-                    highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.getCursorPosition().X * m_charWidth;
-                    highlightEnd.Y = m_activeBufferView.m_position.Y + (m_activeBufferView.getCursorPosition().Y + 1) * m_lineHeight;
+                    highlightEnd.X = m_activeBufferView.getPosition().X + m_activeBufferView.getCursorPosition().X * m_charWidth;
+                    highlightEnd.Y = m_activeBufferView.getPosition().Y + (m_activeBufferView.getCursorPosition().Y + 1) * m_lineHeight;
 
                     renderQuad(highlightStart, highlightEnd);
                 }
@@ -1339,21 +1561,21 @@ namespace Xyglo
                     {
                         if (i == m_shiftStart.Y)
                         {
-                            highlightStart.X = m_activeBufferView.m_position.X + m_shiftStart.X * m_charWidth;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
+                            highlightStart.X = m_activeBufferView.getPosition().X + m_shiftStart.X * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.getPosition().X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
                         else if (i == m_activeBufferView.getCursorPosition().Y)
                         {
-                            highlightStart.X = m_activeBufferView.m_position.X;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.getCursorPosition().X * m_charWidth;
+                            highlightStart.X = m_activeBufferView.getPosition().X;
+                            highlightEnd.X = m_activeBufferView.getPosition().X + m_activeBufferView.getCursorPosition().X * m_charWidth;
                         }
                         else
                         {
-                            highlightStart.X = m_activeBufferView.m_position.X;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
+                            highlightStart.X = m_activeBufferView.getPosition().X;
+                            highlightEnd.X = m_activeBufferView.getPosition().X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
 
-                        highlightStart.Y = m_activeBufferView.m_position.Y + i * m_lineHeight;
+                        highlightStart.Y = m_activeBufferView.getPosition().Y + i * m_lineHeight;
                         highlightEnd.Y = highlightStart.Y + m_lineHeight;
 
                         renderQuad(highlightStart, highlightEnd);
@@ -1366,21 +1588,21 @@ namespace Xyglo
                     {
                         if (i == m_activeBufferView.getCursorPosition().Y)
                         {
-                            highlightStart.X = m_activeBufferView.m_position.X + m_activeBufferView.getCursorPosition().X * m_charWidth;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
+                            highlightStart.X = m_activeBufferView.getPosition().X + m_activeBufferView.getCursorPosition().X * m_charWidth;
+                            highlightEnd.X = m_activeBufferView.getPosition().X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
                         else if (i == m_shiftStart.Y)
                         {
-                            highlightStart.X = m_activeBufferView.m_position.X;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_shiftStart.X * m_charWidth;
+                            highlightStart.X = m_activeBufferView.getPosition().X;
+                            highlightEnd.X = m_activeBufferView.getPosition().X + m_shiftStart.X * m_charWidth;
                         }
                         else
                         {
-                            highlightStart.X = m_activeBufferView.m_position.X;
-                            highlightEnd.X = m_activeBufferView.m_position.X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
+                            highlightStart.X = m_activeBufferView.getPosition().X;
+                            highlightEnd.X = m_activeBufferView.getPosition().X + m_activeBufferView.m_fileBuffer.getLine(i + m_activeBufferView.m_bufferShowStart).Length * m_charWidth;
                         }
 
-                        highlightStart.Y = m_activeBufferView.m_position.Y + i * m_lineHeight;
+                        highlightStart.Y = m_activeBufferView.getPosition().Y + i * m_lineHeight;
                         highlightEnd.Y = highlightStart.Y + m_lineHeight;
 
                         renderQuad(highlightStart, highlightEnd);

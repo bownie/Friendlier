@@ -308,6 +308,15 @@ namespace Xyglo
             return (m_undoPosition != 0);
         }
 
+        /// <summary>
+        /// Save this FileBuffer
+        /// </summary>
+        /// <returns></returns>
+        public bool save()
+        {
+            return true;
+        }
+
     }
 }
 
