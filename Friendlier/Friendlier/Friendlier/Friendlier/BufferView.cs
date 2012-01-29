@@ -170,10 +170,11 @@ namespace Xyglo
         /// <returns></returns>
         public Vector3 getLookPosition()
         {
-            Vector3 rV = Vector3.Zero;
-            //rV.X += m_charWidth * m_bufferShowWidth / 2;
-            //rV.Y -= m_lineHeight * m_bufferShowLength / 2;
-            //rV.Z = -rV.Z;
+            Vector3 rV = m_position;
+            rV.Y = -rV.Y; // insert Y
+            rV.X += m_charWidth * m_bufferShowWidth / 2;
+            rV.Y -= m_lineHeight * m_bufferShowLength / 2;
+            rV.Z = 0.0f;
             return rV;
         }
 
@@ -184,9 +185,10 @@ namespace Xyglo
         public Vector3 getEyePosition()
         {
             Vector3 rV = m_position;
+            rV.Y = -rV.Y; // invert Y
             rV.X += m_charWidth * m_bufferShowWidth / 2;
-            rV.Y += m_lineHeight * m_bufferShowLength / 2;
-            rV.Z += 500.0f;
+            rV.Y -= m_lineHeight * m_bufferShowLength / 2;
+            rV.Z += 600.0f;
             return rV;
         }
     }

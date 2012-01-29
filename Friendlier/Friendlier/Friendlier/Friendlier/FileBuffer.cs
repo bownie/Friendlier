@@ -130,7 +130,7 @@ namespace Xyglo
         /// <returns></returns>
         public string getLine(int line)
         {
-            return m_lines[line];
+            return  m_lines[line];
         }
 
         /// <summary>

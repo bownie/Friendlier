@@ -57,13 +57,18 @@ namespace Xyglo
         Vector3 m_eye = new Vector3(0f, 0f, 500f);  // 275 is good
 
         /// <summary>
+        /// Camera target
+        /// </summary>
+        Vector3 m_target;
+
+        /// <summary>
         /// Cursor coordinates in 3D
         /// </summary>
         Vector3 m_cursorCoords = Vector3.Zero;
 
         // textSize is going to define everything
         //
-        const float m_textSize = 0.5f;
+        const float m_textSize = 1.0f;
 
         /// <summary>
         /// Are we spinning?
@@ -262,6 +267,10 @@ namespace Xyglo
             // Font loading
             //
             m_spriteFont = Content.Load<SpriteFont>("Courier New");
+            //Console.WriteLine("SPRITE FONT line spacing = " + m_spriteFont.LineSpacing);
+
+
+
             //m_spriteFont = Content.Load<SpriteFont>("courier");
             //m_spriteFont = Content.Load<SpriteFont>("Miramonte");
             //spriteFont = Content.Load<SpriteFont>("cn");
@@ -367,21 +376,20 @@ namespace Xyglo
         /// <param name="view"></param>
         protected void setActiveBuffer()
         {
+            Console.WriteLine("Active buffer view is " + m_activeBufferViewId);
+
             // Set active buffer
             //
             m_activeBufferView = m_bufferViews[m_activeBufferViewId];
 
-            // Set 3D cursor position home to file position
-            //
-            //m_cursorCoords = m_activeBufferView.getPosition();
+            flyToPosition(m_activeBufferView.getEyePosition());
+            //m_eye = m_activeBufferView.getEyePosition();
+            //m_target = m_activeBufferView.getLookPosition();
 
-            //m_newEyePosition = m_activeBufferView.getLookPosition;
-//            m_newEyePosition.Z -= 10.0f;
-            //Vector3 newPosition = m_eye;
-            //newPosition.Y = -newPosition.Y;
-            //newPosition -= m_look * 10;
-            //flyToPosition(newPosition);
-            
+            Console.WriteLine("Buffer position = " + m_activeBufferView.getPosition());
+            Console.WriteLine("Look position = " + m_target);
+            Console.WriteLine("Eye position = " + m_eye);
+
         }
 
         Vector3 m_up = new Vector3(0, 1, 0);
@@ -421,15 +429,18 @@ namespace Xyglo
 
             // Move eye to correct position above active view window
             //
-            //
-            m_eye.X = m_activeBufferView.getLookPosition().X;
-            m_eye.Y = m_activeBufferView.getLookPosition().Y;
+            //m_eye.X = m_activeBufferView.getLookPosition().X;
+            //m_eye.Y = m_activeBufferView.getLookPosition().Y;
 
-            flyToPosition(m_eye);
+            //m_eye = m_activeBufferView.getLookPosition();
+            
 
             // This is the original
             //
-            m_viewMatrix = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
+            //m_viewMatrix = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
+            
+            
+            m_viewMatrix = Matrix.CreateLookAt(m_eye, m_target, Vector3.Up);
 
         }
 
@@ -539,14 +550,6 @@ namespace Xyglo
                     BufferView newBufferView = new BufferView(m_activeBufferView, BufferView.BufferPosition.Above);
                     newBufferView.m_textColour = Color.LawnGreen;
                     m_bufferViews.Add(newBufferView);
-                    
-                    // Move eye to new position
-                    //
-//                    Vector3 newPosition = newBufferView.getPosition();
-                    //newPosition.Y = - newPosition.Y;
-                    //newPosition.Z = m_eye.Z + 500.0f;
-                    //flyToPosition(newPosition);
-
                 }
                 else
                 {
@@ -665,33 +668,18 @@ namespace Xyglo
                 fp.X = 0;
                 m_activeBufferView.setCursorPosition(fp);
             }
+                /*
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.OemPeriod))
             {
-#if OLD_MOVEMENT
-                m_newEyePosition = m_eye;
-                m_newEyePosition.X += 3f;
-                m_changingPositionLastGameTime = TimeSpan.Zero;
-                m_changingEyePosition = true;
-#else
                 Vector3 newPosition = m_eye;
                 newPosition += m_up;
                 flyToPosition(newPosition);
-                //RotateAroundZ(0.005f);
-#endif
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.OemComma))
             {
-#if OLD_MOVEMENT
-                m_newEyePosition = m_eye;
-                m_newEyePosition.X -= 3f;
-                m_changingPositionLastGameTime = TimeSpan.Zero;
-                m_changingEyePosition = true;
-#else
                 Vector3 newPosition = m_eye;
                 newPosition -= m_up;
                 flyToPosition(newPosition);
-                //RotateAroundZ(0.005f);
-#endif
             }
             else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.F1))
             {
@@ -705,6 +693,7 @@ namespace Xyglo
                 newPosition += m_look;
                 flyToPosition(newPosition);
             }
+                 * */
             else if (checkKeyState(Keys.F5, gameTime))
             {
                 m_activeBufferViewId--;
@@ -1003,7 +992,7 @@ namespace Xyglo
         protected void flyToPosition(Vector3 newPosition)
         {
             m_newEyePosition = newPosition;
-            /*
+#if NOT_USED_FLY_TO
             if (newPosition.X != m_eye.X)
             {
                 m_activeBufferView.moveX(m_eye.X - newPosition.X);
@@ -1018,16 +1007,16 @@ namespace Xyglo
             {
                 m_activeBufferView.moveX(m_eye.Z - newPosition.Z);
             }
-             * */
+#endif
+            /*
             if (m_newEyePosition.Z < 275.0f)
             {
                 m_newEyePosition.Z = 275.0f;
             }
+             */
 
             m_changingPositionLastGameTime = TimeSpan.Zero;
             m_changingEyePosition = true;
-
-            calculateViewMatrix();
         }
 
         /// <summary>
@@ -1086,6 +1075,8 @@ namespace Xyglo
                     if (gameTime.TotalGameTime - m_changingPositionLastGameTime > m_movementPause)
                     {
                         m_eye += m_vFly;
+                        m_target.X += m_vFly.X;
+                        m_target.Y += m_vFly.Y;
                         m_changingPositionLastGameTime = gameTime.TotalGameTime;
                         //m_view = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
 
@@ -1100,6 +1091,8 @@ namespace Xyglo
                     if (result == ContainmentType.Contains)
                     {
                         m_eye = m_newEyePosition;
+                        m_target.X = m_newEyePosition.X;
+                        m_target.Y = m_newEyePosition.Y;
                         m_changingEyePosition = false;
                     }
 
@@ -1385,9 +1378,9 @@ namespace Xyglo
             //
             m_overlaySpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend);
             //m_overlaySpriteBatch.Begin(SpriteSortMode.FrontToBack, BlendState.NonPremultiplied, SamplerState.LinearWrap, DepthStencilState.None,RasterizerState.CullCounterClockwise);
-            m_overlaySpriteBatch.DrawString(m_spriteFont, fileName, new Vector2(0.0f, yPos), Color.White, 0, Vector2.Zero, 0.9f, 0, 0);
-            m_overlaySpriteBatch.DrawString(m_spriteFont, eyePosition, new Vector2(0.0f, 0.0f), Color.White, 0, Vector2.Zero, 0.9f, 0, 0);
-            m_overlaySpriteBatch.DrawString(m_spriteFont, modeString, new Vector2(modeStringXPos, 0.0f), Color.White, 0, Vector2.Zero, 0.9f, 0, 0);
+            m_overlaySpriteBatch.DrawString(m_spriteFont, fileName, new Vector2(0.0f, yPos), Color.White, 0, Vector2.Zero, m_textSize, 0, 0);
+            m_overlaySpriteBatch.DrawString(m_spriteFont, eyePosition, new Vector2(0.0f, 0.0f), Color.White, 0, Vector2.Zero, m_textSize, 0, 0);
+            m_overlaySpriteBatch.DrawString(m_spriteFont, modeString, new Vector2(modeStringXPos, 0.0f), Color.White, 0, Vector2.Zero, m_textSize, 0, 0);
             m_overlaySpriteBatch.End();
         }
 
@@ -1453,15 +1446,20 @@ namespace Xyglo
             {
                 string line = file.getLine(i);
 
-                if (line.Length > m_activeBufferView.m_bufferShowWidth)
+                if (line.Length > view.m_bufferShowWidth)
                 {
-                    line = line.Substring(0, m_activeBufferView.m_bufferShowWidth);
+                    line = line.Substring(0, view.m_bufferShowWidth);
                 }
 
                 m_spriteBatch.DrawString(m_spriteFont, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), view.m_textColour, 0, lineOrigin, m_textSize, 0, 0);
                 yPosition += m_lineHeight; // m_spriteFont.MeasureString(line).Y * m_textSize;
             }
 
+            // Draw overlaid ID on this window
+            //
+            int viewId = m_bufferViews.IndexOf(view);
+            string bufferId = viewId.ToString();
+            m_spriteBatch.DrawString(m_spriteFont, bufferId, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y), view.m_textColour, 0, lineOrigin, m_textSize * 14.0f, 0, 0);
 
             drawScrollbar(view, file);
         }
