@@ -8,7 +8,7 @@
       <Processor>FontDescriptionProcessor</Processor>
       <Options>None</Options>
       <Output>D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Courier New.xnb</Output>
-      <Time>2012-01-28T09:48:23.0561387+01:00</Time>
+      <Time>2012-01-29T16:48:19.3940586+01:00</Time>
     </Item>
     <Item>
       <Source>Effects\Ambient.fx</Source>
@@ -29,13 +29,13 @@
       <Time>2012-01-27T12:54:42.6967612+01:00</Time>
     </Item>
     <Item>
-      <Source>Courier New 2.spritefont</Source>
-      <Name>Courier New 2</Name>
+      <Source>Courier New Large.spritefont</Source>
+      <Name>Courier New Large</Name>
       <Importer>FontDescriptionImporter</Importer>
       <Processor>FontDescriptionProcessor</Processor>
       <Options>None</Options>
-      <Output>D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Courier New 2.xnb</Output>
-      <Time>2012-01-28T09:51:46.9369896+01:00</Time>
+      <Output>D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Courier New Large.xnb</Output>
+      <Time>2012-01-29T17:43:15.468782+01:00</Time>
     </Item>
     <BuildSuccessful>true</BuildSuccessful>
     <Settings>

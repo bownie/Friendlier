@@ -86,7 +86,7 @@ namespace Xyglo
         /// <summary>
         /// Text colour
         /// </summary>
-        public Color m_textColour = Color.White;
+        public Color m_textColour = Color.LawnGreen;
 
         /// <summary>
         /// Cursor colour
@@ -108,6 +108,12 @@ namespace Xyglo
         /// </summary>
         protected float m_lineHeight;
 
+        public float getLineHeight()
+        {
+            return m_lineHeight;
+        }
+
+
         /// <summary>
         /// The FileBuffer associated with this BufferView
         /// </summary>
@@ -115,6 +121,17 @@ namespace Xyglo
 
         public BufferView()
         {
+        }
+
+        public BufferView(BufferView rootBV, Vector3 position)
+        {
+            m_fileBuffer = rootBV.m_fileBuffer;
+            m_bufferShowStart = rootBV.m_bufferShowStart;
+            m_bufferShowLength = rootBV.m_bufferShowLength;
+            m_bufferShowWidth = rootBV.m_bufferShowWidth;
+            m_charWidth = rootBV.m_charWidth;
+            m_lineHeight = rootBV.m_lineHeight;
+            m_position = position;
         }
 
         public BufferView(FileBuffer buffer, Vector3 position, int bufferShowStart, int bufferShowLength, float charWidth, float lineHeight)
@@ -136,28 +153,24 @@ namespace Xyglo
             m_charWidth = rootBV.m_charWidth;
             m_lineHeight = rootBV.m_lineHeight;
 
-            calculateRelativePosition(rootBV, position);
+            m_position = rootBV.calculateRelativePosition(position);
         }
 
-        public void calculateRelativePosition(BufferView bV, BufferPosition position)
+        public Vector3 calculateRelativePosition(BufferPosition position)
         {
             switch (position)
             {
                 case BufferPosition.Above:
-                    m_position = bV.m_position - (new Vector3(0.0f, (bV.m_bufferShowLength + 5) * bV.m_lineHeight, 0.0f));
-                    break;
+                    return m_position - (new Vector3(0.0f, (m_bufferShowLength + 5) * m_lineHeight, 0.0f));
 
                 case BufferPosition.Below:
-                    m_position = bV.m_position + (new Vector3(0.0f, (bV.m_bufferShowLength + 5) * bV.m_lineHeight, 0.0f));
-                    break;
+                    return m_position + (new Vector3(0.0f, (m_bufferShowLength + 5) * m_lineHeight, 0.0f));
 
                 case BufferPosition.Left:
-                    m_position = bV.m_position - (new Vector3(m_charWidth * (bV.m_bufferShowWidth + 10), 0.0f, 0.0f));
-                    break;
+                    return m_position - (new Vector3(m_charWidth * (m_bufferShowWidth + 10), 0.0f, 0.0f));
 
                 case BufferPosition.Right:
-                    m_position = bV.m_position + (new Vector3(m_charWidth * (bV.m_bufferShowWidth + 10), 0.0f, 0.0f));
-                    break;
+                    return m_position + (new Vector3(m_charWidth * (m_bufferShowWidth + 10), 0.0f, 0.0f));
 
                 default:
                     throw new Exception("Unknown position parameter passed");

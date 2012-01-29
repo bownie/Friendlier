@@ -68,7 +68,7 @@ namespace Xyglo
 
         // textSize is going to define everything
         //
-        const float m_textSize = 1.0f;
+        float m_textSize = 1.0f;
 
         /// <summary>
         /// Are we spinning?
@@ -185,6 +185,7 @@ namespace Xyglo
             // Antialiasing
             //
             m_graphics.PreferMultiSampling = true;
+            
 
             // File name
             //
@@ -194,12 +195,14 @@ namespace Xyglo
             //
             m_state = FriendlierState.TextEditing;
 
+            // Don't use these directly - use the InitGraphicsMode below
+            //
             //m_graphics.IsFullScreen = true;
             //PresentationParameters pp = GraphicsDevice.PresentationParameters;
             //pp.BackBufferFormat = SurfaceFormat.
 
             //InitGraphicsMode(1920, 1080, true);
-
+            InitGraphicsMode(1000, 600, false);
             
 #if WINDOWS_PHONE
             TargetElapsedTime = TimeSpan.FromTicks(333333);
@@ -266,10 +269,23 @@ namespace Xyglo
 
             // Font loading
             //
-            m_spriteFont = Content.Load<SpriteFont>("Courier New");
+            if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
+            {
+                Console.WriteLine("Using Small Font");
+                m_spriteFont = Content.Load<SpriteFont>("Courier New");
+            }
+            else
+            {
+                Console.WriteLine("Using Large Font");
+                m_spriteFont = Content.Load<SpriteFont>("Courier New Large");
+            }
+
             //Console.WriteLine("SPRITE FONT line spacing = " + m_spriteFont.LineSpacing);
 
-
+            // Text size has to be scaled to actual font size
+            //
+            m_textSize = (float)((int)(1400.0f / (float)(m_spriteFont.LineSpacing))) / 100.0f;
+            Console.WriteLine("Text Size = " + m_textSize);
 
             //m_spriteFont = Content.Load<SpriteFont>("courier");
             //m_spriteFont = Content.Load<SpriteFont>("Miramonte");
@@ -316,7 +332,6 @@ namespace Xyglo
                 VertexColorEnabled = true,
                 //World = Matrix.Identity,
                 //DiffuseColor = Vector3.One
-
             };
 
             // Create and initialize our effect
@@ -374,23 +389,43 @@ namespace Xyglo
         /// Set which BufferView is the active one with a cursor in it
         /// </summary>
         /// <param name="view"></param>
-        protected void setActiveBuffer()
+        protected void setActiveBuffer(BufferView item = null)
         {
+            try
+            {
+                // Set active buffer
+                //
+                if (item == null)
+                {
+                    m_activeBufferView = m_bufferViews[m_activeBufferViewId];
+                }
+                else
+                {
+                    m_activeBufferViewId = m_bufferViews.IndexOf(item);
+                    m_activeBufferView = item;
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Cannot locate BufferView item in list " + e.ToString());
+                return;
+            }
+
             Console.WriteLine("Active buffer view is " + m_activeBufferViewId);
 
-            // Set active buffer
-            //
-            m_activeBufferView = m_bufferViews[m_activeBufferViewId];
+            Vector3 eyePos = m_activeBufferView.getEyePosition();
+            eyePos.Z = m_zoomLevel;
 
-            flyToPosition(m_activeBufferView.getEyePosition());
+            flyToPosition(eyePos);
             //m_eye = m_activeBufferView.getEyePosition();
             //m_target = m_activeBufferView.getLookPosition();
 
             Console.WriteLine("Buffer position = " + m_activeBufferView.getPosition());
             Console.WriteLine("Look position = " + m_target);
             Console.WriteLine("Eye position = " + m_eye);
-
         }
+
+        protected float m_zoomLevel = 500.0f;
 
         Vector3 m_up = new Vector3(0, 1, 0);
         Vector3 m_look = new Vector3(0, 0, -1);
@@ -502,21 +537,6 @@ namespace Xyglo
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-            /*
-            if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.F1))
-            {
-                Console.WriteLine("F1");
-                Vector3 newPosition = m_eye;
-                newPosition -= m_look * 10;
-                flyToPosition(newPosition);
-            }
-            
-            changeEyePosition(gameTime);
-            base.Update(gameTime);
-
-            return;
-            */
-            
             // Allow the game to exit
             //
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
@@ -528,7 +548,6 @@ namespace Xyglo
             if (m_ctrlDown && Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftControl) &&
                 Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightControl))
             {
-                Console.WriteLine("CTRL UP");
                 m_ctrlDown = false;
             }
             else
@@ -536,7 +555,6 @@ namespace Xyglo
                 if (!m_ctrlDown && (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftControl) ||
                     Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightControl)))
                 {
-                    Console.WriteLine("CTRL DOWN");
                     m_ctrlDown = true;
                 }
             }
@@ -547,9 +565,7 @@ namespace Xyglo
                 {
                     // Add a new BufferView above current position
                     //
-                    BufferView newBufferView = new BufferView(m_activeBufferView, BufferView.BufferPosition.Above);
-                    newBufferView.m_textColour = Color.LawnGreen;
-                    m_bufferViews.Add(newBufferView);
+                    addBufferView(BufferView.BufferPosition.Above);
                 }
                 else
                 {
@@ -581,11 +597,9 @@ namespace Xyglo
             {
                 if (m_ctrlDown)
                 {
-                    // Add a new BufferView above current position
+                    // Add a new BufferView below current position
                     //
-                    BufferView newBufferView = new BufferView(m_activeBufferView, BufferView.BufferPosition.Below);
-                    newBufferView.m_textColour = Color.LawnGreen;
-                    m_bufferViews.Add(newBufferView);
+                    addBufferView(BufferView.BufferPosition.Below);
                 }
                 else
                 {
@@ -615,11 +629,9 @@ namespace Xyglo
             {
                 if (m_ctrlDown)
                 {
-                    // Add a new BufferView above current position
+                    // Add a new BufferView to the left of current position
                     //
-                    BufferView newBufferView = new BufferView(m_activeBufferView, BufferView.BufferPosition.Left);
-                    newBufferView.m_textColour = Color.LawnGreen;
-                    m_bufferViews.Add(newBufferView);
+                    addBufferView(BufferView.BufferPosition.Left);
                 }
                 else
                 {
@@ -636,11 +648,9 @@ namespace Xyglo
             {
                 if (m_ctrlDown)
                 {
-                    // Add a new BufferView above current position
+                    // Add a new BufferView to the right of current position
                     //
-                    BufferView newBufferView = new BufferView(m_activeBufferView, BufferView.BufferPosition.Right);
-                    newBufferView.m_textColour = Color.LawnGreen;
-                    m_bufferViews.Add(newBufferView);
+                    addBufferView(BufferView.BufferPosition.Right);
                 }
                 else
                 {
@@ -694,6 +704,29 @@ namespace Xyglo
                 flyToPosition(newPosition);
             }
                  * */
+            else if (checkKeyState(Keys.F1, gameTime))
+            {
+                m_zoomLevel -= 500.0f;
+
+                if (m_zoomLevel < 500.0f)
+                {
+                    m_zoomLevel = 500.0f;
+                }
+                setActiveBuffer();
+            }
+            else if (checkKeyState(Keys.F2, gameTime))
+            {
+                m_zoomLevel += 500.0f;
+                setActiveBuffer();
+            }
+            else if (checkKeyState(Keys.F3, gameTime))
+            {
+                InitGraphicsMode(1920, 1080, true);
+            }
+            else if (checkKeyState(Keys.F4, gameTime))
+            {
+                InitGraphicsMode(1000, 600, false );
+            }
             else if (checkKeyState(Keys.F5, gameTime))
             {
                 m_activeBufferViewId--;
@@ -937,8 +970,8 @@ namespace Xyglo
 
                                 // Want to make sure that the current active bufferview has the focus
                                 //
-                                m_eye = m_activeBufferView.getLookPosition();
-                                m_eye.Z += 275.0f;
+                                //m_eye = m_activeBufferView.getLookPosition();
+                                //m_eye.Z += 275.0f;
                             }
 
                             // Set the cursor position to whatever was returned by the relevant command
@@ -985,6 +1018,40 @@ namespace Xyglo
 
         }
 
+        /// <summary>
+        /// Find a good position for a new BufferView relative to the current active position
+        /// </summary>
+        /// <param name="position"></param>
+        protected void addBufferView(BufferView.BufferPosition position)
+        {
+            bool occupied = false;
+
+            // Initial new pos is here from active BufferView
+            //
+            Vector3 newPos = m_activeBufferView.calculateRelativePosition(position);
+            do
+            {
+                occupied = false;
+
+                foreach (BufferView cur in m_bufferViews)
+                {
+                    if (cur.getPosition() == newPos)
+                    {
+                        // We get the next available slot in the same direction away from original
+                        //
+                        newPos = cur.calculateRelativePosition(position);
+                        occupied = true;
+                        break;
+                    }
+                }
+            } while (occupied);
+
+            BufferView newBufferView = new BufferView(m_activeBufferView, newPos);
+            newBufferView.m_textColour = Color.LawnGreen;
+            m_bufferViews.Add(newBufferView);
+            setActiveBuffer(newBufferView);
+
+        }
         /// <summary>
         /// Move the eye to a new position
         /// </summary>
@@ -1104,13 +1171,6 @@ namespace Xyglo
             }
         }
 
-        /// <summary>
-        /// Ensure that we have the active buffer filling the frame of the view window
-        /// </summary>
-        protected void frameActiveBuffer()
-        {
-        }
-
         // Gets a single key click - but also repeats if it's still held down after a while
         //
         bool checkKeyState(Keys check, GameTime gameTime)
@@ -1124,24 +1184,11 @@ namespace Xyglo
 
             double repeatHold = 0.6; // number of seconds to wait before repeating a key
 
-            // Test for shift only if we're not using other modifiers
-            //
-            /*
-             * if (Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftControl) &&
-                Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightControl) &&
-                Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftAlt) &&
-                Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightAlt))
-            {
-             */
-
-            /* } */
-
             // Test shift here to keep valid selections alive until next key click
             //
             if (m_shiftDown && Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftShift) &&
                 Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightShift))
             {
-                Console.WriteLine("SHIFT UP");
                 m_shiftDown = false;
                 m_shiftEnd = m_activeBufferView.getCursorPosition();
                 m_selectionValid = true;
@@ -1151,7 +1198,6 @@ namespace Xyglo
                 if (!m_shiftDown && (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftShift) ||
                     Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightShift)))
                 {
-                    Console.WriteLine("SHIFT DOWN");
                     m_shiftStart = m_activeBufferView.getCursorPosition();
                     m_shiftDown = true;
                 }
@@ -1297,7 +1343,27 @@ namespace Xyglo
             //Vector3 filePos2 = new Vector3(-10f, 10f, -3f);
             //Vector3 filePos3 = new Vector3(-60f, -50f, -30f);
             
-            m_spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+
+            // Here we need to vary the parameters to the SpriteBatch - to the BasicEffect and also the font size.
+            // For large fonts we need to be able to downscale them effectively so that they will still look good
+            // at higher reoslutions.
+            //
+            m_basicEffect.TextureEnabled = true;
+            //m_basicEffect.SpecularPower = 100.0f;
+            //m_basicEffect.SpecularColor = new Vector3(100, 100, 100);
+
+            //m_spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+            //m_spriteBatch.Begin(0, null, null, null, null, m_basicEffect);
+            //m_spriteBatch.Begin(0, BlendState.Additive, SamplerState.LinearClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+
+            if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
+            {
+                m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+            }
+            else
+            {
+                m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+            }
             
             //drawFileBuffer(m_activeBufferView.m_position, m_fileName);
 
@@ -1329,7 +1395,7 @@ namespace Xyglo
         {
             string fileName = "";
             if (m_activeBufferView != null)
-        {
+            {
                 // Set the filename
                 fileName = "\"" + m_activeBufferView.m_fileBuffer.getShortFileName() + "\"";
 
@@ -1340,6 +1406,20 @@ namespace Xyglo
 
                 fileName += " " + m_activeBufferView.m_fileBuffer.getLineCount() + " lines";
             }
+
+            // We can't trust m_shiftDown
+            //
+            if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftShift) ||
+                Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightShift))
+            {
+                fileName += " [SHFT]";
+            }
+
+            if (m_ctrlDown)
+            {
+                fileName += " [CTRL]";
+            }
+
 
             // Convert lineHeight back to normal size by dividing by m_textSize modifier
             //
@@ -1379,6 +1459,7 @@ namespace Xyglo
             m_overlaySpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend);
             //m_overlaySpriteBatch.Begin(SpriteSortMode.FrontToBack, BlendState.NonPremultiplied, SamplerState.LinearWrap, DepthStencilState.None,RasterizerState.CullCounterClockwise);
             m_overlaySpriteBatch.DrawString(m_spriteFont, fileName, new Vector2(0.0f, yPos), Color.White, 0, Vector2.Zero, m_textSize, 0, 0);
+
             m_overlaySpriteBatch.DrawString(m_spriteFont, eyePosition, new Vector2(0.0f, 0.0f), Color.White, 0, Vector2.Zero, m_textSize, 0, 0);
             m_overlaySpriteBatch.DrawString(m_spriteFont, modeString, new Vector2(modeStringXPos, 0.0f), Color.White, 0, Vector2.Zero, m_textSize, 0, 0);
             m_overlaySpriteBatch.End();
@@ -1405,7 +1486,7 @@ namespace Xyglo
             // Blinks rate
             //
             Vector3 v1 = p; // Vector3.Transform(p, m_view);
-            v1.Y += 7.0f;
+            v1.Y += m_activeBufferView.getLineHeight();
 
             Vector3 v2 = p; // Vector3.Transform(p, m_view);
 
@@ -1415,6 +1496,13 @@ namespace Xyglo
         protected void drawFileBuffer(BufferView view, FileBuffer file)
         {
             //Matrix invertY = new Matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
+
+            Color bufferColour = view.m_textColour;
+
+            if (view == m_activeBufferView)
+            {
+                bufferColour = Color.Yellow;
+            }
 
             float yPosition = 0.0f;
 
@@ -1451,7 +1539,7 @@ namespace Xyglo
                     line = line.Substring(0, view.m_bufferShowWidth);
                 }
 
-                m_spriteBatch.DrawString(m_spriteFont, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), view.m_textColour, 0, lineOrigin, m_textSize, 0, 0);
+                m_spriteBatch.DrawString(m_spriteFont, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), bufferColour, 0, lineOrigin, m_textSize, 0, 0);
                 yPosition += m_lineHeight; // m_spriteFont.MeasureString(line).Y * m_textSize;
             }
 
@@ -1459,7 +1547,9 @@ namespace Xyglo
             //
             int viewId = m_bufferViews.IndexOf(view);
             string bufferId = viewId.ToString();
-            m_spriteBatch.DrawString(m_spriteFont, bufferId, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y), view.m_textColour, 0, lineOrigin, m_textSize * 14.0f, 0, 0);
+            Color seeThroughColour = bufferColour;
+            seeThroughColour.A = 70;
+            m_spriteBatch.DrawString(m_spriteFont, bufferId, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y), seeThroughColour, 0, lineOrigin, m_textSize * 19.0f, 0, 0);
 
             drawScrollbar(view, file);
         }
@@ -1642,7 +1732,7 @@ namespace Xyglo
                                                  Convert.ToInt16(topLeft.Y),
                                                  Convert.ToInt16(bottomRight.X) - Convert.ToInt16(topLeft.X),
                                                  Convert.ToInt16(bottomRight.Y) - Convert.ToInt16(topLeft.Y)),
-                                                 m_activeBufferView.m_highlightColour);
+                                                 m_activeBufferView.m_highlightColour);  
             m_spriteBatch.End();
         }
 
