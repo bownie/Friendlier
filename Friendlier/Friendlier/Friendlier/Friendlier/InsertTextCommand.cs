@@ -99,7 +99,7 @@ namespace Xyglo
                 m_fileBuffer.setLine(m_startPos.Y, fetchLine.Insert(m_startPos.X, m_text));
 
                 fp.X += m_text.Length;
-                //Console.WriteLine("Writing " + m_text + " (length " + m_text.Length + ")");
+                Logger.logMsg("writing " + m_text + " (length " + m_text.Length + ")");
             }
 
             return fp;
@@ -129,6 +129,7 @@ namespace Xyglo
                 string fetchLine = m_fileBuffer.getLine(m_startPos.Y);
                 m_fileBuffer.setLine(m_startPos.Y, fetchLine.Remove(m_startPos.X, m_text.Length));
             }
+
             // Return the start position when undoing
             //
             return m_startPos;

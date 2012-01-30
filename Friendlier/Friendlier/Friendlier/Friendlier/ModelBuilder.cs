@@ -44,7 +44,7 @@ namespace Xyglo
         /// </summary>
         public void build()
         {
-            Console.WriteLine("Got tree with " + treeBuilder.getTotalNodes());
+            Logger.logMsg("Got tree with " + treeBuilder.getTotalNodes());
 
 
             // For the moment we do a Topological sort only so we expect our graphic to
@@ -59,7 +59,7 @@ namespace Xyglo
             {
                 if (bestPlace(vertex) == false)
                 {
-                    Console.WriteLine("Couldn't place " + vertex);
+                    Logger.logMsg("Couldn't place " + vertex);
                 }
             }
            
@@ -113,7 +113,7 @@ namespace Xyglo
         /// <param name="zLayer"></param>
         bool bestPlace(string vertex)
         {
-            Console.WriteLine("Placing vertex " + vertex);
+            Logger.logMsg("Placing vertex " + vertex);
 
             int degree = treeBuilder.m_graph.Degree(vertex);
 
@@ -142,7 +142,7 @@ namespace Xyglo
 
             if (!viewAreaBBox.Intersects(mcf.getBoundingBox()))
             {
-                Console.WriteLine("bestPlace(" + vertex + ") - initial placement outside view area");
+                Logger.logMsg("bestPlace(" + vertex + ") - initial placement outside view area");
                 return false;
             }
 

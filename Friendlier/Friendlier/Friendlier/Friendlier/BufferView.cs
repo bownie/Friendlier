@@ -54,6 +54,32 @@ namespace Xyglo
         protected FilePosition m_cursorPosition;
 
         /// <summary>
+        /// The position in the buffer at which this view is locked
+        /// </summary>
+        protected int m_viewLockPosition = 0;
+
+        /// <summary>
+        /// Is this view locked such that when we edit other views this one stays at the same relative position
+        /// </summary>
+        protected bool m_viewLocked = false;
+
+        public bool isLocked()
+        {
+            return m_viewLocked;
+        }
+
+        /// <summary>
+        /// Set the lock on this view at a position
+        /// </summary>
+        /// <param name="locked"></param>
+        /// <param name="lockedPosition"></param>
+        public void setLock(bool locked, int lockedPosition)
+        {
+            m_viewLocked = locked;
+            m_viewLockPosition = lockedPosition;
+        }
+        
+        /// <summary>
         /// Get the current cursor position
         /// </summary>
         /// <returns></returns>

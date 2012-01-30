@@ -166,6 +166,12 @@ namespace Xyglo
         Matrix m_viewMatrix = new Matrix();
 
         /// <summary>
+        /// We can use this to communicate something to the user about the last command
+        /// </summary>
+        string m_temporaryMessage = "";
+
+
+        /// <summary>
         /// Get the actual cursor position in the current active buffer view
         /// </summary>
         /// <returns></returns>
@@ -202,7 +208,8 @@ namespace Xyglo
             //pp.BackBufferFormat = SurfaceFormat.
 
             //InitGraphicsMode(1920, 1080, true);
-            InitGraphicsMode(1000, 600, false);
+            //InitGraphicsMode(1000, 600, false);
+            InitGraphicsMode(800, 500, false);
             
 #if WINDOWS_PHONE
             TargetElapsedTime = TimeSpan.FromTicks(333333);
@@ -232,6 +239,7 @@ namespace Xyglo
                     m_graphics.PreferredBackBufferHeight = iHeight;
                     m_graphics.IsFullScreen = bFullScreen;
                     m_graphics.ApplyChanges();
+                    //loadFonts();
                     return true;
                 }
             }
@@ -251,12 +259,38 @@ namespace Xyglo
                         m_graphics.PreferredBackBufferHeight = iHeight;
                         m_graphics.IsFullScreen = bFullScreen;
                         m_graphics.ApplyChanges();
+                        //loadFonts();
                         return true;
                     }
                 }
             }
             return false;
         }
+
+        protected void loadFonts()
+        {
+
+            // Font loading
+            //
+            if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
+            {
+                Logger.logMsg("Using Small Font");
+                m_spriteFont = Content.Load<SpriteFont>("Courier New");
+            }
+            else
+            {
+                Logger.logMsg("Using Large Font");
+                m_spriteFont = Content.Load<SpriteFont>("Courier New Large");
+            }
+
+            // Text size has to be scaled to actual font size
+            //
+            m_textSize = (float)((int)(1400.0f / (float)(m_spriteFont.LineSpacing))) / 100.0f;
+            Logger.logMsg("Text Size = " + m_textSize);
+
+            Logger.logMsg("SPRITE FONT line spacing = " + m_spriteFont.LineSpacing);
+        }
+
 
         /// <summary>
         /// LoadContent will be called once per game and is the place to load
@@ -267,59 +301,9 @@ namespace Xyglo
             // Create a new SpriteBatch, which can be used to draw textures.
             m_spriteBatch = new SpriteBatch(m_graphics.GraphicsDevice);
 
-            // Font loading
+            // Always load the fonts
             //
-            if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
-            {
-                Console.WriteLine("Using Small Font");
-                m_spriteFont = Content.Load<SpriteFont>("Courier New");
-            }
-            else
-            {
-                Console.WriteLine("Using Large Font");
-                m_spriteFont = Content.Load<SpriteFont>("Courier New Large");
-            }
-
-            //Console.WriteLine("SPRITE FONT line spacing = " + m_spriteFont.LineSpacing);
-
-            // Text size has to be scaled to actual font size
-            //
-            m_textSize = (float)((int)(1400.0f / (float)(m_spriteFont.LineSpacing))) / 100.0f;
-            Console.WriteLine("Text Size = " + m_textSize);
-
-            //m_spriteFont = Content.Load<SpriteFont>("courier");
-            //m_spriteFont = Content.Load<SpriteFont>("Miramonte");
-            //spriteFont = Content.Load<SpriteFont>("cn");
-            //spriteFont.Spacing = 10;
-
-            //myModel = Content.Load<Model>("Models\\untitled");
-
-            // Create a box that is centered on the origin and extends from (-3, -3, -3) to (3, 3, 3)
-            //
-            //box = new BoundingBox(new Vector3(-3f), new Vector3(3f));
-
-            // Create our frustum to simulate a camera sitting at the origin, looking down
-            // the X axis, with a 16x9 aspect ratio, a near plane of 1, and a far plane of 5
-            //
-            //Matrix frustumView = Matrix.CreateLookAt(Vector3.Zero, Vector3.UnitX, Vector3.Up);
-            //Matrix frustumProjection = Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, 16f / 9f, 1f, 5f);
-            //frustum = new BoundingFrustum(frustumView * frustumProjection);
-
-            // Create a sphere that is centered on the origin and has a radius of 3
-            //
-            //sphere = new BoundingSphere(Vector3.Zero, 3f);
-
-            // Initialize our renderer
-            //
-            DebugShapeRenderer.Initialize(m_graphics.GraphicsDevice);
-
-            // Initialize our other renderer
-            //
-            SubjectRenderer.Initialize(m_graphics.GraphicsDevice, m_spriteFont);
-
-            // Initialise the file renderer
-            //
-            //FileRenderer.Initialize(GraphicsDevice, m_spriteFont);
+            loadFonts();
 
             // Make mouse visible
             //
@@ -341,9 +325,6 @@ namespace Xyglo
             m_lineEffect.DiffuseColor = Vector3.One;
             m_lineEffect.World = Matrix.Identity;
 
-
-            //effect = Content.Load<Effect>("Effects/Ambient");
-
             // Store these sizes and positions
             //
             m_charWidth = m_spriteFont.MeasureString("X").X * m_textSize;
@@ -360,10 +341,6 @@ namespace Xyglo
             m_flatTexture = new Texture2D(m_graphics.GraphicsDevice, 1, 1, false, SurfaceFormat.Color);
             m_flatTexture.SetData(foregroundColors);
 
-            //  Set up some initial coordinates
-            //m_activeBufferView.m_position = new Vector3(-180f, -100f, 0f);
-            //m_cursorCoords = m_activeBufferView.m_position;
-
             // Load and buffer the file
             //
             FileBuffer file1 = new FileBuffer(m_fileName);
@@ -374,10 +351,11 @@ namespace Xyglo
             BufferView view1 = new BufferView(file1, new Vector3(0f, 0f, 0f), 0, 20, m_charWidth, m_lineHeight);
             m_bufferViews.Add(view1);
 
-            //view = new BufferView(file1, new Vector3(-180f, 100f, 0.0f), 0, 15);
-            //BufferView view2 = new BufferView(view1, BufferView.BufferPosition.Right);
-            //view2.m_textColour = Color.LightBlue;
-            //m_bufferViews.Add(view2);
+            // Ensure that we are in the correct position to view this buffer so there's no initial movement
+            //
+            m_eye = view1.getEyePosition();
+            m_target = view1.getLookPosition();
+            m_eye.Z = m_zoomLevel;
 
             // Set the active buffer view
             //
@@ -407,11 +385,11 @@ namespace Xyglo
             }
             catch (Exception e)
             {
-                Console.WriteLine("Cannot locate BufferView item in list " + e.ToString());
+                Logger.logMsg("Cannot locate BufferView item in list " + e.ToString());
                 return;
             }
 
-            Console.WriteLine("Active buffer view is " + m_activeBufferViewId);
+            Logger.logMsg("Active buffer view is " + m_activeBufferViewId);
 
             Vector3 eyePos = m_activeBufferView.getEyePosition();
             eyePos.Z = m_zoomLevel;
@@ -420,9 +398,9 @@ namespace Xyglo
             //m_eye = m_activeBufferView.getEyePosition();
             //m_target = m_activeBufferView.getLookPosition();
 
-            Console.WriteLine("Buffer position = " + m_activeBufferView.getPosition());
-            Console.WriteLine("Look position = " + m_target);
-            Console.WriteLine("Eye position = " + m_eye);
+            Logger.logMsg("Buffer position = " + m_activeBufferView.getPosition());
+            Logger.logMsg("Look position = " + m_target);
+            Logger.logMsg("Eye position = " + m_eye);
         }
 
         protected float m_zoomLevel = 500.0f;
@@ -430,54 +408,6 @@ namespace Xyglo
         Vector3 m_up = new Vector3(0, 1, 0);
         Vector3 m_look = new Vector3(0, 0, -1);
         Vector3 m_right = new Vector3(1, 0, 0);
-
-        protected void calculateViewMatrix()
-            
-        {   
-            /*
-             * m_up = new Vector3(0, 1, 0);
-            m_look = new Vector3(0, 0, -1);
-            m_right = new Vector3(1, 0, 0);
-
-            Matrix rollMatrix = Matrix.CreateFromAxisAngle(m_look, m_rotations.Z);
-            m_up = Vector3.Transform(m_up, rollMatrix);
-            m_right = Vector3.Transform(m_right, rollMatrix);
-
-            Matrix yawMatrix = Matrix.CreateFromAxisAngle(m_up, m_rotations.Y);
-            m_look = Vector3.Transform(m_look, yawMatrix);
-            m_right = Vector3.Transform(m_right, yawMatrix);
-
-            Matrix pitchMatrix = Matrix.CreateFromAxisAngle(m_right, m_rotations.X);
-            m_look = Vector3.Transform(m_look, pitchMatrix);
-            m_up = Vector3.Transform(m_up, pitchMatrix);
-
-            // Now create the view matrix
-            //
-             * */
-
-            // New method doesn't work
-            //
-            //Vector3 target = m_activeBufferView.getPosition() - m_look;
-            //m_eye.X -= target.X;
-            //m_eye.Y = -target.Y;
-            //m_viewMatrix = Matrix.CreateLookAt(m_eye, target, m_up);
-
-            // Move eye to correct position above active view window
-            //
-            //m_eye.X = m_activeBufferView.getLookPosition().X;
-            //m_eye.Y = m_activeBufferView.getLookPosition().Y;
-
-            //m_eye = m_activeBufferView.getLookPosition();
-            
-
-            // This is the original
-            //
-            //m_viewMatrix = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
-            
-            
-            m_viewMatrix = Matrix.CreateLookAt(m_eye, m_target, Vector3.Up);
-
-        }
 
         // Y axis rotation - also known as Yaw
         //
@@ -757,6 +687,17 @@ namespace Xyglo
             {
                 pageUp();
             }
+            else if (checkKeyState(Keys.Scroll, gameTime))
+            {
+                if (m_activeBufferView.isLocked())
+                {
+                    m_activeBufferView.setLock(false, 0);
+                }
+                else
+                {
+                    m_activeBufferView.setLock(true, m_activeBufferView.getCursorPosition().Y);
+                }
+            }
             else if (checkKeyState(Keys.Delete, gameTime) || checkKeyState(Keys.Back, gameTime))
             {
                 // If we have a valid selection then delete it
@@ -830,20 +771,24 @@ namespace Xyglo
                         //
                         try
                         {
-                            m_fileBuffers[0].undo(1);
+                            // We call the undo against the FileBuffer and this returns the cursor position
+                            // resulting from this action.
+                            //
+                            m_activeBufferView.setCursorPosition(m_fileBuffers[0].undo(1));
                         }
-                        catch (Exception e)
+                        catch (Exception /* e */)
                         {
-                            System.Windows.Forms.MessageBox.Show("Undo stack is empty - " + e.Message);
-                            //Console.WriteLine("Got exception " + e.Message);
+                            //System.Windows.Forms.MessageBox.Show("Undo stack is empty - " + e.Message);
+                            //Logger.logMsg("Got exception " + e.Message);
+                            m_temporaryMessage = "[NOUNDO]";
                         }
 
                         fixCursor();
                     }
                 }
 
-                if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftShift) ||
-                    Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightShift) ||
+                if (//Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftShift) ||
+                    //Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightShift) ||
                     Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightControl) ||
                     Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftControl))
                 {
@@ -884,44 +829,122 @@ namespace Xyglo
 
                                 switch (keyDown)
                                 {
+                                    case Keys.LeftShift:
+                                    case Keys.RightShift:
+                                    case Keys.LeftControl:
+                                    case Keys.RightControl:
+                                    case Keys.LeftAlt:
+                                    case Keys.RightAlt:
+                                        break;
+
                                     case Keys.D0:
-                                        key = "0";
+                                        if (m_shiftDown)
+                                        {
+                                            key = ")";
+                                        }
+                                        else
+                                        {
+                                            key = "0";
+                                        }
                                         break;
 
                                     case Keys.D1:
-                                        key = "1";
+                                        if (m_shiftDown)
+                                        {
+                                            key = "!";
+                                        }
+                                        else
+                                        {
+                                            key = "1";
+                                        }
                                         break;
 
                                     case Keys.D2:
-                                        key = "2";
+                                        if (m_shiftDown)
+                                        {
+                                            key = "@";
+                                        }
+                                        else
+                                        {
+                                            key = "2";
+                                        }
                                         break;
 
                                     case Keys.D3:
-                                        key = "3";
+                                        if (m_shiftDown)
+                                        {
+                                            key = "#";
+                                        }
+                                        else
+                                        {
+                                            key = "3";
+                                        }
                                         break;
 
                                     case Keys.D4:
-                                        key = "4";
+                                        if (m_shiftDown)
+                                        {
+                                            key = "$";
+                                        }
+                                        else
+                                        {
+                                            key = "4";
+                                        }
                                         break;
 
                                     case Keys.D5:
-                                        key = "5";
+                                        if (m_shiftDown)
+                                        {
+                                            key = "%";
+                                        }
+                                        else
+                                        {
+                                            key = "5";
+                                        }
                                         break;
 
                                     case Keys.D6:
-                                        key = "6";
+                                        if (m_shiftDown)
+                                        {
+                                            key = "^";
+                                        }
+                                        else
+                                        {
+                                            key = "6";
+                                        }
                                         break;
 
                                     case Keys.D7:
-                                        key = "7";
+                                        if (m_shiftDown)
+                                        {
+                                            key = "&";
+                                        }
+                                        else
+                                        {
+                                            key = "7";
+                                        }
                                         break;
 
                                     case Keys.D8:
-                                        key = "8";
+                                        if (m_shiftDown)
+                                        {
+                                            key = "*";
+                                        }
+                                        else
+                                        {
+                                            key = "8";
+                                        }
                                         break;
 
                                     case Keys.D9:
-                                        key = "9";
+                                        if (m_shiftDown)
+                                        {
+                                            key = "(";
+                                        }
+                                        else
+                                        {
+                                            key = "9";
+                                        }
                                         break;
 
 
@@ -929,8 +952,26 @@ namespace Xyglo
                                         key = " ";
                                         break;
 
+                                    case Keys.OemPlus:
+                                        if (m_shiftDown)
+                                        {
+                                            key = "+";
+                                        }
+                                        else
+                                        {
+                                            key = "=";
+                                        }
+                                        break;
+
                                     case Keys.OemMinus:
-                                        key = "-";
+                                        if (m_shiftDown)
+                                        {
+                                            key = "_";
+                                        }
+                                        else
+                                        {
+                                            key = "-";
+                                        }
                                         break;
 
                                     case Keys.OemPeriod:
@@ -964,14 +1005,41 @@ namespace Xyglo
                                         break;
                                 }
 
-                                // Insert the text on the FileBuffer and capture the return position
-                                //
-                                fp = m_fileBuffers[0].insertText(getActiveCursorPosition(), key);
+                                if (key != "")
+                                {
 
-                                // Want to make sure that the current active bufferview has the focus
-                                //
-                                //m_eye = m_activeBufferView.getLookPosition();
-                                //m_eye.Z += 275.0f;
+                                    // Do we need to do some deletion or replacing?  If shift is down and we've highlighted an area
+                                    // then we need to replace something.
+                                    //
+                                    if (m_shiftStart != m_shiftEnd && !m_shiftDown && m_selectionValid)
+                                    {
+                                        // Replace selection with value of "key"
+                                        //
+                                        Logger.logMsg("Replacing selection with '" + key + "'");
+
+                                        FilePosition shiftStart = m_shiftStart;
+                                        FilePosition shiftEnd = m_shiftEnd;
+                                        shiftStart.Y += m_activeBufferView.m_bufferShowStart;
+                                        shiftEnd.Y += m_activeBufferView.m_bufferShowStart;
+
+                                        fp = m_fileBuffers[0].replaceText(shiftStart, shiftEnd, key);
+
+                                        // To make sure we do this only once we now invalidate this selection
+                                        //
+                                        m_selectionValid = false;
+                                    }
+                                    else
+                                    {
+                                        // Insert the text on the FileBuffer and capture the return position
+                                        //
+                                        fp = m_fileBuffers[0].insertText(getActiveCursorPosition(), key);
+
+                                        m_shiftDown = false;
+                                        m_selectionValid = false;
+                                        m_shiftStart = m_activeBufferView.getCursorPosition();
+                                        m_shiftEnd = m_activeBufferView.getCursorPosition();
+                                    }
+                                }
                             }
 
                             // Set the cursor position to whatever was returned by the relevant command
@@ -981,20 +1049,6 @@ namespace Xyglo
                         }
                     }
 
-                    // Do we need to do some deletion or replacing?  If shift is down and we've highlighted an area
-                    // then we need to replace something.
-                    //
-                    if (m_shiftStart != m_shiftEnd && !m_shiftDown && m_selectionValid)
-                    {
-                        foreach (Keys keyDown in Keyboard.GetState().GetPressedKeys())
-                        {
-                            Console.WriteLine("Replace SELECTION with " + keyDown.ToString());
-                        }
-
-                        // To make sure we do this only once we now invalidate this selection
-                        //
-                        m_selectionValid = false;
-                    }
                 }
             }
 
@@ -1007,11 +1061,12 @@ namespace Xyglo
             m_cursorCoords.X = m_activeBufferView.getPosition().X + (m_activeBufferView.getCursorPosition().X * m_charWidth);
             m_cursorCoords.Y = m_activeBufferView.getPosition().Y + (m_activeBufferView.getCursorPosition().Y * m_lineHeight);
 
-            // Save the last state if it has changed
+            // Save the last state if it has changed and clear any temporary message
             //
             if (m_lastKeyboardState != Keyboard.GetState())
             {
                 m_lastKeyboardState = Keyboard.GetState();
+                m_temporaryMessage = "";
             }
 
             base.Update(gameTime);
@@ -1059,29 +1114,6 @@ namespace Xyglo
         protected void flyToPosition(Vector3 newPosition)
         {
             m_newEyePosition = newPosition;
-#if NOT_USED_FLY_TO
-            if (newPosition.X != m_eye.X)
-            {
-                m_activeBufferView.moveX(m_eye.X - newPosition.X);
-            }
-
-            if (newPosition.Y != m_eye.Y)
-            {
-                m_activeBufferView.moveY(m_eye.Y - newPosition.Y);
-            }
-
-            if (newPosition.Z != m_eye.Z)
-            {
-                m_activeBufferView.moveX(m_eye.Z - newPosition.Z);
-            }
-#endif
-            /*
-            if (m_newEyePosition.Z < 275.0f)
-            {
-                m_newEyePosition.Z = 275.0f;
-            }
-             */
-
             m_changingPositionLastGameTime = TimeSpan.Zero;
             m_changingEyePosition = true;
         }
@@ -1147,8 +1179,8 @@ namespace Xyglo
                         m_changingPositionLastGameTime = gameTime.TotalGameTime;
                         //m_view = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
 
-                        Console.WriteLine("Eye is now at " + m_eye.ToString());
-                        Console.WriteLine("FINAL Position is " + m_newEyePosition.ToString());
+                        Logger.logMsg("Eye is now at " + m_eye.ToString());
+                        Logger.logMsg("FINAL Position is " + m_newEyePosition.ToString());
                     }
 
                     BoundingSphere testArrived = new BoundingSphere(m_newEyePosition, 1.0f);
@@ -1321,11 +1353,7 @@ namespace Xyglo
             // 
             // http://www.toymaker.info/Games/XNA/html/xna_camera.html
             // 
-            
-
-            // This is the alternative
-            //
-            calculateViewMatrix();
+            m_viewMatrix = Matrix.CreateLookAt(m_eye, m_target, Vector3.Up);
 
             m_projection = Matrix.CreateTranslation(-0.5f, -0.5f, 0) * Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 10000f);
 
@@ -1337,18 +1365,11 @@ namespace Xyglo
             m_lineEffect.Projection = m_projection;
             m_lineEffect.World = Matrix.CreateScale(1, -1, 1);
 
-            // Pitch, Roll, Yaw - to rotate our rendered image in 3D
-            //
-            //Vector3 pry = new Vector3(0, 30, 0);
-            //Vector3 filePos2 = new Vector3(-10f, 10f, -3f);
-            //Vector3 filePos3 = new Vector3(-60f, -50f, -30f);
-            
-
             // Here we need to vary the parameters to the SpriteBatch - to the BasicEffect and also the font size.
             // For large fonts we need to be able to downscale them effectively so that they will still look good
             // at higher reoslutions.
             //
-            m_basicEffect.TextureEnabled = true;
+            //m_basicEffect.TextureEnabled = true;
             //m_basicEffect.SpecularPower = 100.0f;
             //m_basicEffect.SpecularColor = new Vector3(100, 100, 100);
 
@@ -1365,8 +1386,6 @@ namespace Xyglo
                 m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
             }
             
-            //drawFileBuffer(m_activeBufferView.m_position, m_fileName);
-
             for (int i = 0; i < m_bufferViews.Count; i++)
             {
                 drawFileBuffer(m_bufferViews[i], m_bufferViews[i].m_fileBuffer);
@@ -1382,8 +1401,6 @@ namespace Xyglo
             //
             drawCursor(m_cursorCoords, gameTime);
             drawHighlight(gameTime);
-
-            DebugShapeRenderer.Draw(gameTime, m_viewMatrix, m_projection);
 
             base.Draw(gameTime);
         }
@@ -1420,6 +1437,9 @@ namespace Xyglo
                 fileName += " [CTRL]";
             }
 
+            // Add any temporary message on to the end of the message
+            //
+            fileName += " " + m_temporaryMessage;
 
             // Convert lineHeight back to normal size by dividing by m_textSize modifier
             //
@@ -1458,10 +1478,12 @@ namespace Xyglo
             //
             m_overlaySpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend);
             //m_overlaySpriteBatch.Begin(SpriteSortMode.FrontToBack, BlendState.NonPremultiplied, SamplerState.LinearWrap, DepthStencilState.None,RasterizerState.CullCounterClockwise);
-            m_overlaySpriteBatch.DrawString(m_spriteFont, fileName, new Vector2(0.0f, yPos), Color.White, 0, Vector2.Zero, m_textSize, 0, 0);
 
-            m_overlaySpriteBatch.DrawString(m_spriteFont, eyePosition, new Vector2(0.0f, 0.0f), Color.White, 0, Vector2.Zero, m_textSize, 0, 0);
-            m_overlaySpriteBatch.DrawString(m_spriteFont, modeString, new Vector2(modeStringXPos, 0.0f), Color.White, 0, Vector2.Zero, m_textSize, 0, 0);
+            // hardcode the font size to 1.0f so it looks nice
+            //
+            m_overlaySpriteBatch.DrawString(m_spriteFont, fileName, new Vector2(0.0f, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+            m_overlaySpriteBatch.DrawString(m_spriteFont, eyePosition, new Vector2(0.0f, 0.0f), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+            m_overlaySpriteBatch.DrawString(m_spriteFont, modeString, new Vector2(modeStringXPos, 0.0f), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
             m_overlaySpriteBatch.End();
         }
 
@@ -1489,10 +1511,17 @@ namespace Xyglo
             v1.Y += m_activeBufferView.getLineHeight();
 
             Vector3 v2 = p; // Vector3.Transform(p, m_view);
+            v2.X += 1;
 
-            DebugShapeRenderer.AddBoundingBox(new BoundingBox(v1, v2), m_activeBufferView.m_cursorColour);
+            renderQuad(v1, v2);
+            //DebugShapeRenderer.AddBoundingBox(new BoundingBox(v1, v2), m_activeBufferView.m_cursorColour);
         }
 
+        /// <summary>
+        /// Draw a BufferView
+        /// </summary>
+        /// <param name="view"></param>
+        /// <param name="file"></param>
         protected void drawFileBuffer(BufferView view, FileBuffer file)
         {
             //Matrix invertY = new Matrix(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1);
@@ -1501,7 +1530,7 @@ namespace Xyglo
 
             if (view == m_activeBufferView)
             {
-                bufferColour = Color.Yellow;
+                bufferColour = Color.White;
             }
 
             float yPosition = 0.0f;
@@ -1526,8 +1555,6 @@ namespace Xyglo
                 showEnd = file.getLineCount();
             }
 
-            //Console.WriteLine("DRAW AT " + viewSpaceTextPosition.X);
-
             // Draw all the text lines to the height of the buffer
             //
             for (int i = showStart; i < showEnd; i++)
@@ -1543,13 +1570,16 @@ namespace Xyglo
                 yPosition += m_lineHeight; // m_spriteFont.MeasureString(line).Y * m_textSize;
             }
 
-            // Draw overlaid ID on this window
+            // Draw overlaid ID on this window if we're far enough away to use it
             //
-            int viewId = m_bufferViews.IndexOf(view);
-            string bufferId = viewId.ToString();
-            Color seeThroughColour = bufferColour;
-            seeThroughColour.A = 70;
-            m_spriteBatch.DrawString(m_spriteFont, bufferId, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y), seeThroughColour, 0, lineOrigin, m_textSize * 19.0f, 0, 0);
+            if (m_zoomLevel > 800.0f)
+            {
+                int viewId = m_bufferViews.IndexOf(view);
+                string bufferId = viewId.ToString();
+                Color seeThroughColour = bufferColour;
+                seeThroughColour.A = 70;
+                m_spriteBatch.DrawString(m_spriteFont, bufferId, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y), seeThroughColour, 0, lineOrigin, m_textSize * 19.0f, 0, 0);
+            }
 
             drawScrollbar(view, file);
         }
@@ -1622,7 +1652,7 @@ namespace Xyglo
         {
             if (m_shiftDown)
             {
-                //Console.WriteLine("Drawing highlight box");
+                //Logger.logMsg("Drawing highlight box");
 
                 Vector3 highlightStart = new Vector3();
                 Vector3 highlightEnd = new Vector3();
@@ -1735,67 +1765,5 @@ namespace Xyglo
                                                  m_activeBufferView.m_highlightColour);  
             m_spriteBatch.End();
         }
-
-        
-
-        /*
-        protected void drawLine()
-        {
-            verts = new VertexPositionColor[vertexCount * 2];
-
-
-            // If we have some vertices to draw
-            if (vertexCount > 0)
-			{
-                // Make sure our array is large enough
-                if (verts.Length < vertexCount)
-                {
-                    // If we have to resize, we make our array twice as large as necessary so
-                    // we hopefully won't have to resize it for a while.
-                    verts = new VertexPositionColor[vertexCount * 2];
-                }
-
-                // Now go through the shapes again to move the vertices to our array and
-                // add up the number of lines to draw.
-                int lineCount = 0;
-                int vertIndex = 0;
-                foreach (DebugShape shape in activeShapes)
-                {
-                    lineCount += shape.LineCount;
-                    int shapeVerts = shape.LineCount * 2;
-                    for (int i = 0; i < shapeVerts; i++)
-                    {
-                        //verts[vertIndex] = shape.Vertices[i];
-                        //verts[vertIndex].Position = Vector3.Transform(verts[vertIndex].Position, view);
-                        //vertIndex++;
-                        verts[vertIndex++] = shape.Vertices[i];
-                    }
-                }
-
-                // Start our effect to begin renderinm_graph.
-				effect.CurrentTechnique.Passes[0].Apply();
-
-                // We draw in a loop because the Reach profile only supports 65,535 primitives. While it's
-                // not incredibly likely, if a game tries to render more than 65,535 lines we don't want to
-                // crash. We handle this by doing a loop and drawing as many lines as we can at a time, capped
-                // at our limit. We then move ahead in our vertex array and draw the next set of lines.
-                int vertexOffset = 0;
-                while (lineCount > 0)
-                {
-                    // Figure out how many lines we're going to draw
-                    int linesToDraw = Math.Min(lineCount, 65535);
-
-                    // Draw the lines
-                    graphics.DrawUserPrimitives(PrimitiveType.LineList, verts, vertexOffset, linesToDraw);
-
-                    // Move our vertex offset ahead based on the lines we drew
-                    vertexOffset += linesToDraw * 2;
-
-                    // Remove these lines from our total line count
-                    lineCount -= linesToDraw;
-                }
-			}
-        }
-        */
     }
 }

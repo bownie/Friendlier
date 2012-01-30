@@ -71,7 +71,7 @@ namespace Xyglo
         {
             foreach (string v in m_graph.TopologicalSort())
             {
-                Console.WriteLine("TOP SORT = " + v);
+                Logger.logMsg("TOP SORT = " + v);
             }
         }
 
@@ -86,12 +86,12 @@ namespace Xyglo
 
             foreach (string v in m_graph.Vertices)
             {
-                Console.WriteLine(v);
+                Logger.logMsg(v);
             }
 
             foreach (Edge<string> e in m_graph.Edges)
             {
-                Console.WriteLine(e.Source + " -> " + e.Target);
+                Logger.logMsg(e.Source + " -> " + e.Target);
             }
 
             //IVertexListGraph<Vertex,Edge> g=…;
@@ -103,7 +103,7 @@ namespace Xyglo
 
             foreach (string v in m_graph.TopologicalSort())
             {
-                Console.WriteLine("TOP SORT = " + v);
+                Logger.logMsg("TOP SORT = " + v);
             }
 
 
@@ -113,7 +113,7 @@ namespace Xyglo
 
             //string output = graphviz.Generate(new FileDotEngine(), "graph");
 
-            Console.WriteLine("DOT output = " + graphviz.Generate());
+            Logger.logMsg("DOT output = " + graphviz.Generate());
 
             var dfs = new DepthFirstSearchAlgorithm<string, Edge<string>>(m_graph);
 
@@ -130,7 +130,7 @@ namespace Xyglo
 
             foreach (var p in observer.VertexPredecessors)
             {
-                Console.WriteLine("Predecessors = " + p.ToString());
+                Logger.logMsg("Predecessors = " + p.ToString());
             }
 
             /* Strongly Connected */
@@ -139,17 +139,18 @@ namespace Xyglo
 
             int componentCount = m_graph.StronglyConnectedComponents<string, Edge<string>>(out components2);
 
+            /*
             if (componentCount != 0)
             {
-                Console.WriteLine("Graph is not strongly connected");
-                Console.WriteLine("Graph contains {0} strongly connected components", componentCount);
+                Logger.logMsg("Graph is not strongly connected");
+                //Logger.logMsg("Graph contains {0} strongly connected components", componentCount);
                 foreach (var kv in components2)
                 {
 
-                    Console.WriteLine("Vertex {0} is connected to {1} other strongly connected components", kv.Key, kv.Value);
+                    //Logger.logMsg("Vertex {0} is connected to {1} other strongly connected components", kv.Key, kv.Value);
                 }
             }
-
+            */
 
             /* Connected */
 
@@ -214,7 +215,7 @@ namespace Xyglo
             // All white vertices should be unreachable from the source.
             foreach (var v in m_graph.Vertices)
             {
-                Console.WriteLine("VERTEX " + v + " WEIGHT = " + distances[v]);
+                Logger.logMsg("VERTEX " + v + " WEIGHT = " + distances[v]);
             }
 
 

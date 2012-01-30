@@ -191,7 +191,7 @@ namespace Xyglo
             FileInfo fI = new FileInfo(m_filename);
             if ( fI.Length > 5000 )
             {
-                Console.WriteLine("File " + m_filename + " too big for editing");
+                Logger.logMsg("File " + m_filename + " too big for editing");
                 return true;
             }
             return false;
@@ -206,7 +206,7 @@ namespace Xyglo
         {
             if (m_undoPosition < m_commands.Count)
             {
-                Console.WriteLine("Clearing undo position");
+                Logger.logMsg("Clearing undo position");
                 for (int i = m_undoPosition; i < m_commands.Count; i++)
                 {
                     m_commands[i].Dispose();
@@ -231,6 +231,24 @@ namespace Xyglo
         public FilePosition deleteSelection(FilePosition startSelection, FilePosition endSelection)
         {
             DeleteTextCommand command = new DeleteTextCommand("Delete Selection", this, startSelection, endSelection);
+            FilePosition fp = command.doCommand();
+
+            // Ensure we are neat and tidy
+            //
+            tidyUndoStack(command);
+
+            return fp;
+        }
+
+        /// <summary>
+        /// Replace a selection with some text
+        /// </summary>
+        /// <param name="replacePosition"></param>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public FilePosition replaceText(FilePosition startSelection, FilePosition endSelection, string text)
+        {
+            ReplaceTextCommand command = new ReplaceTextCommand("Replace Text", this, startSelection, endSelection, text);
             FilePosition fp = command.doCommand();
 
             // Ensure we are neat and tidy
@@ -274,24 +292,30 @@ namespace Xyglo
             return fp;
         }
 
-
-        public bool undo(int steps)
+        /// <summary>
+        /// Undo a given number of steps in the life of a FileBuffer
+        /// </summary>
+        /// <param name="steps"></param>
+        /// <returns></returns>
+        public FilePosition undo(int steps)
         {
+            FilePosition fp = new FilePosition();
+
             if (m_commands.Count >= steps && m_undoPosition >= 0)
             {
                 // Unwind the commands in order
                 //
                 for (int i = m_undoPosition - 1; i > m_undoPosition - 1 - steps; i--)
                 {
-                    m_commands[i].undoCommand();
+                    fp = m_commands[i].undoCommand();
                 }
 
                 // Reduce the m_undoPosition accordingly
                 //
                 m_undoPosition -= steps;
 
-                Console.WriteLine("UNDO POSITION = " + m_undoPosition);
-                return true;
+                Logger.logMsg("FileBuffer::undo() - undo position = " + m_undoPosition);
+                return fp;
             }
             else
             {

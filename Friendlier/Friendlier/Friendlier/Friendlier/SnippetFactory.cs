@@ -59,8 +59,8 @@ namespace Xyglo
         /// <param name="snippet"></param>
         public static void returnSnippet(TextSnippet snippet)
         {
-            Console.WriteLine("Returning snippet to the heap : " + m_snippetList[snippet.getSnippetFactoryPosition()].getSnippetFactoryPosition());
-            Console.WriteLine("Current snippet position = " + m_currentSnippet);
+            Logger.logMsg("Returning snippet to the heap : " + m_snippetList[snippet.getSnippetFactoryPosition()].getSnippetFactoryPosition());
+            Logger.logMsg("Current snippet position = " + m_currentSnippet);
 
             // Remove from from
             //m_snippetList.RemoveAt(snippet.getSnippetFactoryPosition());

@@ -90,7 +90,7 @@ namespace Xyglo
 
                     // Add the whole bufLine to snippet
                     //
-                    Console.WriteLine("ADDING TO SNIPPET = " + bufLine);
+                    Logger.logMsg("adding to snippet = " + bufLine);
 
                     m_snippet.m_lines.Add(bufLine);
 
@@ -137,24 +137,24 @@ namespace Xyglo
         /// </summary>
         public override FilePosition undoCommand()
         {
-            Console.WriteLine("m_linesDeleted = " + m_snippet.m_linesDeleted);
+            Logger.logMsg("m_linesDeleted = " + m_snippet.m_linesDeleted);
 
             // If we need to re-insert a line then do so
             //
             for (int i = 0; i < m_snippet.m_linesDeleted; i++)
             {
-                Console.WriteLine("INSERT LINE at " + m_startPos.Y);
+                Logger.logMsg("Inserted line at " + m_startPos.Y);
                 m_fileBuffer.insertLine(m_startPos.Y, "dummy");
             }
 
-            Console.WriteLine("SNIPPET LINE COUNT = " + m_snippet.m_lines.Count);
+            Logger.logMsg("snippet line count = " + m_snippet.m_lines.Count);
 
             // Now overwrite all the lines
             //
             int snippetLine = 0;
             for (int i = m_startPos.Y; i < m_startPos.Y + m_snippet.m_lines.Count; i++)
             {
-                Console.WriteLine("OVERWRITING = " + snippetLine);
+                Logger.logMsg("overwriting = " + snippetLine);
                 m_fileBuffer.setLine(i, m_snippet.m_lines[snippetLine++]);
             }
 
@@ -168,9 +168,8 @@ namespace Xyglo
         /// </summary>
         public override void Dispose()
         {
-            //m_snippet.clear();
             SnippetFactory.returnSnippet(m_snippet);
-            Console.WriteLine("DeleteTextCommand Dispose()");
+            Logger.logMsg("DeleteTextCommand Dispose()");
         }
 
         TextSnippet m_snippet = SnippetFactory.getSnippet();
