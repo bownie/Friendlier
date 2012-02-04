@@ -11,6 +11,15 @@
       <Time>2012-01-29T16:48:19.3940586+01:00</Time>
     </Item>
     <Item>
+      <Source>Courier New Large.spritefont</Source>
+      <Name>Courier New Large</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>FontDescriptionProcessor</Processor>
+      <Options>None</Options>
+      <Output>D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Courier New Large.xnb</Output>
+      <Time>2012-01-29T17:43:15.468782+01:00</Time>
+    </Item>
+    <Item>
       <Source>Effects\Ambient.fx</Source>
       <Name>Effects\Ambient</Name>
       <Importer>EffectImporter</Importer>
@@ -27,15 +36,6 @@
       <Options>None</Options>
       <Output>D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\courier.xnb</Output>
       <Time>2012-01-27T12:54:42.6967612+01:00</Time>
-    </Item>
-    <Item>
-      <Source>Courier New Large.spritefont</Source>
-      <Name>Courier New Large</Name>
-      <Importer>FontDescriptionImporter</Importer>
-      <Processor>FontDescriptionProcessor</Processor>
-      <Options>None</Options>
-      <Output>D:\Friendlier\Friendlier\Friendlier\Friendlier\bin\x86\Debug\Content\Courier New Large.xnb</Output>
-      <Time>2012-01-29T17:43:15.468782+01:00</Time>
     </Item>
     <BuildSuccessful>true</BuildSuccessful>
     <Settings>

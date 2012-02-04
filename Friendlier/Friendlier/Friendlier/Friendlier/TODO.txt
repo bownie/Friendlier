@@ -1,0 +1,28 @@
+
+- Saving
+- Loading and File Selector/Directory traversal
+- New file
+- Packaging
+- Licensing
+- Completing editing and undo
+- Hud cursor position
+- Hud panner overview?
+- Hud Unsaved status better?
+- Hud file system positions?
+- Icons etc
+- Logging
+
+Advanced:
+
+- Log file view (attach and view)
+- Command line interface
+- Directory listings
+- System load meter
+
+DONE
+----
+
+- Drift focus when adding a new BufferView drift to position [DONE]
+- Alpha blending fonts / darkening and name overlay when zoomed out [DONE]
+- keyboard support?  [DONE for the moment - hardcoded]
+- screen mode toggle (full screen/small) [DONE]
