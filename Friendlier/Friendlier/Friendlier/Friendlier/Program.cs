@@ -33,8 +33,10 @@ namespace Xyglo
 
             string editFile = @"C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\Friendlier.cs";
             //editFile = @"C:\FinanceIT\FiRE\Server\scripts\appSchemaInstall.ksh";
+            //editFile = @"C:\appSchemaInstall.ksh";
 
             Friendlier friendlier = new Friendlier(editFile);
+            //Friendlier friendlier = new Friendlier();
             friendlier.Run();
 
         }

@@ -37,17 +37,63 @@ namespace Xyglo
         /// <summary>
         /// Where the buffer is showing from
         /// </summary>
-        public int m_bufferShowStart = 0;
+        protected int m_bufferShowStart = 0;
+
+        /// <summary>
+        /// Get current buffer position
+        /// </summary>
+        /// <returns></returns>
+        public int getBufferShowStart()
+        {
+            return m_bufferShowStart;
+        }
+
+        /// <summary>
+        /// Set current buffer position
+        /// </summary>
+        /// <param name="bss"></param>
+        /// <returns></returns>
+        public void setBufferShowStart(int bss)
+        {
+            if (bss < m_fileBuffer.getLineCount())
+            {
+                m_bufferShowStart = bss;
+            }
+            else
+            {
+                System.Exception ex = new System.Exception("Cannot set buffershowstart to greater than buffer length (" + m_fileBuffer.getLineCount() + ")");
+                throw ex;
+            }
+        }
 
         /// <summary>
         /// Length of visible buffer
         /// </summary>
-        public int m_bufferShowLength = 20;
+        protected int m_bufferShowLength = 20;
+
+        /// <summary>
+        /// Get BufferShow length
+        /// </summary>
+        /// <returns></returns>
+        public int getBufferShowLength()
+        {
+            return m_bufferShowLength;
+        }
 
         /// <summary>
         /// Number of characters to show in a BufferView line
         /// </summary>
-        public int m_bufferShowWidth = 80;
+        protected int m_bufferShowWidth = 80;
+
+        /// <summary>
+        /// Accessor for BufferShowWidth
+        /// </summary>
+        /// <returns></returns>
+        public int getBufferShowWidth()
+        {
+            return m_bufferShowWidth;
+        }
+
         /// <summary>
         /// Current cursor coordinates in this BufferView
         /// </summary>
@@ -94,7 +140,22 @@ namespace Xyglo
         /// <param name="fp"></param>
         public void setCursorPosition(FilePosition fp)
         {
-            m_cursorPosition = fp;
+            //Logger.logMsg("setCursorPosition = " + fp.Y);
+
+            if (m_fileBuffer.getLineCount() == 0)
+            {
+                return;
+            }
+
+            if (fp.Y + m_bufferShowStart < m_fileBuffer.getLineCount())
+            {
+                m_cursorPosition = fp;
+            }
+            else
+            {
+                System.Exception ret = new System.Exception("Cannot set cursor past end of buffer");
+                throw ret;
+            }
         }
 
         /// <summary>
@@ -143,10 +204,21 @@ namespace Xyglo
         /// <summary>
         /// The FileBuffer associated with this BufferView
         /// </summary>
-        public FileBuffer m_fileBuffer;
+        protected FileBuffer m_fileBuffer;
 
-        public BufferView()
+        /// <summary>
+        /// Get the associated FileBuffer
+        /// </summary>
+        /// <returns></returns>
+        public FileBuffer getFileBuffer()
         {
+            return m_fileBuffer;
+        }
+
+        public BufferView(float charWidth, float lineHeight)
+        {
+            m_charWidth = charWidth;
+            m_lineHeight = lineHeight;
         }
 
         public BufferView(BufferView rootBV, Vector3 position)

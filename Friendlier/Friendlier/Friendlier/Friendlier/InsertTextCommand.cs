@@ -45,61 +45,84 @@ namespace Xyglo
         /// </summary>
         public override FilePosition doCommand()
         {
-            // Fetch and store the line
-            //
-            string fetchLine = m_fileBuffer.getLine(m_startPos.Y);
-
             // Store the initial cursor position locally
             //
             FilePosition fp = m_startPos;
 
-            if (m_newLine)
+            // If this buffer is empty then insert a line and set it
+            //
+            if (m_fileBuffer.getLineCount() == 0)
             {
-                // Store the whole line in the text field for undo purposes
-                //
-                m_text = fetchLine;
-                fp.Y++;
-
-                if (m_startPos.X == 0)
-                {
-                    m_fileBuffer.insertLine(m_startPos.Y, "");
-                }
-                else if (fetchLine.Length == m_startPos.X)
-                {
-                    m_fileBuffer.insertLine(m_startPos.Y + 1, "");
-
-                    // Reset to zero on X
-                    //
-                    fp.X = 0;
-                }
-                else
-                {
-                    // Split line and create new one
-                    //
-                    string firstLine = fetchLine.Substring(0, m_startPos.X);
-                    string secondLine = fetchLine.Substring(m_startPos.X + 1, fetchLine.Length - (m_startPos.X + 1));
-
-                    // Set first
-                    //
-                    m_fileBuffer.setLine(m_startPos.Y, firstLine);
-
-                    // Insert second
-                    //
-                    m_fileBuffer.insertLine(m_startPos.Y + 1, secondLine);
-
-                    // Reset to zero on X
-                    //
-                    fp.X = 0;
-                }
+                m_fileBuffer.insertLine(m_startPos.Y, m_text);
+                fp.X += m_text.Length;
             }
             else
             {
-                // Insert the text at the cursor position
+                // Fetch and store the line
                 //
-                m_fileBuffer.setLine(m_startPos.Y, fetchLine.Insert(m_startPos.X, m_text));
+                string fetchLine = "";
 
-                fp.X += m_text.Length;
-                Logger.logMsg("writing " + m_text + " (length " + m_text.Length + ")");
+                if (m_startPos.Y < m_fileBuffer.getLineCount())
+                {
+                    fetchLine = m_fileBuffer.getLine(m_startPos.Y);
+                }
+                else
+                {
+                    m_newLine = true;
+                }
+                //catch (Exception /* e */)
+                //{
+                    //m_newLine = true;
+                //}
+
+                if (m_newLine)
+                {
+                    // Store the whole line in the text field for undo purposes
+                    //
+                    m_text = fetchLine;
+                    fp.Y++;
+
+                    if (m_startPos.X == 0)
+                    {
+                        m_fileBuffer.insertLine(m_startPos.Y, "");
+                    }
+                    else if (fetchLine.Length == m_startPos.X)
+                    {
+                        m_fileBuffer.insertLine(m_startPos.Y + 1, "");
+
+                        // Reset to zero on X
+                        //
+                        fp.X = 0;
+                    }
+                    else
+                    {
+                        // Split line and create new one
+                        //
+                        string firstLine = fetchLine.Substring(0, m_startPos.X);
+                        string secondLine = fetchLine.Substring(m_startPos.X + 1, fetchLine.Length - (m_startPos.X + 1));
+
+                        // Set first
+                        //
+                        m_fileBuffer.setLine(m_startPos.Y, firstLine);
+
+                        // Insert second
+                        //
+                        m_fileBuffer.insertLine(m_startPos.Y + 1, secondLine);
+
+                        // Reset to zero on X
+                        //
+                        fp.X = 0;
+                    }
+                }
+                else
+                {
+                    // Insert the text at the cursor position
+                    //
+                    m_fileBuffer.setLine(m_startPos.Y, fetchLine.Insert(m_startPos.X, m_text));
+
+                    fp.X += m_text.Length;
+                    Logger.logMsg("writing " + m_text + " (length " + m_text.Length + ")");
+                }
             }
 
             return fp;

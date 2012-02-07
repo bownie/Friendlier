@@ -15,7 +15,7 @@ namespace Xyglo
         public FilePosition(int x, int y)
         {
             X = x;
-            Y = x;
+            Y = y;
         }
 
         public FilePosition(FilePosition p)
@@ -81,9 +81,23 @@ namespace Xyglo
         int m_undoPosition = 0;
 
         /// <summary>
+        /// Undo watermark is reset when we save a file
+        /// </summary>
+        int m_undoWatermark = 0;
+
+        /// <summary>
         /// Number of lines we keep in memory
         /// </summary>
-        int m_lineLimit = 500;
+        int m_lineLimit = 5000;
+
+        /// <summary>
+        /// Default constructor
+        /// </summary>
+        public FileBuffer()
+        {
+            m_filename = "";
+            m_shortName = "";
+        }
 
         public FileBuffer(string filename)
         {
@@ -130,7 +144,7 @@ namespace Xyglo
         /// <returns></returns>
         public string getLine(int line)
         {
-            return  m_lines[line];
+            return m_lines[line];
         }
 
         /// <summary>
@@ -329,18 +343,30 @@ namespace Xyglo
         /// <returns></returns>
         public bool isModified()
         {
-            return (m_undoPosition != 0);
+            return (m_undoPosition != m_undoWatermark);
         }
 
         /// <summary>
         /// Save this FileBuffer
         /// </summary>
         /// <returns></returns>
-        public bool save()
+        public void save()
         {
-            return true;
-        }
+            Logger.logMsg("Starting write file " + m_filename);
+            using (StreamWriter sw = new StreamWriter(m_filename))
+            {
+                foreach (string line in m_lines)
+                {
+                    sw.WriteLine(line);
+                }
+            }
 
+            Logger.logMsg("Completed file write");
+
+            // Reset this to make the file of unmodified status but keep the undo stack as is
+            //
+            m_undoWatermark = m_undoPosition;
+        }
     }
 }
 

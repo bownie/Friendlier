@@ -14,7 +14,7 @@
     <XnaFrameworkVersion>v4.0</XnaFrameworkVersion>
     <XnaPlatform>Windows</XnaPlatform>
     <XnaProfile>HiDef</XnaProfile>
-    <XnaCrossPlatformGroupID>c2c2e277-6fb8-4f66-be97-6b600a4f7f1f</XnaCrossPlatformGroupID>
+    <XnaCrossPlatformGroupID>8e10573d-40b5-4360-ab22-5406bdc08ec8</XnaCrossPlatformGroupID>
     <XnaOutputType>Game</XnaOutputType>
     <ApplicationIcon>Game.ico</ApplicationIcon>
     <Thumbnail>GameThumbnail.png</Thumbnail>
@@ -60,8 +60,9 @@
     <XnaCompressContent>true</XnaCompressContent>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Contracts">
-      <HintPath>..\..\Quickgraph\Microsoft.Contracts.dll</HintPath>
+    <Reference Include="Microsoft.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\QuickGraph\Microsoft.Contracts.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Xna.Framework, Version=4.0.0.0, Culture=neutral, PublicKeyToken=842cf8be1de50553, processorArchitecture=x86">
       <Private>False</Private>
@@ -94,10 +95,10 @@
       <Private>False</Private>
     </Reference>
     <Reference Include="QuickGraph">
-      <HintPath>..\..\Quickgraph\QuickGraph.dll</HintPath>
+      <HintPath>..\..\QuickGraph\QuickGraph.dll</HintPath>
     </Reference>
     <Reference Include="QuickGraph.Graphviz">
-      <HintPath>..\..\Quickgraph\QuickGraph.Graphviz.dll</HintPath>
+      <HintPath>..\..\QuickGraph\QuickGraph.Graphviz.dll</HintPath>
     </Reference>
     <Reference Include="System">
       <Private>False</Private>
@@ -121,8 +122,10 @@
     <Compile Include="Command.cs" />
     <Compile Include="DeleteTextCommand.cs" />
     <Compile Include="FileBuffer.cs" />
-    <Compile Include="FileRenderer.cs" />
-    <Compile Include="Friendlier.cs" />
+    <Compile Include="FileSystemFile.cs" />
+    <Compile Include="FileSystemObject.cs" />
+    <Compile Include="FileSystemView.cs" />
+    <Compile Include="FontManager.cs" />
     <Compile Include="InsertTextCommand.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="ModelBuilder.cs" />
@@ -130,8 +133,10 @@
     <Compile Include="ModelItem.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="Friendlier.cs" />
     <Compile Include="Quad.cs" />
     <Compile Include="ReplaceTextCommand.cs" />
+    <Compile Include="Shapes.cs" />
     <Compile Include="SnippetFactory.cs" />
     <Compile Include="TextSnippet.cs" />
     <Compile Include="TreeBuilder.cs" />

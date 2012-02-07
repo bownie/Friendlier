@@ -9,9 +9,7 @@ namespace Xyglo
     {
         public static void logMsg(string message)
         {
-            //Console.WriteLine(String.Format("{0:s}", DateTime.Now) + " - " +  message);
-            Console.WriteLine(message);
+            Console.WriteLine(/* String.Format("{0:s}", DateTime.Now) + " - " + */ message);
         }
     }
 }
-

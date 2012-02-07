@@ -1,0 +1,24 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+
+namespace Xyglo
+{
+    public class FileSystemFile : FileSystemObject
+    {
+        public FileSystemFile() : base ("")
+        {
+            this.m_name = "";
+            this.m_type = FileSystemObject.FileSystemObjectType.File;
+        }
+
+        public FileSystemFile(string name) : base (name)
+        {
+            this.m_type = FileSystemObject.FileSystemObjectType.File;
+        }
+
+     
+
+    }
+}
