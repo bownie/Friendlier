@@ -255,7 +255,7 @@ namespace Xyglo
 
             
             //InitGraphicsMode(1000, 600, false);
-            InitGraphicsMode(900, 600, false);
+            InitGraphicsMode(800, 500, false);
             //InitGraphicsMode(1920, 1080, true);
             
 #if WINDOWS_PHONE
@@ -320,7 +320,7 @@ namespace Xyglo
         {
             // Initialise and load fonts into our Content context by family.
             //
-            FontManager.initialise(Content, "Lucida Sans Typewriter");
+            FontManager.initialise(Content, "Courier New");
 
             // Create a new SpriteBatch, which can be used to draw textures.
             m_spriteBatch = new SpriteBatch(m_graphics.GraphicsDevice);
@@ -346,7 +346,7 @@ namespace Xyglo
 
             // Text size has to be scaled to actual font size
             //
-            m_textSize = 1.0f; // (float)((int)(1400.0f / (float)(m_spriteFont.LineSpacing))) / 100.0f;
+            m_textSize = (float)((int)(1400.0f / (float)(m_spriteFont.LineSpacing))) / 100.0f;
 
             Logger.logMsg("You must get these three variables correct for each position to avoid nasty looking fonts:");
             Logger.logMsg("Zoom level = " + m_zoomLevel);
