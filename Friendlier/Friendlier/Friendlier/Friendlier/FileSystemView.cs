@@ -19,9 +19,18 @@ namespace Xyglo
             return m_path;
         }
 
+        // Reset to this directory and test for directory and file access at this level
+        //
+        public void setDirectory(string directory)
+        {
+            m_path = directory;
+            scanDirectory();
+        }
+
         //protected Hashtable m_directoryTree = new Hashtable();
 
         protected DirectoryInfo m_directoryInfo;
+        protected FileInfo m_fileInfo;
 
         public DirectoryInfo getDirectoryInfo()
         {
@@ -37,7 +46,7 @@ namespace Xyglo
             m_position = position;
             m_lineHeight = lineHeight;
             m_charWidth = charWidth;
-            scanDirectory(path);
+            scanDirectory();
         }
 
         /// <summary>
@@ -58,9 +67,12 @@ namespace Xyglo
             return m_directoryInfo.Parent;
         }
 
-        protected void scanDirectory(string path)
+        protected void scanDirectory()
         {
-            m_directoryInfo = new DirectoryInfo(path);
+            // Attempt to get Directory and File info for this path
+            //
+            m_directoryInfo = new DirectoryInfo(m_path);
+            m_fileInfo = new FileInfo(m_path);
         }
 
         Vector3 m_position;

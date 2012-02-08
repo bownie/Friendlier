@@ -70,6 +70,13 @@ namespace Xyglo
     public class FileBuffer
     {
         public string m_filename;
+
+        public string getFilepath()
+        {
+            return m_filename;
+        }
+
+
         public string m_shortName;
 
         List<string> m_lines = new List<string>();

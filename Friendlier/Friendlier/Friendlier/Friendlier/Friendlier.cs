@@ -255,9 +255,9 @@ namespace Xyglo
 
             
             //InitGraphicsMode(1000, 600, false);
-            InitGraphicsMode(800, 500, false);
             //InitGraphicsMode(1920, 1080, true);
-            
+            InitGraphicsMode(800, 500, false);
+           
 #if WINDOWS_PHONE
             TargetElapsedTime = TimeSpan.FromTicks(333333);
             graphics.IsFullScreen = true;
@@ -312,19 +312,8 @@ namespace Xyglo
             return false;
         }
 
-        /// <summary>
-        /// LoadContent will be called once per game and is the place to load
-        /// all of your content.
-        /// </summary>
-        protected override void LoadContent()
+        protected void setSpriteFont()
         {
-            // Initialise and load fonts into our Content context by family.
-            //
-            FontManager.initialise(Content, "Courier New");
-
-            // Create a new SpriteBatch, which can be used to draw textures.
-            m_spriteBatch = new SpriteBatch(m_graphics.GraphicsDevice);
-
             // Font loading
             //
             if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
@@ -353,6 +342,33 @@ namespace Xyglo
             Logger.logMsg("Line spacing = " + m_spriteFont.LineSpacing);
             Logger.logMsg("Text Size = " + m_textSize);
 
+            // Store these sizes and positions
+            //
+            m_charWidth = m_spriteFont.MeasureString("X").X * m_textSize;
+            m_lineHeight = m_spriteFont.MeasureString("X").Y * m_textSize;
+
+        }
+
+
+        /// <summary>
+        /// LoadContent will be called once per game and is the place to load
+        /// all of your content.
+        /// </summary>
+        protected override void LoadContent()
+        {
+            InitGraphicsMode(800, 500, false);
+
+            // Initialise and load fonts into our Content context by family.
+            //
+            FontManager.initialise(Content, "Courier New");
+
+            // Create a new SpriteBatch, which can be used to draw textures.
+            m_spriteBatch = new SpriteBatch(m_graphics.GraphicsDevice);
+
+            // Set up the SpriteFont for the chosen resolution
+            //
+            setSpriteFont();
+
             // Create some textures
             //
             //
@@ -377,11 +393,6 @@ namespace Xyglo
             m_lineEffect.TextureEnabled = false;
             m_lineEffect.DiffuseColor = Vector3.One;
             m_lineEffect.World = Matrix.Identity;
-
-            // Store these sizes and positions
-            //
-            m_charWidth = m_spriteFont.MeasureString("X").X * m_textSize;
-            m_lineHeight = m_spriteFont.MeasureString("X").Y * m_textSize;
 
             // Create the overlay SpriteBatch
             //
@@ -518,6 +529,24 @@ namespace Xyglo
                 m_rotations.Z += MathHelper.Pi * 2;
         }
 
+        // Set up the file save mode
+        //
+        protected void selectSaveFile()
+        {
+            m_state = FriendlierState.FileSaveAs;
+
+            // Set temporary bird's eye view
+            //
+            Vector3 newPosition = m_eye;
+            newPosition.Z = 600.0f;
+
+            // Fly there
+            //
+            flyToPosition(newPosition);
+
+        }
+
+
         /// <summary>
         /// Ensure the cursor is within the boundaries set by the file and not floating in space
         /// /// </summary>
@@ -631,28 +660,48 @@ namespace Xyglo
 
             if (checkKeyState(Keys.Up, gameTime))
             {
-                if (m_ctrlDown)
+                if (m_state == FriendlierState.FileSaveAs)
                 {
-                    // Add a new BufferView above current position
-                    //
-                    addBufferView(BufferView.BufferPosition.Above);
+                    if (m_directoryHighlight > 0)
+                    {
+                        m_directoryHighlight--;
+                    }
                 }
                 else
                 {
-                    moveCursorUp(false);
+                    if (m_ctrlDown)
+                    {
+                        // Add a new BufferView above current position
+                        //
+                        addBufferView(BufferView.BufferPosition.Above);
+                    }
+                    else
+                    {
+                        moveCursorUp(false);
+                    }
                 }
             }
             else if (checkKeyState(Keys.Down, gameTime))
             {
-                if (m_ctrlDown)
+                if (m_state == FriendlierState.FileSaveAs)
                 {
-                    // Add a new BufferView below current position
-                    //
-                    addBufferView(BufferView.BufferPosition.Below);
+                    if (m_directoryHighlight < m_fileSystemView.getDirectoryInfo().GetDirectories().Length)
+                    {
+                        m_directoryHighlight++;
+                    }
                 }
                 else
                 {
-                    moveCursorDown(false);
+                    if (m_ctrlDown)
+                    {
+                        // Add a new BufferView below current position
+                        //
+                        addBufferView(BufferView.BufferPosition.Below);
+                    }
+                    else
+                    {
+                        moveCursorDown(false);
+                    }
                 }
             }
             else if (checkKeyState(Keys.Left, gameTime))
@@ -681,30 +730,55 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.Right, gameTime))
             {
-                if (m_ctrlDown)
+                if (m_state == FriendlierState.FileSaveAs)
                 {
-                    // Add a new BufferView to the right of current position
+                    // If we're not at the root directory
                     //
-                    addBufferView(BufferView.BufferPosition.Right);
+                    if (m_directoryHighlight > 1)
+                    {
+                        string subDirectory = "";
+
+                        // Set the directory to the sub directory and reset the highlighter
+                        //
+                        try
+                        {
+                            subDirectory = m_fileSystemView.getDirectoryInfo().GetDirectories()[m_directoryHighlight - 1].FullName;
+                            m_fileSystemView.setDirectory(subDirectory);
+                            m_directoryHighlight = 0;
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine("Cannot access " + subDirectory + " : " + e.Message);
+                        }
+                    }
                 }
                 else
                 {
-                    if (m_activeBufferView.getCursorPosition().X < m_activeBufferView.getBufferShowWidth())
+                    if (m_ctrlDown)
                     {
-
-                        FilePosition fp = m_activeBufferView.getCursorPosition();
-                        string line = m_activeBufferView.getFileBuffer().getLine(getActiveCursorPosition().Y);
-                        if (fp.X < line.Length)
-                        {
-                            fp.X++;
-                            m_activeBufferView.setCursorPosition(fp);
-                        }
-                        else
-                        {
-                            moveCursorDown(true);
-                        }
+                        // Add a new BufferView to the right of current position
+                        //
+                        addBufferView(BufferView.BufferPosition.Right);
                     }
-                    fixCursor();
+                    else
+                    {
+                        if (m_activeBufferView.getCursorPosition().X < m_activeBufferView.getBufferShowWidth())
+                        {
+
+                            FilePosition fp = m_activeBufferView.getCursorPosition();
+                            string line = m_activeBufferView.getFileBuffer().getLine(getActiveCursorPosition().Y);
+                            if (fp.X < line.Length)
+                            {
+                                fp.X++;
+                                m_activeBufferView.setCursorPosition(fp);
+                            }
+                            else
+                            {
+                                moveCursorDown(true);
+                            }
+                        }
+                        fixCursor();
+                    }
                 }
             }
             else if (checkKeyState(Keys.End, gameTime))
@@ -786,10 +860,12 @@ namespace Xyglo
             else if (checkKeyState(Keys.F3, gameTime))
             {
                 InitGraphicsMode(1920, 1080, true);
+                setSpriteFont();
             }
             else if (checkKeyState(Keys.F4, gameTime))
             {
                 InitGraphicsMode(1000, 600, false );
+                setSpriteFont();
             }
             else if (checkKeyState(Keys.F5, gameTime))
             {
@@ -939,19 +1015,38 @@ namespace Xyglo
                             {
                                 if (m_confirmState == ConfirmState.FileSave)
                                 {
-                                    // Attempt save
+                                    // Select a file path if we need one
                                     //
-                                    m_activeBufferView.getFileBuffer().save();
+                                    if (m_activeBufferView.getFileBuffer().getFilepath() == "")
+                                    {
+                                        selectSaveFile();
+                                    }
+                                    else
+                                    {
+                                        // Attempt save
+                                        //
+                                        m_activeBufferView.getFileBuffer().save();
 
-                                    // Save has completed without error
-                                    //
-                                    m_temporaryMessage = "[Saved]";
+                                        // Save has completed without error
+                                        //
+                                        m_temporaryMessage = "[Saved]";
+                                        m_state = FriendlierState.TextEditing;
+                                    }
                                 }
                                 else if (m_confirmState == ConfirmState.FileSaveCancel)
                                 {
                                     foreach (FileBuffer fb in m_fileBuffers)
                                     {
-                                        fb.save();
+                                        // Select a file path if we need one
+                                        //
+                                        if (fb.getFilepath() == "")
+                                        {
+                                            selectSaveFile();
+                                        }
+                                        else
+                                        {
+                                            fb.save();
+                                        }
                                     }
 
                                     m_temporaryMessage = "[Saved.  Exiting.]";
@@ -1747,21 +1842,28 @@ namespace Xyglo
 
             // Draw the directory viewer
             //
-            drawFileViews();
+            //drawFileViews();
 
-            m_spriteBatch.End();
-
-            // Draw the Overlay HUD
+            // If we're choosing a file then
             //
-            drawOverlay();
+            if (m_state == FriendlierState.FileSaveAs)
+            {
+                drawDirectoryChooser();
+                m_spriteBatch.End();
+            }
+            else
+            {
+                m_spriteBatch.End();
 
-            // Cursor and cursor highlight
-            //
-            drawCursor(m_cursorCoords, gameTime);
-            drawHighlight(gameTime);
+                // Draw the Overlay HUD
+                //
+                drawOverlay();
 
-//            DebugShapeRenderer.Draw(gameTime, m_viewMatrix, m_projection);
-
+                // Cursor and cursor highlight
+                //
+                drawCursor(m_cursorCoords, gameTime);
+                drawHighlight(gameTime);
+            }
 
             base.Draw(gameTime);
         }
@@ -1773,6 +1875,7 @@ namespace Xyglo
 
         protected FileSystemView m_fileSystemView;
 
+        /*
         protected void drawFileViews()
         {
             FileInfo[] fileInfo = m_fileSystemView.getDirectoryInfo().GetFiles();
@@ -1818,7 +1921,7 @@ namespace Xyglo
                 yPosition += m_lineHeight * 0.8f;
             } 
         }
-
+        */
 
         /// <summary>
         /// Draw the HUD Overlay for the editor
@@ -1918,8 +2021,9 @@ namespace Xyglo
 
             // http://forums.create.msdn.com/forums/p/61995/381650.aspx
             //
-            m_overlaySpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend);
+            //m_overlaySpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend);
             //m_overlaySpriteBatch.Begin(SpriteSortMode.FrontToBack, BlendState.NonPremultiplied, SamplerState.LinearWrap, DepthStencilState.None,RasterizerState.CullCounterClockwise);
+            m_overlaySpriteBatch.Begin();
 
             // hardcode the font size to 1.0f so it looks nice
             //
@@ -1961,6 +2065,68 @@ namespace Xyglo
             //DebugShapeRenderer.AddBoundingBox(new BoundingBox(v1, v2), m_activeBufferView.m_cursorColour);
         }
 
+        int m_directoryHighlight = 0;
+
+        protected void drawDirectoryChooser()
+        {
+            // We only draw this if we've finished moving
+            //
+            if (m_eye != m_newEyePosition)
+                return;
+
+            //FileInfo[] fileInfo = m_fileSystemView.getDirectoryInfo().GetFiles();
+            DirectoryInfo[] dirInfo = m_fileSystemView.getDirectoryInfo().GetDirectories();
+
+            Color dirColour = Color.White;
+            Color highlightColour = Color.LightGreen;
+
+            Vector2 lineOrigin = new Vector2();
+            string line;
+            float yPosition = 0.0f;
+
+            Vector3 startPosition = m_activeBufferView.getPosition();
+            startPosition.X += 50.0f;
+
+            line = m_fileSystemView.getPath();
+            m_spriteBatch.DrawString(m_spriteFont, line, new Vector2(startPosition.X, startPosition.Y), (m_directoryHighlight == 0 ? highlightColour : dirColour), 0, lineOrigin, m_textSize * 2.0f, 0, 0);
+
+            yPosition += m_lineHeight * 3.0f;
+
+            int i = 1;
+            foreach (DirectoryInfo d in dirInfo)
+            {
+                line = "[" + d.Name + "]";
+                m_spriteBatch.DrawString(m_spriteFont,
+                                         line,
+                                         new Vector2(startPosition.X, startPosition.Y + yPosition),
+                                         (i++ == m_directoryHighlight ? highlightColour : dirColour),
+                                         0,
+                                         lineOrigin,
+                                         m_textSize * 1.5f,
+                                         0, 0);
+                yPosition += m_lineHeight * 1.5f;
+            }
+
+            /*
+            foreach (FileInfo f in fileInfo)
+            {
+                line = f.Name; // +"(" + f.Length + ")" + f.CreationTime.ToString();
+
+                feather = new Rectangle((int)(viewSpaceTextPosition.X), (int)(viewSpaceTextPosition.Y + yPosition), 1, 7);
+                m_spriteBatch.DrawString(m_spriteFont, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), fileColour, 0, lineOrigin, m_textSize * 0.8f, 0, 0);
+                //m_spriteBatch.Draw(m_flatTexture, //
+                //m_spriteBatch.Draw(m_flatTexture, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), feather, dirColour, (float)(Math.PI) / 4.0f, lineOrigin, SpriteEffects.None, 0);
+                m_spriteBatch.Draw(m_flatTexture, feather, null, Color.DarkGreen, (float)(Math.PI / 4), lineOrigin, SpriteEffects.None, 0.0f);
+
+                //m_spriteBatch.Draw(m_flatTexture, feater, null, 
+
+                yPosition += m_lineHeight * 0.8f;
+            }
+             * */
+
+            //m_spriteBatch.End();
+        }
+
         /// <summary>
         /// Draw a BufferView
         /// </summary>
@@ -1972,7 +2138,12 @@ namespace Xyglo
 
             Color bufferColour = view.m_textColour;
 
-            if (view == m_activeBufferView)
+            if (m_state == FriendlierState.FileSaveAs)
+            {
+                Color fadeColour = new Color(100, 100 ,100, 100);
+                bufferColour = fadeColour;
+            }
+            else if (view == m_activeBufferView)
             {
                 bufferColour = Color.White;
             }
