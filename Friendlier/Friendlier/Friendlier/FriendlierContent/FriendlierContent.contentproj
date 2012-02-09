@@ -42,8 +42,8 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Courier New.spritefont">
-      <Name>Courier New</Name>
+    <Compile Include="Courier New_window.spritefont">
+      <Name>Courier New_window</Name>
       <Importer>FontDescriptionImporter</Importer>
       <Processor>FontDescriptionProcessor</Processor>
       <SubType>Designer</SubType>
@@ -64,8 +64,8 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Courier New Large.spritefont">
-      <Name>Courier New Large</Name>
+    <Compile Include="Courier New_fullScreen.spritefont">
+      <Name>Courier New_fullScreen</Name>
       <Importer>FontDescriptionImporter</Importer>
       <Processor>FontDescriptionProcessor</Processor>
       <SubType>Designer</SubType>
@@ -88,6 +88,13 @@
   <ItemGroup>
     <Compile Include="Lucida Sans Typewriter_overlay.spritefont">
       <Name>Lucida Sans Typewriter_overlay</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>FontDescriptionProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Courier New_overlay.spritefont">
+      <Name>Courier New_overlay</Name>
       <Importer>FontDescriptionImporter</Importer>
       <Processor>FontDescriptionProcessor</Processor>
     </Compile>
