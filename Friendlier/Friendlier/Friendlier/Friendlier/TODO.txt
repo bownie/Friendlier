@@ -1,7 +1,5 @@
 
-- Saving
 - Loading and File Selector/Directory traversal
-- New file
 - Packaging
 - Licensing
 - Completing editing and undo
@@ -26,3 +24,5 @@ DONE
 - Alpha blending fonts / darkening and name overlay when zoomed out [DONE]
 - keyboard support?  [DONE for the moment - hardcoded]
 - screen mode toggle (full screen/small) [DONE]
+- Saving [DONE]
+- New file [DONE]
