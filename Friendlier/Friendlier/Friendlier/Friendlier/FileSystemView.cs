@@ -67,6 +67,13 @@ namespace Xyglo
             return m_directoryInfo.Parent;
         }
 
+        // Get total number of directories and files
+        //
+        public int getDirectoryLength()
+        {
+            return (m_directoryInfo.GetDirectories().Length + m_directoryInfo.GetFiles().Length);
+        }
+
         protected void scanDirectory()
         {
             // Attempt to get Directory and File info for this path

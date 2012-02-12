@@ -7,9 +7,28 @@ namespace Xyglo
 {
     public class TextSnippet
     {
+        // Make this public to avoid 
         public List<string> m_lines = new List<string>();
-        public FilePosition m_startPoint;
-        public int m_linesDeleted = 0;
+
+        //protected FilePosition m_startPoint;
+
+        protected int m_linesDeleted = 0;
+
+        public int getLinesDeleted()
+        {
+            return m_linesDeleted;
+        }
+
+        public void setLinesDeleted(int lines)
+        {
+            m_linesDeleted = lines;
+        }
+
+        public void incrementLinesDeleted(int increment)
+        {
+            m_linesDeleted += increment;
+        }
+
         protected int m_snippetFactoryPosition = 0;
 
         public TextSnippet()
@@ -32,21 +51,17 @@ namespace Xyglo
             m_snippetFactoryPosition = position;
         }
 
-
-        /*
         /// <summary>
         /// Clear down this TextSnippet ready for re-use
         /// </summary>
         public void clear()
         {
             m_lines.Clear();
-            m_snippetFactoryPosition = -1;
+            //m_snippetFactoryPosition = -1;
             m_linesDeleted = 0;
-            m_startPoint.X = 0;
-            m_startPoint.Y = 0;
+            //m_startPoint.X = 0;
+            //m_startPoint.Y = 0;
         }
-         * */
-
 
         /// <summary>
         /// Set this snippet to a single line - remove any extra lines we've already stored in it

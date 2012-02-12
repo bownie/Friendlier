@@ -188,6 +188,11 @@ namespace Xyglo
         string m_temporaryMessage = "";
 
         /// <summary>
+        /// End time for the temporary message
+        /// </summary>
+        double m_temporaryMessageEndTime;
+
+        /// <summary>
         /// Texture for a Directory Node
         /// </summary>
         Texture2D m_dirNodeTexture;
@@ -254,9 +259,9 @@ namespace Xyglo
             //pp.BackBufferFormat = SurfaceFormat.
 
             
-            //InitGraphicsMode(1000, 600, false);
+            InitGraphicsMode(960, 768, false);
             //InitGraphicsMode(1920, 1080, true);
-            InitGraphicsMode(800, 500, false);
+            //InitGraphicsMode(800, 500, false);
            
 #if WINDOWS_PHONE
             TargetElapsedTime = TimeSpan.FromTicks(333333);
@@ -312,18 +317,21 @@ namespace Xyglo
             return false;
         }
 
+        /// <summary>
+        /// Set the current main display SpriteFont to something in keeping with the resolution and reset some important variables.
+        /// </summary>
         protected void setSpriteFont()
         {
             // Font loading
             //
             if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
             {
-                Logger.logMsg("Using Small Font");
+                Logger.logMsg("Friendlier:setSpriteFont() - using Window font as default");
                 m_spriteFont = FontManager.getWindowFont();
             }
             else
             {
-                Logger.logMsg("Using Large Font");
+                Logger.logMsg("Friendlier:setSpriteFont() - using Full Screen font as default");
                 m_spriteFont = FontManager.getFullScreenFont();
             }
 
@@ -335,12 +343,15 @@ namespace Xyglo
 
             // Text size has to be scaled to actual font size
             //
-            m_textSize = (float)((int)(1400.0f / (float)(m_spriteFont.LineSpacing))) / 100.0f;
+            // NEED THE ASPECT RATIO IN HERE
+            //m_textSize = (float)((int)(1400.0f / (float)(m_spriteFont.LineSpacing))) / 100.0f;
 
-            Logger.logMsg("You must get these three variables correct for each position to avoid nasty looking fonts:");
-            Logger.logMsg("Zoom level = " + m_zoomLevel);
-            Logger.logMsg("Line spacing = " + m_spriteFont.LineSpacing);
-            Logger.logMsg("Text Size = " + m_textSize);
+            m_textSize = 8.0f / (float)(m_spriteFont.LineSpacing) * GraphicsDevice.Viewport.AspectRatio;
+
+            Logger.logMsg("Friendlier:setSpriteFont() - you must get these three variables correct for each position to avoid nasty looking fonts:");
+            Logger.logMsg("Friendlier:setSpriteFont() - zoom level = " + m_zoomLevel);
+            Logger.logMsg("Friendlier:setSpriteFont() - setting line spacing = " + m_spriteFont.LineSpacing);
+            Logger.logMsg("Friendlier:setSpriteFont() - setting text size = " + m_textSize);
 
             // Store these sizes and positions
             //
@@ -356,11 +367,11 @@ namespace Xyglo
         /// </summary>
         protected override void LoadContent()
         {
-            InitGraphicsMode(800, 500, false);
-
             // Initialise and load fonts into our Content context by family.
             //
-            FontManager.initialise(Content, "Courier New");
+            //FontManager.initialise(Content, "Lucida Sans Typewriter");
+            //FontManager.initialise(Content, "Sax Mono");
+            FontManager.initialise(Content, "Bitstream Vera Sans Mono");
 
             // Create a new SpriteBatch, which can be used to draw textures.
             m_spriteBatch = new SpriteBatch(m_graphics.GraphicsDevice);
@@ -467,18 +478,18 @@ namespace Xyglo
                 return;
             }
 
-            Logger.logMsg("Active buffer view is " + m_activeBufferViewId);
+            Logger.logMsg("Friendlier:setActiveBuffer() - active buffer view is " + m_activeBufferViewId);
 
             Vector3 eyePos = m_activeBufferView.getEyePosition();
             eyePos.Z = m_zoomLevel;
 
             flyToPosition(eyePos);
-            //m_eye = m_activeBufferView.getEyePosition();
-            //m_target = m_activeBufferView.getLookPosition();
 
-            Logger.logMsg("Buffer position = " + m_activeBufferView.getPosition());
-            Logger.logMsg("Look position = " + m_target);
-            Logger.logMsg("Eye position = " + m_eye);
+#if ACTIVE_BUFFER_DEBUG
+            Logger.logMsg("Friendlier:setActiveBuffer() - buffer position = " + m_activeBufferView.getPosition());
+            Logger.logMsg("Friendlier:setActiveBuffer() - look position = " + m_target);
+            Logger.logMsg("Friendlier:setActiveBuffer() - eye position = " + m_eye);
+#endif
         }
 
         protected void setFileView()
@@ -533,7 +544,10 @@ namespace Xyglo
         //
         protected void selectSaveFile()
         {
+            // Enter this mode and clear and existing message
+            //
             m_state = FriendlierState.FileSaveAs;
+            m_temporaryMessage = "";
 
             // Set temporary bird's eye view
             //
@@ -580,13 +594,16 @@ namespace Xyglo
             fp.Y = line - m_activeBufferView.getBufferShowStart();
 
             m_activeBufferView.setCursorPosition(fp);
-            Logger.logMsg("FIX CURSOR : BUFFERSTARTCOUNT = " + m_activeBufferView.getBufferShowStart() + ", CURSOR Y = " + m_activeBufferView.getCursorPosition().Y);
+
+#if CURSOR_DEBUG
+            Logger.logMsg("Friendlier:fixCursor() - bufferStartCount = " + m_activeBufferView.getBufferShowStart() + ", cursor Y = " + m_activeBufferView.getCursorPosition().Y);
+#endif
         }
 
         /// <summary>
         /// Ensure that buffers are saved
         /// </summary>
-        protected void checkExit()
+        protected void checkExit(GameTime gameTime)
         {
             // Firstly check for any unsaved buffers and warn
             //
@@ -602,7 +619,7 @@ namespace Xyglo
 
             if (unsaved)
             {
-                m_temporaryMessage = "[Unsaved Buffers.  Save?  Y/N/C]";
+                setTemporaryMessage("[Unsaved Buffers.  Save?  Y/N/C]", gameTime, 0);
                 m_confirmState = ConfirmState.FileSaveCancel;
             }
             else
@@ -623,7 +640,7 @@ namespace Xyglo
             if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
                 Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Escape))
             {
-                checkExit();
+                checkExit(gameTime);
             }
 
             // Control key state
@@ -685,7 +702,7 @@ namespace Xyglo
             {
                 if (m_state == FriendlierState.FileSaveAs)
                 {
-                    if (m_directoryHighlight < m_fileSystemView.getDirectoryInfo().GetDirectories().Length)
+                    if (m_directoryHighlight < m_fileSystemView.getDirectoryLength())
                     {
                         m_directoryHighlight++;
                     }
@@ -706,26 +723,48 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.Left, gameTime))
             {
-                if (m_ctrlDown)
+                if (m_state == FriendlierState.FileSaveAs)
                 {
-                    // Add a new BufferView to the left of current position
+                    string parDirectory = "";
+
+                    // Set the directory to the sub directory and reset the highlighter
                     //
-                    addBufferView(BufferView.BufferPosition.Left);
+                    try
+                    {
+                        DirectoryInfo [] testAccess = m_fileSystemView.getParent().GetDirectories();
+                        parDirectory = m_fileSystemView.getParent().FullName;
+                            
+                        m_fileSystemView.setDirectory(parDirectory);
+                        m_directoryHighlight = 0;
+                    }
+                    catch (Exception /*e*/)
+                    {
+                        setTemporaryMessage("Cannot access " + parDirectory , gameTime, 2);
+                    }
                 }
                 else
                 {
-                    if (m_activeBufferView.getCursorPosition().X > 0)
+                    if (m_ctrlDown)
                     {
-                        FilePosition fp = m_activeBufferView.getCursorPosition();
-                        fp.X--;
-                        m_activeBufferView.setCursorPosition(fp);
+                        // Add a new BufferView to the left of current position
+                        //
+                        addBufferView(BufferView.BufferPosition.Left);
                     }
                     else
                     {
-                        moveCursorUp(true);
-                    }
+                        if (m_activeBufferView.getCursorPosition().X > 0)
+                        {
+                            FilePosition fp = m_activeBufferView.getCursorPosition();
+                            fp.X--;
+                            m_activeBufferView.setCursorPosition(fp);
+                        }
+                        else
+                        {
+                            moveCursorUp(true);
+                        }
 
-                    fixCursor();
+                        fixCursor();
+                    }
                 }
             }
             else if (checkKeyState(Keys.Right, gameTime))
@@ -742,13 +781,14 @@ namespace Xyglo
                         //
                         try
                         {
+                            DirectoryInfo[] testAccess = m_fileSystemView.getDirectoryInfo().GetDirectories()[m_directoryHighlight - 1].GetDirectories();
                             subDirectory = m_fileSystemView.getDirectoryInfo().GetDirectories()[m_directoryHighlight - 1].FullName;
                             m_fileSystemView.setDirectory(subDirectory);
                             m_directoryHighlight = 0;
                         }
-                        catch (Exception e)
+                        catch (Exception /* e */)
                         {
-                            Console.WriteLine("Cannot access " + subDirectory + " : " + e.Message);
+                            setTemporaryMessage("Cannot access " + subDirectory.ToString(), gameTime, 2);
                         }
                     }
                 }
@@ -859,12 +899,19 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.F3, gameTime))
             {
-                InitGraphicsMode(1920, 1080, true);
+                if (!InitGraphicsMode(1920, 1080, true))
+                {
+                    if (!InitGraphicsMode(1280, 1024, true))
+                    {
+                        InitGraphicsMode(1024, 768, true);
+                    }
+                }
+
                 setSpriteFont();
             }
             else if (checkKeyState(Keys.F4, gameTime))
             {
-                InitGraphicsMode(1000, 600, false );
+                InitGraphicsMode(960, 768, false);
                 setSpriteFont();
             }
             else if (checkKeyState(Keys.F5, gameTime))
@@ -991,13 +1038,21 @@ namespace Xyglo
                             // We call the undo against the FileBuffer and this returns the cursor position
                             // resulting from this action.
                             //
-                            m_activeBufferView.setCursorPosition(m_activeBufferView.getFileBuffer().undo(1));
+                            if (m_activeBufferView.getFileBuffer().getUndoPosition() > 0)
+                            {
+                                m_activeBufferView.setCursorPosition(m_activeBufferView.getFileBuffer().undo(1));
+                            }
+                            else
+                            {
+                                //Logger.logMsg("Friendlier::Update() - nothing to undo");
+                                setTemporaryMessage("[NOUNDO]", gameTime, 0.3);
+                            }
                         }
-                        catch (Exception /* e */)
+                        catch (Exception e)
                         {
                             //System.Windows.Forms.MessageBox.Show("Undo stack is empty - " + e.Message);
-                            //Logger.logMsg("Got exception " + e.Message);
-                            m_temporaryMessage = "[NOUNDO]";
+                            Logger.logMsg("Friendlier::Update() - got exception " + e.Message);
+                            setTemporaryMessage("[NOUNDO]", gameTime, 2);
                         }
 
                         fixCursor();
@@ -1029,7 +1084,7 @@ namespace Xyglo
 
                                         // Save has completed without error
                                         //
-                                        m_temporaryMessage = "[Saved]";
+                                        setTemporaryMessage("[Saved]", gameTime, 2);
                                         m_state = FriendlierState.TextEditing;
                                     }
                                 }
@@ -1049,13 +1104,13 @@ namespace Xyglo
                                         }
                                     }
 
-                                    m_temporaryMessage = "[Saved.  Exiting.]";
+                                    setTemporaryMessage("[Saved.  Exiting.]", gameTime, 5);
                                     this.Exit();
                                 }
                             }
                             catch (Exception e)
                             {
-                                m_temporaryMessage = "[Save failed with \"" + e.Message + "\" ]";
+                                setTemporaryMessage("[Save failed with \"" + e.Message + "\" ]", gameTime, 5);
                             }
 
                             m_confirmState = ConfirmState.None;
@@ -1076,7 +1131,7 @@ namespace Xyglo
                         }
                         else if (checkKeyState(Keys.C, gameTime) && m_confirmState == ConfirmState.FileSaveCancel)
                         {
-                            m_temporaryMessage = "[Cancelled Quit]";
+                            setTemporaryMessage("[Cancelled Quit]", gameTime, 0);
                             m_confirmState = ConfirmState.None;
                         }
                     }
@@ -1085,7 +1140,7 @@ namespace Xyglo
                         {
                             if (checkKeyState(Keys.S, gameTime) && m_activeBufferView.getFileBuffer().isModified())
                             {
-                                m_temporaryMessage = "[Confirm Save? Y/N]";
+                                setTemporaryMessage("[Confirm Save? Y/N]", gameTime, 0);
                                 m_confirmState = ConfirmState.FileSave;
                             }
                             else if (checkKeyState(Keys.N, gameTime))
@@ -1427,6 +1482,28 @@ namespace Xyglo
             base.Update(gameTime);
 
         }
+
+        /// <summary>
+        /// Set a temporary message until a given end time (seconds into the future)
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="gameTime"></param>
+        protected void setTemporaryMessage(string message, GameTime gameTime, double seconds)
+        {
+            m_temporaryMessage = message;
+
+            if (seconds == 0)
+            {
+                seconds = 604800; // a week should be long enough to signal infinity
+            }
+
+            // Add on the current gameTime position
+            //
+            seconds += gameTime.TotalGameTime.TotalSeconds;
+
+            m_temporaryMessageEndTime = seconds;
+        }
+
 
         /// <summary>
         /// When moving up the BufferView 
@@ -1848,7 +1925,7 @@ namespace Xyglo
             //
             if (m_state == FriendlierState.FileSaveAs)
             {
-                drawDirectoryChooser();
+                drawDirectoryChooser(gameTime);
                 m_spriteBatch.End();
             }
             else
@@ -1857,7 +1934,7 @@ namespace Xyglo
 
                 // Draw the Overlay HUD
                 //
-                drawOverlay();
+                drawOverlay(gameTime);
 
                 // Cursor and cursor highlight
                 //
@@ -1926,7 +2003,7 @@ namespace Xyglo
         /// <summary>
         /// Draw the HUD Overlay for the editor
         /// </summary>
-        protected void drawOverlay()
+        protected void drawOverlay(GameTime gameTime)
         {
             string fileName = "";
             if (m_activeBufferView != null)
@@ -1967,9 +2044,13 @@ namespace Xyglo
                 fileName += " [ALT]";
             }
 
-            // Add any temporary message on to the end of the message
-            //
-            fileName += " " + m_temporaryMessage;
+            double dTS = gameTime.TotalGameTime.TotalSeconds;
+            if (dTS < m_temporaryMessageEndTime && m_temporaryMessage != "")
+            {
+                // Add any temporary message on to the end of the message
+                //
+                fileName += " " + m_temporaryMessage;
+            }
 
             // Convert lineHeight back to normal size by dividing by m_textSize modifier
             //
@@ -2065,19 +2146,23 @@ namespace Xyglo
             //DebugShapeRenderer.AddBoundingBox(new BoundingBox(v1, v2), m_activeBufferView.m_cursorColour);
         }
 
+        /// <summary>
+        /// Index of the currently highlighted directory in a directory picker
+        /// </summary>
         int m_directoryHighlight = 0;
 
-        protected void drawDirectoryChooser()
+        protected void drawDirectoryChooser(GameTime gameTime)
         {
             // We only draw this if we've finished moving
             //
             if (m_eye != m_newEyePosition)
                 return;
 
-            //FileInfo[] fileInfo = m_fileSystemView.getDirectoryInfo().GetFiles();
+            FileInfo[] fileInfo = m_fileSystemView.getDirectoryInfo().GetFiles();
             DirectoryInfo[] dirInfo = m_fileSystemView.getDirectoryInfo().GetDirectories();
 
             Color dirColour = Color.White;
+            Color fileColur = Color.DarkOrange;
             Color highlightColour = Color.LightGreen;
 
             Vector2 lineOrigin = new Vector2();
@@ -2092,39 +2177,64 @@ namespace Xyglo
 
             yPosition += m_lineHeight * 3.0f;
 
-            int i = 1;
+            float showPage = 12.0f; // rows before stepping down
+            int showOffset = (int)(((float)m_directoryHighlight) / showPage);
+
+            int lineNumber = 1;
             foreach (DirectoryInfo d in dirInfo)
             {
-                line = "[" + d.Name + "]";
+                if (lineNumber > m_directoryHighlight - 1
+                    && lineNumber < m_directoryHighlight + showPage )
+                {
+                    line = "[" + d.Name + "]";
+                    m_spriteBatch.DrawString(m_spriteFont,
+                                             line,
+                                             new Vector2(startPosition.X, startPosition.Y + yPosition),
+                                             (lineNumber + showOffset == m_directoryHighlight ? highlightColour : dirColour),
+                                             0,
+                                             lineOrigin,
+                                             m_textSize * 1.5f,
+                                             0, 0);
+                    yPosition += m_lineHeight * 1.5f;
+                }
+                lineNumber++;
+            }
+            
+            foreach (FileInfo f in fileInfo)
+            {
+                if (lineNumber > showOffset && lineNumber < showOffset + showPage)
+                {
+                    line = f.Name;
+                    m_spriteBatch.DrawString(m_spriteFont,
+                                             line,
+                                             new Vector2(startPosition.X, startPosition.Y + yPosition),
+                                             (lineNumber + showOffset == m_directoryHighlight ? highlightColour : fileColur),
+                                             0,
+                                             lineOrigin,
+                                             m_textSize * 1.5f,
+                                             0, 0);
+
+                    yPosition += m_lineHeight * 1.5f;
+                }
+                lineNumber++;
+            }
+
+
+            if (m_temporaryMessageEndTime > gameTime.TotalGameTime.TotalSeconds && m_temporaryMessage != "")
+            {
+                // Add any temporary message on to the end of the message
+                //
                 m_spriteBatch.DrawString(m_spriteFont,
-                                         line,
-                                         new Vector2(startPosition.X, startPosition.Y + yPosition),
-                                         (i++ == m_directoryHighlight ? highlightColour : dirColour),
+                                         m_temporaryMessage,
+                                         new Vector2(startPosition.X, startPosition.Y - 30.0f),
+                                         Color.LightGoldenrodYellow,
                                          0,
                                          lineOrigin,
                                          m_textSize * 1.5f,
-                                         0, 0);
-                yPosition += m_lineHeight * 1.5f;
+                                         0,
+                                         0);
             }
 
-            /*
-            foreach (FileInfo f in fileInfo)
-            {
-                line = f.Name; // +"(" + f.Length + ")" + f.CreationTime.ToString();
-
-                feather = new Rectangle((int)(viewSpaceTextPosition.X), (int)(viewSpaceTextPosition.Y + yPosition), 1, 7);
-                m_spriteBatch.DrawString(m_spriteFont, line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), fileColour, 0, lineOrigin, m_textSize * 0.8f, 0, 0);
-                //m_spriteBatch.Draw(m_flatTexture, //
-                //m_spriteBatch.Draw(m_flatTexture, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), feather, dirColour, (float)(Math.PI) / 4.0f, lineOrigin, SpriteEffects.None, 0);
-                m_spriteBatch.Draw(m_flatTexture, feather, null, Color.DarkGreen, (float)(Math.PI / 4), lineOrigin, SpriteEffects.None, 0.0f);
-
-                //m_spriteBatch.Draw(m_flatTexture, feater, null, 
-
-                yPosition += m_lineHeight * 0.8f;
-            }
-             * */
-
-            //m_spriteBatch.End();
         }
 
         /// <summary>
@@ -2235,6 +2345,12 @@ namespace Xyglo
                     //}
                 }
 
+                // Ensure that the highlight doens't jump over the end of the scrollbar
+                //
+                if (scrollStart + scrollLength > height)
+                {
+                    scrollStart = height - scrollLength;
+                }
 
                 Rectangle sb = new Rectangle(Convert.ToInt16(sbPos.X - m_textSize * 30.0f),
                                              Convert.ToInt16(sbPos.Y + scrollStart),

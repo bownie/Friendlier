@@ -151,11 +151,14 @@ namespace Xyglo
             {
                 m_cursorPosition = fp;
             }
+
+/*
             else
             {
                 System.Exception ret = new System.Exception("Cannot set cursor past end of buffer");
                 throw ret;
             }
+ * */
         }
 
         /// <summary>

@@ -85,7 +85,16 @@ namespace Xyglo
         /// <summary>
         /// Position in the undo/redo stack
         /// </summary>
-        int m_undoPosition = 0;
+        protected int m_undoPosition = 0;
+
+        /// <summary>
+        /// Fetch the current undo position
+        /// </summary>
+        /// <returns></returns>
+        public int getUndoPosition()
+        {
+            return m_undoPosition;
+        }
 
         /// <summary>
         /// Undo watermark is reset when we save a file
@@ -151,7 +160,14 @@ namespace Xyglo
         /// <returns></returns>
         public string getLine(int line)
         {
-            return m_lines[line];
+            if (line < m_lines.Count())
+            {
+                return m_lines[line];
+            }
+            else
+            {
+                throw new Exception("FileBuffer():getLine - cannot fetch line " + line);
+            }
         }
 
         /// <summary>
@@ -227,7 +243,7 @@ namespace Xyglo
         {
             if (m_undoPosition < m_commands.Count)
             {
-                Logger.logMsg("Clearing undo position");
+                Logger.logMsg("FileBuffer:tidyUndoStack() - clearing undo position from undo Position " + m_undoPosition + " to " + m_commands.Count);
                 for (int i = m_undoPosition; i < m_commands.Count; i++)
                 {
                     m_commands[i].Dispose();
@@ -240,6 +256,7 @@ namespace Xyglo
             //
             m_commands.Add(command);
             m_undoPosition = m_commands.Count;
+            Logger.logMsg("FileBuffer:tidyUndoStack() - added new command to undo stack - size is now " + m_commands.Count);
 
         }
 
@@ -322,6 +339,8 @@ namespace Xyglo
         {
             FilePosition fp = new FilePosition();
 
+            Logger.logMsg("FileBuffer::undo() - undo " + steps + " commands from position " + m_undoPosition);
+
             if (m_commands.Count >= steps && m_undoPosition >= 0)
             {
                 // Unwind the commands in order
@@ -335,13 +354,21 @@ namespace Xyglo
                 //
                 m_undoPosition -= steps;
 
-                Logger.logMsg("FileBuffer::undo() - undo position = " + m_undoPosition);
-                return fp;
+
             }
-            else
+
+#if UNDO_DEBUG
+            Logger.logMsg("FileBuffer::undo() - undo stack size is now " + m_commands.Count);
+            Logger.logMsg("FileBuffer::undo() - undo stack position is now " + m_undoPosition);
+#endif
+
+            return fp;
+            /*
+             * else
             {
                 throw new Exception("FileBuffer::undo() - not enough steps to undo");
             }
+             * */
         }
 
         /// <summary>

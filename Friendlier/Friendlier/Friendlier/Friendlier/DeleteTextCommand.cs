@@ -57,7 +57,7 @@ namespace Xyglo
 
                             // Remove next
                             m_fileBuffer.deleteLines(m_startPos.Y + 1, 1);
-                            m_snippet.m_linesDeleted++;
+                            m_snippet.incrementLinesDeleted(1);
                         }
                     }
                 }
@@ -69,7 +69,7 @@ namespace Xyglo
                     if (bufLine == "")
                     {
                         m_fileBuffer.deleteLines(m_startPos.Y, 1);
-                        m_snippet.m_linesDeleted++;
+                        m_snippet.incrementLinesDeleted(1);
                     }
                     else
                     {
@@ -88,9 +88,11 @@ namespace Xyglo
                 {
                     bufLine = m_fileBuffer.getLine(i);
 
+#if DELETE_COMMAND_DEBUG
                     // Add the whole bufLine to snippet
                     //
-                    Logger.logMsg("adding to snippet = " + bufLine);
+                    Logger.logMsg("DeleteTextCommand:doCommand() - adding a line to snippet - " + bufLine);
+#endif
 
                     m_snippet.m_lines.Add(bufLine);
 
@@ -109,6 +111,9 @@ namespace Xyglo
 
                 }
 
+#if DELETE_COMMAND_DEBUG
+                Logger.logMsg("DeleteTextCommand:doCommand() - snippet contains " + m_snippet.m_lines.Count());
+#endif
                 // Cut and append the current line and the last line and save to bufLine
                 //
                 bufLine = m_fileBuffer.getLine(m_startPos.Y).Substring(0, m_startPos.X);
@@ -121,7 +126,7 @@ namespace Xyglo
                 // Delete all the remaining lines
                 //
                 m_fileBuffer.deleteLines(m_startPos.Y + 1, m_endPos.Y - m_startPos.Y);
-                m_snippet.m_linesDeleted += Convert.ToInt16(m_endPos.Y - m_startPos.Y);
+                m_snippet.incrementLinesDeleted(Convert.ToInt16(m_endPos.Y - m_startPos.Y));
 
                 // Set the current line to our buffer
                 //
@@ -129,6 +134,9 @@ namespace Xyglo
 
             }
 
+#if DELETE_COMMAND_DEBUG
+            Logger.logMsg("DeleteTextCommand:doCommand() - snippet position is " + m_snippet.getSnippetFactoryPosition());
+#endif
             return m_startPos;
         }
 
@@ -137,24 +145,30 @@ namespace Xyglo
         /// </summary>
         public override FilePosition undoCommand()
         {
-            Logger.logMsg("m_linesDeleted = " + m_snippet.m_linesDeleted);
-
+#if DELETE_COMMAND_DEBUG
+            Logger.logMsg("DeleteTextCommand::undoCommand() - Lines to add " + m_snippet.getLinesDeleted());
+#endif
             // If we need to re-insert a line then do so
             //
-            for (int i = 0; i < m_snippet.m_linesDeleted; i++)
+            for (int i = 0; i < m_snippet.getLinesDeleted(); i++)
             {
-                Logger.logMsg("Inserted line at " + m_startPos.Y);
+#if DELETE_COMMAND_DEBUG
+                Logger.logMsg("DeleteTextCommand::undoCommand() - inserted line at Y position = " + m_startPos.Y);
+#endif
                 m_fileBuffer.insertLine(m_startPos.Y, "dummy");
             }
 
-            Logger.logMsg("snippet line count = " + m_snippet.m_lines.Count);
-
+#if DELETE_COMMAND_DEBUG
+            Logger.logMsg("DeleteTextCommand::undoCommand() - now overwriting " + m_snippet.m_lines.Count() + " lines");
+#endif
             // Now overwrite all the lines
             //
             int snippetLine = 0;
             for (int i = m_startPos.Y; i < m_startPos.Y + m_snippet.m_lines.Count; i++)
             {
-                Logger.logMsg("overwriting = " + snippetLine);
+#if DELETE_COMMAND_DEBUG
+                Logger.logMsg("DeleteTextCommand::undoCommand() - overwriting line " + i + " with " + snippetLine);
+#endif
                 m_fileBuffer.setLine(i, m_snippet.m_lines[snippetLine++]);
             }
 
@@ -168,12 +182,14 @@ namespace Xyglo
         /// </summary>
         public override void Dispose()
         {
-            SnippetFactory.returnSnippet(m_snippet);
-            Logger.logMsg("DeleteTextCommand Dispose()");
+            Logger.logMsg("DeleteTextCommand:Dispose() - returning snippet");
+
+            // At the moment this isn't working properly
+            //
+            //SnippetFactory.returnSnippet(m_snippet);
         }
 
         TextSnippet m_snippet = SnippetFactory.getSnippet();
         FileBuffer m_fileBuffer;
-
     }
 }
