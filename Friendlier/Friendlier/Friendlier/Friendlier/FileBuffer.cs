@@ -71,9 +71,23 @@ namespace Xyglo
     {
         public string m_filename;
 
+        /// <summary>
+        /// Get the full filepath
+        /// </summary>
+        /// <returns></returns>
         public string getFilepath()
         {
             return m_filename;
+        }
+
+        /// <summary>
+        /// Set the full file path
+        /// </summary>
+        /// <param name="filepath"></param>
+        public void setFilepath(string filepath)
+        {
+            m_filename = filepath;
+            fixPaths();
         }
 
 
@@ -119,16 +133,23 @@ namespace Xyglo
         {
             m_filename = filename;
 
-            // Convert all back slashes to forward ones just in case we're still using them
+            // Fix the paths properly
             //
-            m_shortName = filename.Replace('\\', '/');
-
-            int position = m_shortName.LastIndexOf('/') + 1;
-            m_shortName = m_shortName.Substring(position, m_shortName.Length - position);
+            fixPaths();
 
             // Load and buffer the file
             //
             loadFile();
+        }
+
+        protected void fixPaths()
+        {
+            // Convert all back slashes to forward ones just in case we're still using them
+            //
+            m_shortName = m_filename.Replace('\\', '/');
+
+            int position = m_shortName.LastIndexOf('/') + 1;
+            m_shortName = m_shortName.Substring(position, m_shortName.Length - position);
         }
         
         public string getShortFileName()

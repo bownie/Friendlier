@@ -19,6 +19,9 @@ namespace Xyglo
             Logger.logMsg("FontManager.initialise() - attempting to load fonts");
             try
             {
+                m_smallWindowFont = m_contentManager.Load<SpriteFont>(fontFamily + "_smallWindow");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + fontFamily + "_smallWindow");
+
                 m_windowFont = m_contentManager.Load<SpriteFont>(fontFamily + "_window");
                 Logger.logMsg("FontManager.initialise() - Loaded font " + fontFamily + "_window");
 
@@ -36,6 +39,7 @@ namespace Xyglo
 
         public static string m_fontFamily;
 
+        public static SpriteFont m_smallWindowFont;
         public static SpriteFont m_windowFont;
         public static SpriteFont m_fullScreenFont;
         public static SpriteFont m_overlayFont;
@@ -53,6 +57,11 @@ namespace Xyglo
         public static SpriteFont getOverlayFont()
         {
             return m_overlayFont;
+        }
+
+        public static SpriteFont getSmallWindowFont()
+        {
+            return m_smallWindowFont;
         }
     }
 }

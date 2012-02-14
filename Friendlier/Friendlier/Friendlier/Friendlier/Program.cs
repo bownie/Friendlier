@@ -38,7 +38,6 @@ namespace Xyglo
             Friendlier friendlier = new Friendlier(editFile);
             //Friendlier friendlier = new Friendlier();
             friendlier.Run();
-
         }
     }
 #endif

@@ -1,21 +1,20 @@
-
-- Loading and File Selector/Directory traversal
 - Packaging
 - Licensing
-- Completing editing and undo
+- Icons etc
+- Logging
+
+
+Advanced:
+- Log file view (attach and view)
+- System load meter
+
+For Later
+---------
 - Hud cursor position
 - Hud panner overview?
 - Hud Unsaved status better?
 - Hud file system positions?
-- Icons etc
-- Logging
-
-Advanced:
-
-- Log file view (attach and view)
 - Command line interface
-- Directory listings
-- System load meter
 
 DONE
 ----
@@ -26,3 +25,6 @@ DONE
 - screen mode toggle (full screen/small) [DONE]
 - Saving [DONE]
 - New file [DONE]
+- Loading and File Selector/Directory traversal [DONE]
+- Completing editing and undo [PARTIAL]
+- Directory listings [DONE]

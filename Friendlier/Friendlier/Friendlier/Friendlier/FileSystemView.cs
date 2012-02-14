@@ -100,6 +100,35 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Index of the currently highlighted directory in a directory picker
+        /// </summary>
+        protected int m_directoryHighlight = 0;
+
+        public int getHighlightIndex()
+        {
+            return m_directoryHighlight;
+        }
+
+        public void setHighlightIndex(int directoryHighlight)
+        {
+            m_directoryHighlight = directoryHighlight;
+        }
+
+        public void incrementHighlightIndex(int inc)
+        {
+            m_directoryHighlight += inc;
+        }
+
+        public string getHighlightedFile()
+        {
+            string file = m_directoryInfo.FullName;
+
+            // Now work out the directory or filename
+            //
+            return file;
+        }
+
+        /// <summary>
         /// Length of visible buffer
         /// </summary>
         protected int m_bufferShowLength = 20;
