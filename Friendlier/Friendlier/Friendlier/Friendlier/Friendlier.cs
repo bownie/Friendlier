@@ -273,6 +273,22 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Ensure that all the spacing of buffer views is corrected when the aspect ratio changes or resolutions change
+        /// significantly.
+        /// </summary>
+        protected void adjustBufferViews(float factor)
+        {
+            // Do something clever - we need to work out how to deduce positions of all the buffer views
+            //
+            Logger.logMsg("adjustBufferViews() - factor is " + factor);
+
+            foreach (BufferView view in m_bufferViews)
+            {
+                view.scale(1.0f / factor);
+            }
+        }
+
+        /// <summary>
         /// Attempt to set the display mode to the desired resolution.  Itterates through the display
         /// capabilities of the default graphics adapter to determine if the graphics adapter supports the
         /// requested resolution.  If so, the resolution is set and the function returns true.  If not,
@@ -283,6 +299,13 @@ namespace Xyglo
         /// <param name="bFullScreen">True if you wish to go to Full Screen, false for Windowed Mode.</param>
         private bool InitGraphicsMode(int iWidth, int iHeight, bool bFullScreen)
         {
+            float initialRatio = 0.0f;
+
+            if (GraphicsDevice != null)
+            {
+                initialRatio = GraphicsDevice.Viewport.AspectRatio;
+            }
+
             // If we aren't using a full screen mode, the height and width of the window can
             // be set to anything equal to or smaller than the actual screen size.
             if (bFullScreen == false)
@@ -294,6 +317,13 @@ namespace Xyglo
                     m_graphics.PreferredBackBufferHeight = iHeight;
                     m_graphics.IsFullScreen = bFullScreen;
                     m_graphics.ApplyChanges();
+
+                    // Ensure that all the spacing of bufferviews is correct according to
+                    // new factor
+                    if (initialRatio != 0)
+                    {
+                        adjustBufferViews(initialRatio / GraphicsDevice.Viewport.AspectRatio);
+                    }
                     return true;
                 }
             }
@@ -313,6 +343,14 @@ namespace Xyglo
                         m_graphics.PreferredBackBufferHeight = iHeight;
                         m_graphics.IsFullScreen = bFullScreen;
                         m_graphics.ApplyChanges();
+
+                        // Ensure that all the spacing of bufferviews is correct according to
+                        // new fector
+                        if (initialRatio != 0)
+                        {
+                            adjustBufferViews(initialRatio / GraphicsDevice.Viewport.AspectRatio);
+                        }
+
                         return true;
                     }
                 }
@@ -355,12 +393,13 @@ namespace Xyglo
             // NEED THE ASPECT RATIO IN HERE
             //m_textSize = (float)((int)(1400.0f / (float)(m_spriteFont.LineSpacing))) / 100.0f;
 
-            m_textSize = 8.0f / (float)(m_spriteFont.LineSpacing) * GraphicsDevice.Viewport.AspectRatio;
+            m_textSize = GraphicsDevice.Viewport.AspectRatio * 8.0f / (float)(m_spriteFont.LineSpacing) ;
 
             Logger.logMsg("Friendlier:setSpriteFont() - you must get these three variables correct for each position to avoid nasty looking fonts:");
             Logger.logMsg("Friendlier:setSpriteFont() - zoom level = " + m_zoomLevel);
             Logger.logMsg("Friendlier:setSpriteFont() - setting line spacing = " + m_spriteFont.LineSpacing);
             Logger.logMsg("Friendlier:setSpriteFont() - setting text size = " + m_textSize);
+            Logger.logMsg("Friendlier:setSpriteFont() - Aspect Ratio is " + GraphicsDevice.Viewport.AspectRatio);
 
             // Store these sizes and positions
             //
@@ -1334,6 +1373,17 @@ namespace Xyglo
                                     case Keys.OemQuotes:
                                         if (m_shiftDown)
                                         {
+                                            key = "#";
+                                        }
+                                        else
+                                        {
+                                            key = "~";
+                                        }
+                                        break;
+
+                                    case Keys.OemTilde:
+                                        if (m_shiftDown)
+                                        {
                                             key = "@";
                                         }
                                         else
@@ -1563,6 +1613,7 @@ namespace Xyglo
                                     //
                                     default:
                                         key = "";
+                                        Logger.logMsg("Got key = " + keyDown.ToString());
                                         break;
                                 }
 

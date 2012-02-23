@@ -4,6 +4,11 @@
 ; Richard Bown
 ; February 2012
 ;-------------------------------
+
+; ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Client" Install IntOp $8 $0 & 1
+; http://stackoverflow.com/questions/3542496/nsis-installer-with-net-4-0
+
+
 !include FontReg.nsh
 !include FontName.nsh
 !include WinMessages.nsh
@@ -60,13 +65,13 @@ Section "Friendlier"
     ; The files we are building into the package
     ;
     File "Friendlier\Friendlier\bin\x86\Debug\Friendlier.exe"
-    ;File "..\resources\libgcc_s_dw2-1.dll"
+	File /r "Friendlier\Friendlier\bin\x86\Debug\Content"
 
-    ;File "rg-rwb-rose3-128x128.ico"
+    File "rg-rwb-rose3-128x128.ico"
 
     ; Write the installation path into the registry
     WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}" "Install_Dir" "$INSTDIR"
-    ;WriteRegStr HKCR "${SOFTWARE}\DefaultIcon" "" "$INSTDIR\rg-rwb-rose3-128x128.ico"
+    WriteRegStr HKCR "${SOFTWARE}\DefaultIcon" "" "$INSTDIR\rg-rwb-rose3-128x128.ico"
 
     ; Write the uninstall keys for Windows
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${SOFTWARE}" "DisplayName" ${SOFTWARE}
@@ -128,6 +133,12 @@ Section "Uninstall"
     ;
     Delete $INSTDIR\uninstall.exe
     Delete "$INSTDIR\Friendlier.exe"
+	Delete "$INSTDIR\rg-rwb-rose3-128x128.ico"
+
+	; Remove the data directory and subdirs
+	;
+	RMDir /r "$INSTDIR\data"
+	Delete "$INSTDIR\data"
 
     ; Remove shortcuts, if any
     Delete "$SMPROGRAMS\${SOFTWARE}\*.*"

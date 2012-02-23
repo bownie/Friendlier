@@ -305,5 +305,17 @@ namespace Xyglo
             rV.Z += 600.0f;
             return rV;
         }
+
+        /// <summary>
+        /// If we're changinging aspect ratio we might want to scale position and text sizes to
+        /// ensure that everything appears in the right place
+        /// </summary>
+        /// <param name="scaleFactor"></param>
+        public void scale(float scaleFactor)
+        {
+            m_position = m_position * scaleFactor;
+            m_charWidth = m_charWidth * scaleFactor;
+            m_lineHeight = m_lineHeight * scaleFactor;
+        }
     }
 }
