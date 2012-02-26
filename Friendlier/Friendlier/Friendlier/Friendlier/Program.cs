@@ -16,6 +16,7 @@ namespace Xyglo
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
+        [STAThread]// Setting this as single threaded for cut and paste of all things to work
         static void Main(string[] args)
         {
             // Build a list of Files/Entities/Fragments and label them and extact some basic information

@@ -51,6 +51,10 @@ namespace Xyglo
             }
         }
 
+        // character we use to split lines
+        //
+        protected char m_splitCharacter = '\n';
+
         protected FilePosition m_startPos;
         protected FilePosition m_endPos;
     }

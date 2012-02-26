@@ -7,62 +7,6 @@ using Microsoft.Xna.Framework;
 
 namespace Xyglo
 {
-    /// <summary>
-    /// Define a line and character position in a file
-    /// </summary>
-    public struct FilePosition : ICloneable
-    {
-        public FilePosition(int x, int y)
-        {
-            X = x;
-            Y = y;
-        }
-
-        public FilePosition(FilePosition p)
-        {
-            X = p.X;
-            Y = p.Y;
-        }
-
-        public object Clone()
-        {
-            FilePosition copy = new FilePosition(this.X, this.Y);
-            return copy;
-        }
-
-        public FilePosition(Vector2 vector)
-        {
-            X = Convert.ToInt16(vector.X);
-            Y = Convert.ToInt16(vector.Y);
-        }
-
-        public static bool operator ==(FilePosition a, FilePosition b)
-        {
-            return ((a.X == b.X) && (a.Y == b.Y));
-        }
-
-        public static bool operator !=(FilePosition a, FilePosition b)
-        {
-            return ((a.X != b.X) || (a.Y != b.Y));
-        }
-
-        // Needed to avoid warning
-        //
-        public override int GetHashCode()
-        {
-            return X ^ Y;
-        }
-
-        // Needed to avoid warning
-        //
-        public override bool Equals(object obj)
-        {
-            return base.Equals(obj);
-        }
-
-        public int X;
-        public int Y;
-    }
 
     /// <summary>
     /// Open and buffer a file and provide an interface for handling large files efficiently
@@ -255,7 +199,6 @@ namespace Xyglo
             return false;
         }
 
-
         /// <summary>
         /// If we have done a new command and the undo stack extends above the current undo position then remove
         /// everything on the undo stack above current position and push new command on at that level.
@@ -352,6 +295,36 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Redo a certain number of commands already on the commands list
+        /// </summary>
+        /// <param name="steps"></param>
+        public FilePosition redo(int steps)
+        {
+            FilePosition fp = new FilePosition();
+
+            Logger.logMsg("FileBuffer::redo() - redo " + steps + " commands from position " + m_undoPosition);
+
+            // Redo commands if we have any pending on the stack
+            //
+            if (m_commands.Count >= steps + m_undoPosition)
+            {
+                // Rewind the commands in order
+                //
+                for (int i = m_undoPosition; i < m_undoPosition + steps; i++)
+                {
+                    fp = m_commands[i].doCommand();
+                }
+
+                // Incremenet the m_undoPosition accordingly
+                //
+                m_undoPosition += steps;
+            }
+
+            return fp;
+
+        }
+
+        /// <summary>
         /// Undo a given number of steps in the life of a FileBuffer
         /// </summary>
         /// <param name="steps"></param>
@@ -374,8 +347,6 @@ namespace Xyglo
                 // Reduce the m_undoPosition accordingly
                 //
                 m_undoPosition -= steps;
-
-
             }
 
 #if UNDO_DEBUG
@@ -390,6 +361,13 @@ namespace Xyglo
                 throw new Exception("FileBuffer::undo() - not enough steps to undo");
             }
              * */
+        }
+
+        // Number of commands in stack
+        //
+        public int getCommandStackLength()
+        {
+            return m_commands.Count();
         }
 
         /// <summary>

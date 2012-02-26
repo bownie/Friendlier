@@ -35,17 +35,83 @@ namespace Xyglo
         public void moveZ(float z) { m_position.Z += z; }
 
         /// <summary>
-        /// Where the buffer is showing from
+        /// What line the buffer is showing from
         /// </summary>
-        protected int m_bufferShowStart = 0;
+        protected int m_bufferShowStartY = 0;
+
+        /// <summary>
+        /// The BufferView remembers its own highlight positions
+        /// </summary>
+        FilePosition m_highlightStart;
+
+        /// <summary>
+        /// Get the start of the highlight
+        /// </summary>
+        /// <returns></returns>
+        public FilePosition getHighlightStart()
+        {
+            return m_highlightStart;
+        }
+
+        /// <summary>
+        /// Set beginning of the highlight
+        /// </summary>
+        /// <param name="fp"></param>
+        public void setHighlightStart(FilePosition fp)
+        {
+            m_highlightStart = fp;
+        }
+
+        /// <summary>
+        /// The BufferView remembers its own highlight positions
+        /// </summary>
+        FilePosition m_highlightEnd;
+
+        /// <summary>
+        /// Get end point of the highlight
+        /// </summary>
+        /// <returns></returns>
+        public FilePosition getHighlightEnd()
+        {
+            return m_highlightEnd;
+        }
+
+        /// <summary>
+        /// Set end point of the highlight
+        /// </summary>
+        /// <param name="fp"></param>
+        public void setHighlightEnd(FilePosition fp)
+        {
+            m_highlightEnd = fp;
+        }
 
         /// <summary>
         /// Get current buffer position
         /// </summary>
         /// <returns></returns>
-        public int getBufferShowStart()
+        public int getBufferShowStartY()
         {
-            return m_bufferShowStart;
+            return m_bufferShowStartY;
+        }
+
+        protected int m_bufferShowStartX = 0;
+
+        /// <summary>
+        /// Get current buffer view position X offset
+        /// </summary>
+        /// <returns></returns>
+        public int getBufferShowStartX()
+        {
+            return m_bufferShowStartX;
+        }
+
+        /// <summary>
+        /// Set current buffer view position X offset
+        /// </summary>
+        /// <param name="x"></param>
+        public void setBufferShowStartX(int x)
+        {
+            m_bufferShowStartX = x;
         }
 
         /// <summary>
@@ -53,11 +119,11 @@ namespace Xyglo
         /// </summary>
         /// <param name="bss"></param>
         /// <returns></returns>
-        public void setBufferShowStart(int bss)
+        public void setBufferShowStartY(int bss)
         {
             if (bss < m_fileBuffer.getLineCount())
             {
-                m_bufferShowStart = bss;
+                m_bufferShowStartY = bss;
             }
             else
             {
@@ -126,13 +192,32 @@ namespace Xyglo
         }
         
         /// <summary>
-        /// Get the current cursor position
+        /// Get the current cursor position relative to the page value (m_bufferShowStartY)
         /// </summary>
         /// <returns></returns>
-        public FilePosition getCursorPosition()
+        public FilePosition getRelativeCursorPosition()
         {
             return m_cursorPosition;
         }
+
+        /// <summary>
+        /// Get the absolute cursor position
+        /// </summary>
+        /// <returns></returns>
+        public FilePosition getAbsoluteCursorPosition()
+        {
+            FilePosition fp = m_cursorPosition;
+            fp.Y += m_bufferShowStartY;
+            return fp;
+        }
+
+        public FilePosition getCursorPosition()
+        {
+            FilePosition fp = m_cursorPosition;
+            fp.Y += m_bufferShowStartY;
+            return fp;
+        }
+
 
         /// <summary>
         /// Set the cursor position in this view
@@ -147,7 +232,7 @@ namespace Xyglo
                 return;
             }
 
-            if (fp.Y + m_bufferShowStart < m_fileBuffer.getLineCount())
+            if (fp.Y + m_bufferShowStartY < m_fileBuffer.getLineCount())
             {
                 m_cursorPosition = fp;
             }
@@ -227,7 +312,8 @@ namespace Xyglo
         public BufferView(BufferView rootBV, Vector3 position)
         {
             m_fileBuffer = rootBV.m_fileBuffer;
-            m_bufferShowStart = rootBV.m_bufferShowStart;
+            m_bufferShowStartY = rootBV.m_bufferShowStartY;
+            m_bufferShowStartX = rootBV.m_bufferShowStartX;
             m_bufferShowLength = rootBV.m_bufferShowLength;
             m_bufferShowWidth = rootBV.m_bufferShowWidth;
             m_charWidth = rootBV.m_charWidth;
@@ -235,11 +321,12 @@ namespace Xyglo
             m_position = position;
         }
 
-        public BufferView(FileBuffer buffer, Vector3 position, int bufferShowStart, int bufferShowLength, float charWidth, float lineHeight)
+        public BufferView(FileBuffer buffer, Vector3 position, int bufferShowStartY, int bufferShowLength, float charWidth, float lineHeight)
         {
             m_position = position;
             m_fileBuffer = buffer;
-            m_bufferShowStart = bufferShowStart;
+            m_bufferShowStartY = bufferShowStartY;
+            m_bufferShowStartX = 0;
             m_bufferShowLength = bufferShowLength;
             m_charWidth = charWidth;
             m_lineHeight = lineHeight;
@@ -248,7 +335,7 @@ namespace Xyglo
         public BufferView(BufferView rootBV, BufferPosition position)
         {
             m_fileBuffer = rootBV.m_fileBuffer;
-            m_bufferShowStart = rootBV.m_bufferShowStart;
+            m_bufferShowStartY = rootBV.m_bufferShowStartY;
             m_bufferShowLength = rootBV.m_bufferShowLength;
             m_bufferShowWidth = rootBV.m_bufferShowWidth;
             m_charWidth = rootBV.m_charWidth;
@@ -306,16 +393,85 @@ namespace Xyglo
             return rV;
         }
 
+
         /// <summary>
-        /// If we're changinging aspect ratio we might want to scale position and text sizes to
-        /// ensure that everything appears in the right place
+        /// Return the coordinates of the highlighted area use a list of bounding boxes
         /// </summary>
-        /// <param name="scaleFactor"></param>
-        public void scale(float scaleFactor)
+        /// <param name="highlightStart"></param>
+        /// <param name="highlightEnd"></param>
+        public List<BoundingBox> computeHighlight()
         {
-            m_position = m_position * scaleFactor;
-            m_charWidth = m_charWidth * scaleFactor;
-            m_lineHeight = m_lineHeight * scaleFactor;
+            List<BoundingBox> bb = new List<BoundingBox>();
+
+            // If we have no highlight then return an empty list
+            //
+            if (m_highlightStart == m_highlightEnd)
+            {
+                return bb;
+            }
+
+            // Swap ends if they are the wrong way around for some reason
+            //
+            if (m_highlightStart > m_highlightEnd)
+            {
+                FilePosition swap = m_highlightStart;
+                m_highlightStart = m_highlightEnd;
+                m_highlightEnd = swap;
+            }
+
+            Vector3 startPos = new Vector3();
+            Vector3 endPos = new Vector3();
+
+            if (m_highlightStart.Y == m_highlightEnd.Y)
+            {
+                // Set start position
+                //
+                startPos.X = m_position.X + m_highlightStart.X * m_charWidth;
+                startPos.Y = m_position.Y + m_highlightStart.Y * m_lineHeight;
+
+                // Set end position
+                //
+                endPos.X = m_position.X + m_highlightEnd.X * m_charWidth;
+                endPos.Y = m_position.Y + (m_highlightEnd.Y + 1) * m_lineHeight;
+
+                bb.Add(new BoundingBox(startPos, endPos));
+                return bb;
+
+            }
+            else // Highlight down as the endpoints are already in the correct order
+            {
+                int minStart = m_highlightStart.Y;
+                if (minStart < 0)
+                {
+                    minStart = 0;
+                }
+
+                for (int i = minStart; i < m_highlightEnd.Y + 1; i++)
+                {
+                    if (i == m_highlightStart.Y)
+                    {
+                        startPos.X = m_position.X + m_highlightStart.X * m_charWidth;
+                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_charWidth;
+                    }
+                    else if (i == m_highlightEnd.Y)
+                    {
+                        startPos.X = m_position.X;
+                        endPos.X = m_position.X + m_highlightEnd.X * m_charWidth;
+                    }
+                    else
+                    {
+                        startPos.X = m_position.X;
+                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_charWidth;
+                    }
+
+                    startPos.Y = m_position.Y + i * m_lineHeight;
+                    endPos.Y = m_position.Y + m_lineHeight;
+
+                    bb.Add(new BoundingBox(startPos, endPos));
+                }
+            }
+
+            return bb;
         }
     }
 }

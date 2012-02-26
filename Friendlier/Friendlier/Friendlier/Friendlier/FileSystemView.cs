@@ -9,7 +9,9 @@ using Microsoft.Xna.Framework;
 
 namespace Xyglo
 {
-    
+    /// <summary>
+    /// Convenience Xyglo class to keep all the file and drive related stuff together
+    /// </summary>
     public class FileSystemView 
     {
         protected string m_path;
@@ -23,8 +25,74 @@ namespace Xyglo
         //
         public void setDirectory(string directory)
         {
-            m_path = directory;
-            scanDirectory();
+            if (directory != null)
+            {
+                m_driveLevel = false;
+                m_path = directory;
+                scanDirectory();
+            }
+            else
+            {
+                m_driveLevel = true;
+                m_directoryHighlight = 0;
+            }
+        }
+
+        /// <summary>
+        /// Take the drive letter of the current value m_directoryHighlight
+        /// </summary>
+        public void setHighlightedDrive()
+        {
+            int i = 0;    
+            foreach (DriveInfo drive in getDrives())
+            {
+                if (!drive.IsReady)
+                {
+                    continue;
+                }
+
+                if (i++ == m_directoryHighlight)
+                {
+                    setDirectory(drive.Name);
+                    m_directoryHighlight = 0;
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Are we scanning at drive level?
+        /// </summary>
+        bool m_driveLevel = false;
+
+        public bool atDriveLevel()
+        {
+            return m_driveLevel;
+        }
+
+        /// <summary>
+        /// Getting drive info for active drives
+        /// </summary>
+        /// <returns></returns>
+        public DriveInfo[] getDrives()
+        {
+            return DriveInfo.GetDrives();
+        }
+
+        // Return the count of active drives
+        //
+        public int countActiveDrives()
+        {
+            int count = 0;
+            foreach (DriveInfo drive in getDrives())
+            {
+                if (drive.IsReady)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         //protected Hashtable m_directoryTree = new Hashtable();
@@ -155,5 +223,7 @@ namespace Xyglo
         {
             return m_bufferShowWidth;
         }
+
+        
     }
 }

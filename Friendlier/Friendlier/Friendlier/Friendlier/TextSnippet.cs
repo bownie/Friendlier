@@ -86,5 +86,30 @@ namespace Xyglo
             }
         }
 
+        /// <summary>
+        /// Return a line break formatted clipboard string
+        /// </summary>
+        /// <returns></returns>
+        public string getClipboardString()
+        {
+            string rS = "";
+            int i = 0;
+
+            foreach (string line in m_lines)
+            {
+                // Only append a line feed if we aren't the last line of the snippet
+                if (++i != m_lines.Count())
+                {
+                    rS += line + "\r\n";
+                }
+                else
+                {
+                    rS += line;
+                }
+            }
+
+            return rS;
+        }
+
     }
 }

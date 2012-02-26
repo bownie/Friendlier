@@ -122,6 +122,7 @@
     <Compile Include="Command.cs" />
     <Compile Include="DeleteTextCommand.cs" />
     <Compile Include="FileBuffer.cs" />
+    <Compile Include="FilePosition.cs" />
     <Compile Include="FileSystemFile.cs" />
     <Compile Include="FileSystemObject.cs" />
     <Compile Include="FileSystemView.cs" />

@@ -15,6 +15,20 @@ namespace Xyglo
             m_endPos = end;
             m_text = text;
 
+            if (m_text != null && m_text.Split(m_splitCharacter).Count() > 1)
+            {
+                // Populate snippet with multiple lines
+                //
+                for (int i = 0; i < m_text.Split(m_splitCharacter).Count(); i++)
+                {
+                    m_writeSnippet.m_lines.Add(m_text.Split(m_splitCharacter)[i]);
+                }
+            }
+            else
+            {
+                m_writeSnippet.m_lines.Add(m_text);  // populate one line
+            }
+
             // Correct start and end positions
             //
             positionOrder();
@@ -36,8 +50,7 @@ namespace Xyglo
 
                 // Add this line to snippet as we're only editing a single line
                 //
-                //m_snippet.m_lines.Add(line);
-                m_snippet.setSnippetSingle(line);
+                m_saveSnippet.setSnippetSingle(line);
 
                 if (m_startPos.X == m_endPos.X) // deletion at cursor
                 {
@@ -59,7 +72,7 @@ namespace Xyglo
 
                             // Remove next
                             m_fileBuffer.deleteLines(m_startPos.Y + 1, 1);
-                            m_snippet.incrementLinesDeleted(1);
+                            m_saveSnippet.incrementLinesDeleted(1);
                         }
                     }
                 }
@@ -71,7 +84,7 @@ namespace Xyglo
                     if (bufLine == "")
                     {
                         m_fileBuffer.deleteLines(m_startPos.Y, 1);
-                        m_snippet.incrementLinesDeleted(1);
+                        m_saveSnippet.incrementLinesDeleted(1);
                     }
                     else
                     {
@@ -84,7 +97,7 @@ namespace Xyglo
                 // Clear the snippet and then append all the lines we're going to delete
                 //
                 //
-                m_snippet.m_lines.Clear();
+                m_saveSnippet.m_lines.Clear();
 
                 for (int i = m_startPos.Y; i < m_endPos.Y; i++)
                 {
@@ -94,7 +107,7 @@ namespace Xyglo
                     //
                     Logger.logMsg("adding to snippet = " + bufLine);
 
-                    m_snippet.m_lines.Add(bufLine);
+                    m_saveSnippet.m_lines.Add(bufLine);
 
                     if (i == m_startPos.Y)
                     {
@@ -108,7 +121,6 @@ namespace Xyglo
                     {
                         newLine = bufLine;
                     }
-
                 }
 
                 // Cut and append the current line and the last line and save to bufLine
@@ -118,12 +130,12 @@ namespace Xyglo
 
                 // Push the end line onto the snippet so that is also restored by an undo
                 //
-                m_snippet.m_lines.Add(m_fileBuffer.getLine(m_endPos.Y));
+                m_saveSnippet.m_lines.Add(m_fileBuffer.getLine(m_endPos.Y));
 
                 // Delete all the remaining lines
                 //
                 m_fileBuffer.deleteLines(m_startPos.Y + 1, m_endPos.Y - m_startPos.Y);
-                m_snippet.incrementLinesDeleted(Convert.ToInt16(m_endPos.Y - m_startPos.Y));
+                m_saveSnippet.incrementLinesDeleted(Convert.ToInt16(m_endPos.Y - m_startPos.Y));
 
                 // Set the current line to our buffer
                 //
@@ -199,25 +211,25 @@ namespace Xyglo
         /// </summary>
         public override FilePosition undoCommand()
         {
-            Logger.logMsg("m_linesDeleted = " + m_snippet.getLinesDeleted());
+            Logger.logMsg("m_linesDeleted = " + m_saveSnippet.getLinesDeleted());
 
             // If we need to re-insert a line then do so
             //
-            for (int i = 0; i < m_snippet.getLinesDeleted(); i++)
+            for (int i = 0; i < m_saveSnippet.getLinesDeleted(); i++)
             {
                 Logger.logMsg("Inserted line at " + m_startPos.Y);
                 m_fileBuffer.insertLine(m_startPos.Y, "dummy");
             }
 
-            Logger.logMsg("snippet line count = " + m_snippet.m_lines.Count);
+            Logger.logMsg("snippet line count = " + m_saveSnippet.m_lines.Count);
 
             // Now overwrite all the lines
             //
             int snippetLine = 0;
-            for (int i = m_startPos.Y; i < m_startPos.Y + m_snippet.m_lines.Count; i++)
+            for (int i = m_startPos.Y; i < m_startPos.Y + m_saveSnippet.m_lines.Count; i++)
             {
                 Logger.logMsg("overwriting = " + snippetLine);
-                m_fileBuffer.setLine(i, m_snippet.m_lines[snippetLine++]);
+                m_fileBuffer.setLine(i, m_saveSnippet.m_lines[snippetLine++]);
             }
 
             // Return the start position for undo
@@ -230,11 +242,23 @@ namespace Xyglo
         /// </summary>
         public override void Dispose()
         {
-            SnippetFactory.returnSnippet(m_snippet);
+            SnippetFactory.returnSnippet(m_saveSnippet);
             Logger.logMsg("ReplaceTextCommand Dispose()");
         }
 
-        TextSnippet m_snippet = SnippetFactory.getSnippet();
+        /// <summary>
+        /// We have a Save Snippet for the lines we're deleting
+        /// </summary>
+        TextSnippet m_saveSnippet = SnippetFactory.getSnippet();
+
+        /// <summary>
+        /// There is a Write Snippet for the lines we want to insert
+        /// </summary>
+        TextSnippet m_writeSnippet = SnippetFactory.getSnippet();
+
+        /// <summary>
+        /// The FileBuffer
+        /// </summary>
         FileBuffer m_fileBuffer;
 
         /// <summary>

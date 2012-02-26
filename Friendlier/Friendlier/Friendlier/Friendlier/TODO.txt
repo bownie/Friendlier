@@ -1,7 +1,21 @@
+- Long lines handling [CAN VIEW BUT NOT SCROLL TO]
+- Pasting multiple lines for Insert [HALF DONE]
+- Pasting multiple lines for Replace 
 - Packaging
 - Licensing
 - Icons etc
 - Logging
+
+Refactoring
+-----------
+- Moving the selection end points to the BufferView
+- Get BufferView to handle drawing highlights
+
+
+
+For 1.1
+-------
+- Mouse click (think that will be 1.1)
 
 
 Advanced:
