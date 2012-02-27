@@ -34,7 +34,6 @@ namespace Xyglo
             positionOrder();
         }
 
-
         /// <summary>
         /// Do this command
         /// </summary>
@@ -58,7 +57,6 @@ namespace Xyglo
                     {
                         string editLine = line.Substring(0, m_startPos.X) +
                                           line.Substring(m_startPos.X + 1, line.Length - (m_startPos.X + 1));
-
 
                         m_fileBuffer.setLine(m_startPos.Y, editLine);
                     }
@@ -105,7 +103,7 @@ namespace Xyglo
 
                     // Add the whole bufLine to snippet
                     //
-                    Logger.logMsg("adding to snippet = " + bufLine);
+                    Logger.logMsg("ReplaceTextCommand::doCommand() - adding to snippet = " + bufLine);
 
                     m_saveSnippet.m_lines.Add(bufLine);
 
@@ -145,65 +143,112 @@ namespace Xyglo
 
             // Now do the insert of the text
             //
-            // Fetch and store the line
-            //
-            string fetchLine = m_fileBuffer.getLine(m_startPos.Y);
 
             // Store the initial cursor position locally
             //
             FilePosition fp = m_startPos;
 
-            if (m_newLine)
+            if (m_writeSnippet.m_lines.Count == 0)
             {
-                // Store the whole line in the text field for undo purposes
+                // Do something for a single line
+
+                // Fetch and store the line
                 //
-                m_text = fetchLine;
-                fp.Y++;
+                string fetchLine = m_fileBuffer.getLine(m_startPos.Y);
 
-                if (m_startPos.X == 0)
+                if (m_newLine)
                 {
-                    m_fileBuffer.insertLine(m_startPos.Y, "");
-                }
-                else if (fetchLine.Length == m_startPos.X)
-                {
-                    m_fileBuffer.insertLine(m_startPos.Y + 1, "");
-
-                    // Reset to zero on X
+                    // Store the whole line in the text field for undo purposes
                     //
-                    fp.X = 0;
+                    m_text = fetchLine;
+                    fp.Y++;
+
+                    if (m_startPos.X == 0)
+                    {
+                        m_fileBuffer.insertLine(m_startPos.Y, "");
+                    }
+                    else if (fetchLine.Length == m_startPos.X)
+                    {
+                        m_fileBuffer.insertLine(m_startPos.Y + 1, "");
+
+                        // Reset to zero on X
+                        //
+                        fp.X = 0;
+                    }
+                    else
+                    {
+                        // Split line and create new one
+                        //
+                        string firstLine = fetchLine.Substring(0, m_startPos.X);
+                        string secondLine = fetchLine.Substring(m_startPos.X + 1, fetchLine.Length - (m_startPos.X + 1));
+
+                        // Set first
+                        //
+                        m_fileBuffer.setLine(m_startPos.Y, firstLine);
+
+                        // Insert second
+                        //
+                        m_fileBuffer.insertLine(m_startPos.Y + 1, secondLine);
+
+                        // Reset to zero on X
+                        //
+                        fp.X = 0;
+                    }
                 }
                 else
                 {
-                    // Split line and create new one
+                    // Insert the text at the cursor position
                     //
-                    string firstLine = fetchLine.Substring(0, m_startPos.X);
-                    string secondLine = fetchLine.Substring(m_startPos.X + 1, fetchLine.Length - (m_startPos.X + 1));
+                    m_fileBuffer.setLine(m_startPos.Y, fetchLine.Insert(m_startPos.X, m_text));
 
-                    // Set first
-                    //
-                    m_fileBuffer.setLine(m_startPos.Y, firstLine);
-
-                    // Insert second
-                    //
-                    m_fileBuffer.insertLine(m_startPos.Y + 1, secondLine);
-
-                    // Reset to zero on X
-                    //
-                    fp.X = 0;
+                    fp.X += m_text.Length;
+                    Logger.logMsg("ReplaceTextCommand::doCommand() - writing " + m_text + " (length " + m_text.Length + ")");
                 }
             }
-            else
+            else // Multi-line replace
             {
-                // Insert the text at the cursor position
+                // Fetch the line if it's available
                 //
-                m_fileBuffer.setLine(m_startPos.Y, fetchLine.Insert(m_startPos.X, m_text));
+                string fetchLine = "";
+                if (m_fileBuffer.getLineCount() > 0)
+                {
+                    fetchLine = m_fileBuffer.getLine(m_startPos.Y);
+                }
 
-                fp.X += m_text.Length;
-                Logger.logMsg("writing " + m_text + " (length " + m_text.Length + ")");
+                string firstLine = fetchLine.Substring(0, m_startPos.X);
+                string secondLine = "";
+
+                foreach (string line in m_writeSnippet.m_lines)
+                {
+                    Logger.logMsg("Line = " + line);
+                    ;// do something
+                }
+
+                m_fileBuffer.appendLine(m_startPos.Y, m_writeSnippet.m_lines[0]);
+                if (m_writeSnippet.m_lines.Count() == 1)
+                {
+                    m_fileBuffer.appendLine(m_startPos.Y, secondLine);
+                    fp.X += m_writeSnippet.m_lines[0].Length;
+                }
+                else
+                {
+                    // Insert lines in reverse snippet order
+                    //
+                    for (int i = m_writeSnippet.m_lines.Count() - 1; i > 0; i--)
+                    {
+                        m_fileBuffer.insertLine(m_startPos.Y + 1, m_writeSnippet.m_lines[i]);
+                        fp.Y++; // incremement once per inserted line
+                    }
+
+
+                    fp.X = m_writeSnippet.m_lines.Last<string>().Length;
+
+                    // Append the end
+                    m_fileBuffer.appendLine(m_startPos.Y + m_writeSnippet.m_lines.Count(), secondLine);
+                }
             }
 
-
-            return m_startPos;
+            return fp;
         }
 
         /// <summary>
@@ -211,24 +256,24 @@ namespace Xyglo
         /// </summary>
         public override FilePosition undoCommand()
         {
-            Logger.logMsg("m_linesDeleted = " + m_saveSnippet.getLinesDeleted());
+            Logger.logMsg("ReplaceTextCommand::undoCommand() - m_linesDeleted = " + m_saveSnippet.getLinesDeleted());
 
             // If we need to re-insert a line then do so
             //
             for (int i = 0; i < m_saveSnippet.getLinesDeleted(); i++)
             {
-                Logger.logMsg("Inserted line at " + m_startPos.Y);
+                Logger.logMsg("ReplaceTextCommand::undoCommand() - inserted line at " + m_startPos.Y);
                 m_fileBuffer.insertLine(m_startPos.Y, "dummy");
             }
 
-            Logger.logMsg("snippet line count = " + m_saveSnippet.m_lines.Count);
+            Logger.logMsg("ReplaceTextCommand::undoCommand() - snippet line count = " + m_saveSnippet.m_lines.Count);
 
             // Now overwrite all the lines
             //
             int snippetLine = 0;
             for (int i = m_startPos.Y; i < m_startPos.Y + m_saveSnippet.m_lines.Count; i++)
             {
-                Logger.logMsg("overwriting = " + snippetLine);
+                Logger.logMsg("ReplaceTextCommand::undoCommand() - overwriting = " + snippetLine);
                 m_fileBuffer.setLine(i, m_saveSnippet.m_lines[snippetLine++]);
             }
 
@@ -243,7 +288,7 @@ namespace Xyglo
         public override void Dispose()
         {
             SnippetFactory.returnSnippet(m_saveSnippet);
-            Logger.logMsg("ReplaceTextCommand Dispose()");
+            Logger.logMsg("ReplaceTextCommand::Dispose()");
         }
 
         /// <summary>

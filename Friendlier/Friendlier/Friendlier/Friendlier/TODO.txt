@@ -1,38 +1,15 @@
 - Long lines handling [CAN VIEW BUT NOT SCROLL TO]
-- Pasting multiple lines for Insert [HALF DONE]
-- Pasting multiple lines for Replace 
+- Pasting multiple lines for Replace [HALF COMPLETE]
 - Packaging
 - Licensing
 - Icons etc
-- Logging
-
-Refactoring
------------
-- Moving the selection end points to the BufferView
-- Get BufferView to handle drawing highlights
-
-
-
-For 1.1
--------
-- Mouse click (think that will be 1.1)
-
-
-Advanced:
+- Logging (timestamps and makes sense)
 - Log file view (attach and view)
 - System load meter
 
-For Later
----------
-- Hud cursor position
-- Hud panner overview?
-- Hud Unsaved status better?
-- Hud file system positions?
-- Command line interface
 
 DONE
 ----
-
 - Drift focus when adding a new BufferView drift to position [DONE]
 - Alpha blending fonts / darkening and name overlay when zoomed out [DONE]
 - keyboard support?  [DONE for the moment - hardcoded]
@@ -42,3 +19,19 @@ DONE
 - Loading and File Selector/Directory traversal [DONE]
 - Completing editing and undo [PARTIAL]
 - Directory listings [DONE]
+- Pasting multiple lines for Insert [DONE]
+
+Refactoring
+-----------
+- Moving the selection end points to the BufferView [DONE]
+- Get BufferView to handle drawing highlights [DONE]
+
+
+For Later
+---------
+- Hud cursor position
+- Hud panner overview?
+- Hud Unsaved status better?
+- Hud file system positions?
+- Command line interface
+- Mouse click (think that will be 1.1)

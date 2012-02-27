@@ -142,7 +142,14 @@ namespace Xyglo
         /// <param name="value"></param>
         public void setLine(int line, string value)
         {
-            m_lines[line] = value;
+            if (line >= m_lines.Count)
+            {
+                Logger.logMsg("FileBuffer::setLine() - line " + line + " is not available in the FileBuffer");
+            }
+            else
+            {
+                m_lines[line] = value;
+            }
         }
 
         /// <summary>
@@ -152,7 +159,14 @@ namespace Xyglo
         /// <param name="value"></param>
         public void appendLine(int line, string value)
         {
-            m_lines[line] += value;
+            if (line >= m_lines.Count)
+            {
+                Logger.logMsg("FileBuffer::appendLine() - line " + line + " is not available in the FileBuffer");
+            }
+            else
+            {
+                m_lines[line] += value;
+            }
         }
 
         /// <summary>
@@ -161,13 +175,21 @@ namespace Xyglo
         /// <param name="line"></param>
         public void insertLine(int line, string value)
         {
-            m_lines.Insert(line, value);
+            try
+            {
+                m_lines.Insert(line, value);
+            }
+            catch (Exception e)
+            {
+                Logger.logMsg("FileBuffer::insertLine() - failed to insert line " + line + " with " + e.Message);
+            }
         }
 
         public bool deleteLines(int startLine, int number)
         {
             if (startLine > m_lines.Count || startLine + number > m_lines.Count)
             {
+                Logger.logMsg("FileBuffer::deleteLines() - line number starting " + startLine + " is not available in the FileBuffer");
                 return false;
             }
 

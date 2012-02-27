@@ -94,22 +94,33 @@ namespace Xyglo
 
             if (m_newLine) // If this is a newline then special case for a single newline only
             {
-                // Insert second
+                // Inserting several lines in an empty buffer
                 //
                 if (m_fileBuffer.getLineCount() == 0)
                 {
-                    // Insert lines in reverse snippet order
-                    //
-                    for (int i = m_snippet.m_lines.Count() - 1; i >= 0; i--)
+                    if (m_snippet.m_lines.Count == 0)
                     {
-                        m_fileBuffer.insertLine(m_startPos.Y, m_snippet.m_lines[i]);
-
-                        if (i != 0)
-                        {
-                            fp.Y++; // incremement once per inserted line
-                        }
+                        m_fileBuffer.insertLine(0, "");
+                        m_fileBuffer.insertLine(1, "");
+                        fp.Y = 1;
                     }
-                    fp.X = m_snippet.m_lines.Last<string>().Length;
+                    else
+                    {
+
+                        // Insert lines in reverse snippet order
+                        //
+                        for (int i = m_snippet.m_lines.Count() - 1; i >= 0; i--)
+                        {
+                            m_fileBuffer.insertLine(m_startPos.Y, m_snippet.m_lines[i]);
+
+                            if (i != 0)
+                            {
+                                fp.Y++; // incremement once per inserted line
+                            }
+                        }
+
+                        fp.X = m_snippet.m_lines.Last<string>().Length;
+                    }
                 }
                 else
                 {
@@ -148,107 +159,6 @@ namespace Xyglo
                 }
             }
 
-            /*
-            // If this buffer is empty then insert a line and set it
-            //
-            if (m_fileBuffer.getLineCount() == 0)
-            {
-                // Insert lines in reverse snippet order
-                //
-                for (int i = m_snippet.m_lines.Count() - 1; i >= 0; i--)
-                {
-                    m_fileBuffer.insertLine(m_startPos.Y, m_snippet.m_lines[i]);
-                }
-            }
-            else
-            {
-                // Fetch and store the line
-                //
-                string fetchLine = "";
-
-                if (m_startPos.Y < m_fileBuffer.getLineCount())
-                {
-                    fetchLine = m_fileBuffer.getLine(m_startPos.Y);
-                }
-                else
-                {
-                    m_newLine = true;
-                }
-
-                if (m_newLine)
-                {
-                    // Store the whole line in the text field for undo purposes
-                    //
-                    m_text = fetchLine;
-                    fp.Y++;
-
-
-                    if (m_startPos.X == 0) // if we're inserting at line beginning
-                    {
-                        // Insert lines in reverse snippet order
-                        //
-                        for (int i = m_snippet.m_lines.Count() - 1; i >= 0; i--)
-                        {
-                            m_fileBuffer.insertLine(m_startPos.Y, m_snippet.m_lines[i]);
-                        }
-                    }
-                    else if (fetchLine.Length == m_startPos.X)  // or at line end
-                    {
-                        // Insert lines in reverse snippet order
-                        //
-                        for (int i = m_snippet.m_lines.Count() - 1; i >= 0; i--)
-                        {
-                            m_fileBuffer.insertLine(m_startPos.Y + 1, m_snippet.m_lines[i]);
-                        }
-                        //m_fileBuffer.insertLine(m_startPos.Y + 1, "");
-
-                        // Reset to zero on X
-                        //
-                        fp.X = 0;
-                    }
-                    else
-                    {
-                        // Split line and create new one
-                        //
-                        string firstLine = fetchLine.Substring(0, m_startPos.X);
-                        string secondLine = fetchLine.Substring(m_startPos.X + 1, fetchLine.Length - (m_startPos.X + 1));
-
-                        // Set first
-                        //
-                        m_fileBuffer.setLine(m_startPos.Y, firstLine);
-
-                        // Insert second
-                        //
-                        m_fileBuffer.insertLine(m_startPos.Y + 1, secondLine);
-
-                        // Reset to zero on X
-                        //
-                        fp.X = 0;
-                    }
-                }
-                else
-                {
-                    // Insert the text at the cursor position
-                    //
-                    m_fileBuffer.setLine(m_startPos.Y, fetchLine.Insert(m_startPos.X, m_snippet.m_lines[0]));
-
-                    if (m_snippet.m_lines.Count() > 1)
-                    {
-
-                        // Insert the rest of the lines in reverse snippet order
-                        //
-                        for (int i = m_snippet.m_lines.Count() - 1; i > 0; i--)
-                        {
-                            m_fileBuffer.insertLine(m_startPos.Y + 1, m_snippet.m_lines[i]);
-                        }
-                    }
-
-                    fp.X += m_text.Length;
-                    Logger.logMsg("InsertTextCommand::FilePosition() - writing " + m_text + " (length " + m_text.Length + ")");
-                }
-                
-            }
-            */
             return fp;
         }
 

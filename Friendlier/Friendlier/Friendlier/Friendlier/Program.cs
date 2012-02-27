@@ -32,12 +32,21 @@ namespace Xyglo
             //ModelBuilder mb = new ModelBuilder(tb);
             //mb.build();
 
+            // Create a project or load one
+            //
+
+
             string editFile = @"C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\Friendlier.cs";
+
+            Project project = new Project();
+            project.addFileBuffer(editFile);
+
             //editFile = @"C:\FinanceIT\FiRE\Server\scripts\appSchemaInstall.ksh";
             //editFile = @"C:\appSchemaInstall.ksh";
 
-            Friendlier friendlier = new Friendlier(editFile);
-            //Friendlier friendlier = new Friendlier();
+            Friendlier friendlier = new Friendlier();
+            friendlier.loadProject(project);
+
             friendlier.Run();
         }
     }
