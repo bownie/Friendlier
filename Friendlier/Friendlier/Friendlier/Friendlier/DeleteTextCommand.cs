@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Runtime.Serialization;
 
 namespace Xyglo
 {
+    [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class DeleteTextCommand : Command
     {
         public DeleteTextCommand(string name, FileBuffer buffer, FilePosition start, FilePosition end)
@@ -189,7 +191,9 @@ namespace Xyglo
             //SnippetFactory.returnSnippet(m_snippet);
         }
 
+        [DataMember()]
         TextSnippet m_snippet = SnippetFactory.getSnippet();
+
         FileBuffer m_fileBuffer;
     }
 }

@@ -1,15 +1,21 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
-
+using System.Runtime.Serialization;
+using System.Xml;
+using System.Xml.Serialization;
 
 namespace Xyglo
 {
+
+
     /// <summary>
     /// A view on a buffer - can be independent from a FileBuffer but carries a reference if needed (undecided on this)
     /// </summary>
+    [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class BufferView
     {
         public enum BufferPosition
@@ -21,28 +27,277 @@ namespace Xyglo
         };
 
         /// <summary>
-        /// 3d position of the BufferView
+        /// A little struct used to hold relative positions of BufferViews
         /// </summary>
-        protected Vector3 m_position;
+        public struct BufferViewPosition
+        {
+            public BufferView rootBV { get; set; }
+            public BufferPosition position { get; set; }
+        }
 
         /// <summary>
-        /// Get the position in 3D space
+        /// The FileBuffer associated with this BufferView
         /// </summary>
-        public Vector3 getPosition() { return m_position; }
+        protected FileBuffer m_fileBuffer;
 
-        public void moveX(float x) { m_position.X += x; }
-        public void moveY(float y) { m_position.Y += y; }
-        public void moveZ(float z) { m_position.Z += z; }
+        /// <summary>
+        /// Index of the FileBuffer associated with this BufferView so we can recontruct the link
+        /// </summary>
+        [DataMember()]
+        protected int m_fileBufferIndex = 0;
+
+        /// <summary>
+        /// 3d position of the BufferView
+        /// </summary>
+        [DataMember()]
+        protected Vector3 m_position;
 
         /// <summary>
         /// What line the buffer is showing from
         /// </summary>
+        [DataMember()]
         protected int m_bufferShowStartY = 0;
 
         /// <summary>
         /// The BufferView remembers its own highlight positions
         /// </summary>
+        [DataMember()]
         FilePosition m_highlightStart;
+
+        /// <summary>
+        /// Store the BufferViewPosition relative to another
+        /// </summary>
+        [DataMember()]
+        BufferViewPosition m_bufferViewPosition;
+
+        /// <summary>
+        /// The BufferView remembers its own highlight positions
+        /// </summary>
+        [DataMember()]
+        FilePosition m_highlightEnd;
+
+        /// <summary>
+        /// Where we set the highlight to when there isn't one
+        /// </summary>
+        [XmlIgnore]
+        static public FilePosition NoHighlightPosition = new FilePosition(-1, -1);
+
+        [DataMember()]
+        protected int m_bufferShowStartX = 0;
+
+        /// <summary>
+        /// Store the cursor coordinates locally
+        /// </summary>
+        [DataMember()]
+        protected Vector3 m_cursorCoordinates = new Vector3();
+
+        /// <summary>
+        /// Length of visible buffer
+        /// </summary>
+        [DataMember()]
+        protected int m_bufferShowLength = 20;
+
+        /// <summary>
+        /// Number of characters to show in a BufferView line
+        /// </summary>
+        [DataMember()]
+        protected int m_bufferShowWidth = 80;
+
+        /// <summary>
+        /// Current cursor coordinates in this BufferView
+        /// </summary>
+        [DataMember()]
+        protected FilePosition m_cursorPosition;
+
+        /// <summary>
+        /// The position in the buffer at which this view is locked
+        /// </summary>
+        [DataMember()]
+        protected int m_viewLockPosition = 0;
+
+        /// <summary>
+        /// Is this view locked such that when we edit other views this one stays at the same relative position
+        /// </summary>
+        [DataMember()]
+        protected bool m_viewLocked = false;
+
+        /// <summary>
+        /// Text colour
+        /// </summary>
+        [DataMember()]
+        public Color m_textColour = Color.LawnGreen;
+
+        /// <summary>
+        /// Cursor colour
+        /// </summary>
+        [DataMember()]
+        public Color m_cursorColour = Color.Yellow;
+
+        /// <summary>
+        /// Highlight colour
+        /// </summary>
+        [DataMember()]
+        public Color m_highlightColour = Color.PaleVioletRed;
+
+        /// <summary>
+        /// Width of a single character in the font that we're displaying in
+        /// </summary>
+        [DataMember()]
+        protected float m_charWidth;
+
+        /// <summary>
+        /// Height of a line in the font we're displaying in
+        /// </summary>
+        [DataMember()]
+        protected float m_lineHeight; // { get { return value;}  }
+
+        /// <summary>
+        /// Is this a non-editable BufferView?
+        /// </summary>
+        [DataMember()]
+        protected bool m_readOnly = false;
+
+        /// <summary>
+        /// Are we tailing this File?
+        /// </summary>
+        [DataMember()]
+        protected bool m_tailing = false;
+
+        /////// CONSTRUCTORS /////////
+
+        /// <summary>
+        /// Default constructor for XML
+        /// </summary>
+        public BufferView()
+        {
+        }
+
+        /// <summary>
+        /// Specify just two element
+        /// </summary>
+        /// <param name="charWidth"></param>
+        /// <param name="lineHeight"></param>
+        public BufferView(float charWidth, float lineHeight, bool readOnly = false)
+        {
+            m_charWidth = charWidth;
+            m_lineHeight = lineHeight;
+            m_readOnly = readOnly;
+        }
+
+        /// <summary>
+        /// Specify a root BufferView and an absolute position
+        /// </summary>
+        /// <param name="rootBV"></param>
+        /// <param name="position"></param>
+        public BufferView(BufferView rootBV, Vector3 position, bool readOnly = false)
+        {
+            m_fileBuffer = rootBV.m_fileBuffer;
+            m_bufferShowStartY = rootBV.m_bufferShowStartY;
+            m_bufferShowStartX = rootBV.m_bufferShowStartX;
+            m_bufferShowLength = rootBV.m_bufferShowLength;
+            m_bufferShowWidth = rootBV.m_bufferShowWidth;
+            m_charWidth = rootBV.m_charWidth;
+            m_lineHeight = rootBV.m_lineHeight;
+            m_position = position;
+            m_fileBufferIndex = rootBV.m_fileBufferIndex;
+            m_readOnly = rootBV.m_readOnly;
+        }
+
+        /// <summary>
+        /// Constructor specifying everything
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="position"></param>
+        /// <param name="bufferShowStartY"></param>
+        /// <param name="bufferShowLength"></param>
+        /// <param name="charWidth"></param>
+        /// <param name="lineHeight"></param>
+        public BufferView(FileBuffer buffer, Vector3 position, int bufferShowStartY, int bufferShowLength, float charWidth, float lineHeight, int fileIndex, bool readOnly = false)
+        {
+            m_position = position;
+            m_fileBuffer = buffer;
+            m_bufferShowStartY = bufferShowStartY;
+            m_bufferShowStartX = 0;
+            m_bufferShowLength = bufferShowLength;
+            m_charWidth = charWidth;
+            m_lineHeight = lineHeight;
+            m_fileBufferIndex = fileIndex;
+            m_readOnly = readOnly;
+        }
+
+        /// <summary>
+        /// Specify some but not all of the things we need to draw the BufferView - we still need
+        /// charWidth and lineHeight from somewhere.
+        /// </summary>
+        /// <param name="buffer"></param>
+        /// <param name="position"></param>
+        /// <param name="bufferShowStartY"></param>
+        /// <param name="bufferShowLength"></param>
+        public BufferView(FileBuffer buffer, Vector3 position, int bufferShowStartY, int bufferShowLength, int fileBufferIndex, bool readOnly = false)
+        {
+            m_position = position;
+            m_fileBuffer = buffer;
+            m_bufferShowStartY = bufferShowStartY;
+            m_bufferShowStartX = 0;
+            m_bufferShowLength = bufferShowLength;
+            m_fileBufferIndex = fileBufferIndex;
+            m_readOnly = readOnly;
+        }
+
+        /// <summary>
+        /// Constructor based on an existing buffer view and a relative position
+        /// </summary>
+        /// <param name="rootBV"></param>
+        /// <param name="position"></param>
+        public BufferView(BufferView rootBV, BufferPosition position)
+        {
+            m_fileBuffer = rootBV.m_fileBuffer;
+            m_bufferShowStartY = rootBV.m_bufferShowStartY;
+            m_bufferShowLength = rootBV.m_bufferShowLength;
+            m_bufferShowWidth = rootBV.m_bufferShowWidth;
+            m_charWidth = rootBV.m_charWidth;
+            m_lineHeight = rootBV.m_lineHeight;
+
+            // Store the orientation from another bufferview
+            //
+            m_bufferViewPosition.position = position;
+            m_bufferViewPosition.rootBV = rootBV;
+            m_readOnly = rootBV.m_readOnly;
+
+            // Only calculate a position if we have the information necessary to do it
+            //
+            if (m_charWidth != 0 && m_lineHeight != 0)
+            {
+                m_position = rootBV.calculateRelativePosition(position);
+            }
+        }
+
+
+
+        //////// METHODS ///////
+
+        /// <summary>
+        /// Get the index of the FileBuffer associated with this BufferView
+        /// </summary>
+        /// <returns></returns>
+        public int getFileBufferIndex()
+        {
+            return m_fileBufferIndex;
+        }
+
+        /// <summary>
+        /// Set the index number of the FileBuffer associated with this BufferView
+        /// </summary>
+        /// <param name="index"></param>
+        public void setFileBufferIndex(int index)
+        {
+            m_fileBufferIndex = index;
+        }
+
+        /// <summary>
+        /// Get the position in 3D space
+        /// </summary>
+        public Vector3 getPosition() { return m_position; }
 
         /// <summary>
         /// Get the start of the highlight
@@ -62,11 +317,6 @@ namespace Xyglo
             m_highlightStart = fp;
             Logger.logMsg("BufferView::setHighlightStart() - starting at X = " + fp.X + ", Y = " + fp.Y);
         }
-
-        /// <summary>
-        /// The BufferView remembers its own highlight positions
-        /// </summary>
-        FilePosition m_highlightEnd;
 
         /// <summary>
         /// Get end point of the highlight
@@ -98,11 +348,6 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Where we set the highlight to when there isn't one
-        /// </summary>
-        static public FilePosition NoHighlightPosition = new FilePosition(-1 ,-1);
-
-        /// <summary>
         /// No highlight position i
         /// </summary>
         public void noHighlight()
@@ -111,7 +356,6 @@ namespace Xyglo
             m_highlightEnd = BufferView.NoHighlightPosition;
             //Logger.logMsg("BufferView::noHighlight()");
         }
-
 
         /// <summary>
         /// Extend an existing highlight to this position
@@ -131,8 +375,6 @@ namespace Xyglo
             return m_bufferShowStartY;
         }
 
-        protected int m_bufferShowStartX = 0;
-
         /// <summary>
         /// Get current buffer view position X offset
         /// </summary>
@@ -150,10 +392,6 @@ namespace Xyglo
         {
             m_bufferShowStartX = x;
         }
-
-        // Store the cursor coordinates locally
-        //
-        protected Vector3 m_cursorCoordinates = new Vector3();
 
         /// <summary>
         /// Cursor coordinates in 3D
@@ -231,11 +469,6 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Length of visible buffer
-        /// </summary>
-        protected int m_bufferShowLength = 20;
-
-        /// <summary>
         /// Get BufferShow length
         /// </summary>
         /// <returns></returns>
@@ -245,11 +478,6 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Number of characters to show in a BufferView line
-        /// </summary>
-        protected int m_bufferShowWidth = 80;
-
-        /// <summary>
         /// Accessor for BufferShowWidth
         /// </summary>
         /// <returns></returns>
@@ -257,21 +485,6 @@ namespace Xyglo
         {
             return m_bufferShowWidth;
         }
-
-        /// <summary>
-        /// Current cursor coordinates in this BufferView
-        /// </summary>
-        protected FilePosition m_cursorPosition;
-
-        /// <summary>
-        /// The position in the buffer at which this view is locked
-        /// </summary>
-        protected int m_viewLockPosition = 0;
-
-        /// <summary>
-        /// Is this view locked such that when we edit other views this one stays at the same relative position
-        /// </summary>
-        protected bool m_viewLocked = false;
 
         public bool isLocked()
         {
@@ -347,40 +560,41 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Text colour
+        /// Get the line height
         /// </summary>
-        public Color m_textColour = Color.LawnGreen;
-
-        /// <summary>
-        /// Cursor colour
-        /// </summary>
-        public Color m_cursorColour = Color.Yellow;
-
-        /// <summary>
-        /// Highlight colour
-        /// </summary>
-        public Color m_highlightColour = Color.PaleVioletRed;
-
-        /// <summary>
-        /// Width of a single character in the font that we're displaying in
-        /// </summary>
-        protected float m_charWidth;
-
-        /// <summary>
-        /// Height of a line in the font we're displaying in
-        /// </summary>
-        protected float m_lineHeight;
-
+        /// <returns></returns>
         public float getLineHeight()
         {
             return m_lineHeight;
         }
 
+        /// <summary>
+        /// Set the line height both in this BufferView and any rootBV
+        /// </summary>
+        /// <param name="height"></param>
+        public void setLineHeight(float height)
+        {
+            m_lineHeight = height;
+
+            if (m_bufferViewPosition.rootBV != null)
+            {
+                m_bufferViewPosition.rootBV.setLineHeight(height);
+            }
+        }
 
         /// <summary>
-        /// The FileBuffer associated with this BufferView
+        /// Set the m_charWidth both in this BufferView and any rootBV
         /// </summary>
-        protected FileBuffer m_fileBuffer;
+        /// <param name="width"></param>
+        public void setCharWidth(float width)
+        {
+            m_charWidth = width;
+
+            if (m_bufferViewPosition.rootBV != null)
+            {
+                m_bufferViewPosition.rootBV.setCharWidth(width);
+            }
+        }
 
         /// <summary>
         /// Get the associated FileBuffer
@@ -391,62 +605,67 @@ namespace Xyglo
             return m_fileBuffer;
         }
 
-        public BufferView(float charWidth, float lineHeight)
+        /// <summary>
+        /// Set the associated FileBuffer and index
+        /// </summary>
+        /// <param name="fb"></param>
+        public void setFileBuffer(FileBuffer fb, int index = -1)
         {
-            m_charWidth = charWidth;
-            m_lineHeight = lineHeight;
+            m_fileBuffer = fb;
+
+            if (index != -1)
+            {
+                m_fileBufferIndex = index;
+            }
         }
 
-        public BufferView(BufferView rootBV, Vector3 position)
+
+        /// <summary>
+        /// Assuming we have valid m_charWidth and m_lineHeight and a valid
+        /// m_bufferViewPosition then we can calculate the actual position of
+        /// this BufferView using this.
+        /// </summary>
+        public void calculateMyRelativePosition()
         {
-            m_fileBuffer = rootBV.m_fileBuffer;
-            m_bufferShowStartY = rootBV.m_bufferShowStartY;
-            m_bufferShowStartX = rootBV.m_bufferShowStartX;
-            m_bufferShowLength = rootBV.m_bufferShowLength;
-            m_bufferShowWidth = rootBV.m_bufferShowWidth;
-            m_charWidth = rootBV.m_charWidth;
-            m_lineHeight = rootBV.m_lineHeight;
-            m_position = position;
+            if (m_charWidth == 0 || m_lineHeight == 0)
+            {
+                return;
+            }
+
+            // Reach through to the rootBV and calculate our position from there
+            //
+            if (m_bufferViewPosition.rootBV != null)
+            {
+                m_position = m_bufferViewPosition.rootBV.calculateRelativePosition(m_bufferViewPosition.position);
+            }
         }
 
-        public BufferView(FileBuffer buffer, Vector3 position, int bufferShowStartY, int bufferShowLength, float charWidth, float lineHeight)
-        {
-            m_position = position;
-            m_fileBuffer = buffer;
-            m_bufferShowStartY = bufferShowStartY;
-            m_bufferShowStartX = 0;
-            m_bufferShowLength = bufferShowLength;
-            m_charWidth = charWidth;
-            m_lineHeight = lineHeight;
-        }
-
-        public BufferView(BufferView rootBV, BufferPosition position)
-        {
-            m_fileBuffer = rootBV.m_fileBuffer;
-            m_bufferShowStartY = rootBV.m_bufferShowStartY;
-            m_bufferShowLength = rootBV.m_bufferShowLength;
-            m_bufferShowWidth = rootBV.m_bufferShowWidth;
-            m_charWidth = rootBV.m_charWidth;
-            m_lineHeight = rootBV.m_lineHeight;
-
-            m_position = rootBV.calculateRelativePosition(position);
-        }
-
+        /// <summary>
+        /// Calculate the position of the next BufferView relative to us - these factors aren't constant
+        /// and shouldn't be declared as such but for the moment they usually do.
+        /// </summary>
+        /// <param name="position"></param>
+        /// <returns></returns>
         public Vector3 calculateRelativePosition(BufferPosition position)
         {
+            if (m_lineHeight == 0 || m_charWidth == 0)
+            {
+                throw new Exception("BufferView::calculateRelativePosition() - some of our basic settings are zero - cannot calculate");
+            }
+
             switch (position)
             {
                 case BufferPosition.Above:
-                    return m_position - (new Vector3(0.0f, (m_bufferShowLength + 5) * m_lineHeight, 0.0f));
+                    return m_position - (new Vector3(0.0f, (m_bufferShowLength + 20) * m_lineHeight, 0.0f));
 
                 case BufferPosition.Below:
-                    return m_position + (new Vector3(0.0f, (m_bufferShowLength + 5) * m_lineHeight, 0.0f));
+                    return m_position + (new Vector3(0.0f, (m_bufferShowLength + 20) * m_lineHeight, 0.0f));
 
                 case BufferPosition.Left:
-                    return m_position - (new Vector3(m_charWidth * (m_bufferShowWidth + 10), 0.0f, 0.0f));
+                    return m_position - (new Vector3(m_charWidth * (m_bufferShowWidth + 15), 0.0f, 0.0f));
 
                 case BufferPosition.Right:
-                    return m_position + (new Vector3(m_charWidth * (m_bufferShowWidth + 10), 0.0f, 0.0f));
+                    return m_position + (new Vector3(m_charWidth * (m_bufferShowWidth + 15), 0.0f, 0.0f));
 
                 default:
                     throw new Exception("Unknown position parameter passed");
@@ -506,12 +725,12 @@ namespace Xyglo
                 // Set start position
                 //
                 startPos.X = m_position.X + m_highlightStart.X * m_charWidth;
-                startPos.Y = m_position.Y + m_highlightStart.Y * m_lineHeight;
+                startPos.Y = m_position.Y + (m_highlightStart.Y - m_bufferShowStartY) * m_lineHeight;
 
                 // Set end position
                 //
                 endPos.X = m_position.X + m_highlightEnd.X * m_charWidth;
-                endPos.Y = m_position.Y + (m_highlightEnd.Y + 1) * m_lineHeight;
+                endPos.Y = m_position.Y + (m_highlightEnd.Y + 1 - m_bufferShowStartY) * m_lineHeight;
 
                 bb.Add(new BoundingBox(startPos, endPos));
                 return bb;
@@ -826,5 +1045,30 @@ namespace Xyglo
 
             return rS;
         }
+
+        /// <summary>
+        /// Do we want to tail this file?
+        /// </summary>
+        /// <param name="tail"></param>
+        /// <returns></returns>
+        public void setTailing(bool tail)
+        {
+            m_tailing = tail;
+        }
+
+        /// <summary>
+        /// Are we tailing this BufferView?
+        /// </summary>
+        /// <returns></returns>
+        public bool isTailing()
+        {
+            return m_tailing;
+        }
+
+        public bool isReadOnly()
+        {
+            return m_readOnly;
+        }
+
     }
 }

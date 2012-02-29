@@ -1,12 +1,20 @@
+
+- CTRL to jump words 
+- repurpose the Function keys
+- Temporary file save messages to move somewhere
+- Log file view (attach and view)
+- Read only files
 - Long lines handling [CAN VIEW BUT NOT SCROLL TO]
-- Pasting multiple lines for Replace [HALF COMPLETE]
+- Logging (timestamps and makes sense)
+- System load meter
 - Packaging
 - Licensing
 - Icons etc
-- Logging (timestamps and makes sense)
-- Log file view (attach and view)
-- System load meter
 
+TO TEST/BUGS
+------------
+- Undo/redo
+- Pasting multiple lines for Replace [HALF COMPLETE]
 
 DONE
 ----
@@ -20,6 +28,7 @@ DONE
 - Completing editing and undo [PARTIAL]
 - Directory listings [DONE]
 - Pasting multiple lines for Insert [DONE]
+- Project file auto-persistence [DONE]
 
 Refactoring
 -----------

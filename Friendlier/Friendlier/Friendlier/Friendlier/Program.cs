@@ -7,6 +7,7 @@
 #endregion
 
 using System;
+using System.IO;
 
 namespace Xyglo
 {
@@ -34,19 +35,29 @@ namespace Xyglo
 
             // Create a project or load one
             //
+            Project project;
+            string xmlFile = @"C:\Temp\serialise.txt";
 
+            if (File.Exists(xmlFile))
+            {
+                project = Project.dataContractDeserialise(xmlFile);
+                project.loadFiles();
+                project.connectFloatingWorld();
+            }
+            else
+            {
+                project = new Project("My First Project");
+                // Create a project and load it
+                //
+                string editFile = @"C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\Friendlier.cs";
+                string rbFile1 = @"C:\FinanceIT\FiRE\Server\scripts\appSchemaInstall.ksh";
+                string rbFile2 = @"C:\appSchemaInstall.ksh";
 
-            string editFile = @"C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\Friendlier.cs";
+                BufferView newBV = project.addFileBuffer(editFile, 0);
+                project.addFileBufferRelative(editFile, newBV, BufferView.BufferPosition.Right);
+            }
 
-            Project project = new Project();
-            project.addFileBuffer(editFile);
-
-            //editFile = @"C:\FinanceIT\FiRE\Server\scripts\appSchemaInstall.ksh";
-            //editFile = @"C:\appSchemaInstall.ksh";
-
-            Friendlier friendlier = new Friendlier();
-            friendlier.loadProject(project);
-
+            Friendlier friendlier = new Friendlier(project);
             friendlier.Run();
         }
     }

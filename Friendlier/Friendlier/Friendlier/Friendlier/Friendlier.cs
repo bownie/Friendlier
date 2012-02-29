@@ -44,9 +44,14 @@ namespace Xyglo
         /// </summary>
         FriendlierState m_state;
 
-        // Our effects - one with textures for fonts, one without for lines
-        //
+        /// <summary>
+        /// Basic effect has with textures for fonts
+        /// </summary>
         BasicEffect m_basicEffect;
+
+        /// <summary>
+        /// Line effect has no textures
+        /// </summary>
         BasicEffect m_lineEffect;
 
         /// <summary>
@@ -84,9 +89,9 @@ namespace Xyglo
         float m_charWidth = 0.0f;
 
         /// <summary>
-        /// File we are editing
+        /// Current project
         /// </summary>
-        string m_fileName;
+        Project m_project;
 
         /// <summary>
         /// Last keyboard state so that we can compare with current
@@ -130,16 +135,6 @@ namespace Xyglo
         ConfirmState m_confirmState = ConfirmState.None;
 
         /// <summary>
-        /// List of FileBuffers that we can handle
-        /// </summary>
-        List<FileBuffer> m_fileBuffers = new List<FileBuffer>();
-
-        /// <summary>
-        /// List of BufferViews - views on 
-        /// </summary>
-        List<BufferView> m_bufferViews = new List<BufferView>();
-
-        /// <summary>
         /// The buffer we are currently editing
         /// </summary>
         BufferView m_activeBufferView = null;
@@ -152,7 +147,7 @@ namespace Xyglo
         /// <summary>
         /// Currently active BufferView
         /// </summary>
-        int m_activeBufferViewId = 0;
+        //int m_activeBufferViewId = 0;
 
         /// <summary>
         /// Rotations are stored in this vector
@@ -185,7 +180,7 @@ namespace Xyglo
         /// <returns></returns>
         protected int getActiveBufferIndex()
         {
-            return m_fileBuffers.IndexOf(m_activeBufferView.getFileBuffer());
+            return m_project.getFileBuffers().IndexOf(m_activeBufferView.getFileBuffer());
         }
 
         public Friendlier()
@@ -202,7 +197,7 @@ namespace Xyglo
             m_state = FriendlierState.TextEditing;
         }
 
-        public Friendlier(string file)
+        public Friendlier(Project project)
         {
             m_graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
@@ -213,7 +208,7 @@ namespace Xyglo
 
             // File name
             //
-            m_fileName = file;
+            m_project = project;
 
             // Set the editing state
             //
@@ -304,17 +299,48 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Load a project file
+        /// Initialise the project - load all the FileBuffers and select the correct BufferView
         /// </summary>
         /// <param name="project"></param>
-        public void loadProject(Project project)
+        public void initialiseProject()
         {
-            m_fileBuffers.Clear();
-            foreach (FileBuffer buf in project.getFileBuffers())
+            // Load all the files
+            //
+            m_project.loadFiles();
+
+            // Ensure that all the BufferViews are populated with the charwidth and lineheights and
+            // also that the relative positioning is correct - we have to do this in two passes.
+            foreach (BufferView bv in m_project.getBufferViews())
             {
-                m_fileBuffers.Add(buf);
+                bv.setCharWidth(m_charWidth);
+                bv.setLineHeight(m_lineHeight);
             }
 
+            // Now calculate the relative positions
+            //
+            foreach (BufferView bv in m_project.getBufferViews())
+            {
+                bv.calculateMyRelativePosition();
+            }
+
+
+            // Get the BufferView id we've selected and set the BufferView
+            //
+            m_activeBufferView = m_project.getSelectedBufferView();
+
+            // Ensure that we are in the correct position to view this buffer so there's no initial movement
+            //
+            m_eye = m_activeBufferView.getEyePosition();
+            m_target = m_activeBufferView.getLookPosition();
+            m_eye.Z = m_zoomLevel;
+
+            // Set the active buffer view
+            //
+            setActiveBuffer();
+
+            // Set-up the single FileSystemView we have
+            //
+            m_fileSystemView = new FileSystemView(m_filePath, new Vector3(-800.0f, 0f, 0f), m_lineHeight, m_charWidth);
         }
 
         /// <summary>
@@ -374,38 +400,31 @@ namespace Xyglo
         /// </summary>
         protected void setSpriteFont()
         {
-            // Font loading
+            // Font loading - set our text size a bit fluffily at the moment
             //
             if (m_graphics.GraphicsDevice.Viewport.Width < 960)
             {
                 Logger.logMsg("Friendlier:setSpriteFont() - using Small Window font");
                 m_spriteFont = FontManager.getSmallWindowFont();
+                m_textSize = 8.0f / (float)(m_spriteFont.LineSpacing) * GraphicsDevice.Viewport.AspectRatio;
             }
             else if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
             {
                 Logger.logMsg("Friendlier:setSpriteFont() - using Window font");
                 m_spriteFont = FontManager.getWindowFont();
+                m_textSize = 8.0f / (float)(m_spriteFont.LineSpacing) * GraphicsDevice.Viewport.AspectRatio;
             }
             else
             {
                 Logger.logMsg("Friendlier:setSpriteFont() - using Full Screen font");
                 m_spriteFont = FontManager.getFullScreenFont();
+                m_textSize = (float)((int)(1400.0f / (float)(m_spriteFont.LineSpacing))) / 100.0f;
             }
 
             // to handle tabs for the moment convert them to single spaces
             //
             m_spriteFont.DefaultCharacter = ' ';
             Logger.logMsg("Friendlier:setSpriteFont() - using default character '" + m_spriteFont.DefaultCharacter + "'");
-
-            //Logger.logMsg("SPRITE FONT line spacing = " + m_spriteFont.LineSpacing);
-
-            // Text size has to be scaled to actual font size
-            //
-            // NEED THE ASPECT RATIO IN HERE
-            //m_textSize = (float)((int)(1400.0f / (float)(m_spriteFont.LineSpacing))) / 100.0f;
-
-            m_textSize = 8.0f / (float)(m_spriteFont.LineSpacing) * GraphicsDevice.Viewport.AspectRatio;
-
             Logger.logMsg("Friendlier:setSpriteFont() - you must get these three variables correct for each position to avoid nasty looking fonts:");
             Logger.logMsg("Friendlier:setSpriteFont() - zoom level = " + m_zoomLevel);
             Logger.logMsg("Friendlier:setSpriteFont() - setting line spacing = " + m_spriteFont.LineSpacing);
@@ -415,6 +434,28 @@ namespace Xyglo
             //
             m_charWidth = m_spriteFont.MeasureString("X").X * m_textSize;
             m_lineHeight = m_spriteFont.MeasureString("X").Y * m_textSize;
+
+            Logger.logMsg("Friendlier:setSpriteFont() - m_charWidth = " + m_charWidth);
+            Logger.logMsg("Friendlier:setSpriteFont() - m_lineHeight = " + m_lineHeight);
+
+            // Now we need to make all of our BufferViews have this setting too
+            //
+            foreach (BufferView bv in m_project.getBufferViews())
+            {
+                bv.setCharWidth(m_charWidth);
+                bv.setLineHeight(m_lineHeight);
+            }
+
+            // Now recalculate positions
+            //
+            foreach (BufferView bv in m_project.getBufferViews())
+            {
+                bv.calculateMyRelativePosition();
+            }
+
+            // Reset the active BufferView
+            //
+            setActiveBuffer();
         }
 
 
@@ -478,43 +519,6 @@ namespace Xyglo
             initialiseProject();
         }
 
-
-        protected void initialiseProject()
-        {
-            BufferView newView;
-
-            if (m_fileName != null && m_fileName != "")
-            {
-                // Load and buffer the file
-                //
-                FileBuffer file1 = new FileBuffer(m_fileName);
-                m_fileBuffers.Add(file1);
-
-                // Add a view
-                //
-                newView = new BufferView(file1, new Vector3(0f, 0f, 0f), 0, 20, m_charWidth, m_lineHeight);
-                m_bufferViews.Add(newView);
-            }
-            else
-            {
-                newView = addNewFileBuffer();
-            }
-
-            // Ensure that we are in the correct position to view this buffer so there's no initial movement
-            //
-            m_eye = newView.getEyePosition();
-            m_target = newView.getLookPosition();
-            m_eye.Z = m_zoomLevel;
-
-            // Set the active buffer view
-            //
-            setActiveBuffer();
-
-            // Set-up the single FileSystemView we have
-            //
-            m_fileSystemView = new FileSystemView(m_filePath, new Vector3(-800.0f, 0f, 0f), m_lineHeight, m_charWidth);
-        }
-
         /// <summary>
         /// Set which BufferView is the active one with a cursor in it
         /// </summary>
@@ -527,11 +531,11 @@ namespace Xyglo
                 //
                 if (item == null)
                 {
-                    m_activeBufferView = m_bufferViews[m_activeBufferViewId];
+                    m_activeBufferView = m_project.getSelectedBufferView();
                 }
                 else
                 {
-                    m_activeBufferViewId = m_bufferViews.IndexOf(item);
+                    m_project.setSelectedBufferView(item);
                     m_activeBufferView = item;
                 }
             }
@@ -541,7 +545,7 @@ namespace Xyglo
                 return;
             }
 
-            Logger.logMsg("Friendlier:setActiveBuffer() - active buffer view is " + m_activeBufferViewId);
+            Logger.logMsg("Friendlier:setActiveBuffer() - active buffer view is " + m_project.getSelectedBufferViewId());
 
             Vector3 eyePos = m_activeBufferView.getEyePosition();
             eyePos.Z = m_zoomLevel;
@@ -646,7 +650,7 @@ namespace Xyglo
         /// <summary>
         /// Open a file at the selected location
         /// </summary>
-        protected void openHighlightedFile(GameTime gameTime)
+        protected void openHighlightedFile(GameTime gameTime, bool readOnly = false, bool tailFile = false)
         {
             //string fileToOpen = m_fileSystemView.getHighlightedFile();
             if (m_fileSystemView.atDriveLevel())
@@ -692,7 +696,7 @@ namespace Xyglo
 
                         // OPEN FILE
                         //
-                        BufferView newBV = addNewFileBuffer(fileInfo.FullName);
+                        BufferView newBV = addNewFileBuffer(fileInfo.FullName, readOnly, tailFile);
 
                         setActiveBuffer(newBV);
                     }
@@ -727,64 +731,18 @@ namespace Xyglo
 
 
         /// <summary>
-        /// Ensure the cursor is within the boundaries set by the file and not floating in space
-        /// /// </summary>
-        protected void fixCursor()
-        {
-            FilePosition fp = m_activeBufferView.getCursorPosition();
-            int lineCount = m_activeBufferView.getFileBuffer().getLineCount() - 1;
-            int line = fp.Y;
-
-            // Use line from now on
-            //
-            if (lineCount > 0 && line > lineCount)
-            {
-                line = lineCount;
-            }
-
-            // Only do this is we have a line to check
-            //
-            if (line <= lineCount)
-            {
-                int lineLength = m_activeBufferView.getFileBuffer().getLine(line).Length;
-
-                if (fp.X > lineLength)
-                {
-                    fp.X = (lineLength == 0 ? 0 : lineLength - 1);
-                }
-            }
-
-            /*
-            // Adjust the Y position by removing the buffer show start
-            //
-            int screenY = line - m_activeBufferView.getBufferShowStartY();
-
-            // Adjust for running over the end of the vertical buffer at either end
-            //
-            if (screenY > m_activeBufferView.getBufferShowLength() - 1)
-            {
-                m_activeBufferView.setBufferShowStartY(m_activeBufferView.getBufferShowStartY() +
-                    (screenY - ( m_activeBufferView.getBufferShowLength() - 1 ) ));
-
-                fp.Y = m_activeBufferView.getBufferShowLength() - 1;
-            }
-            else if (screenY < 0)
-            {
-                m_activeBufferView.setBufferShowStartY(0);
-                fp.Y = 0;
-            }
-             */
-        }
-
-        /// <summary>
         /// Ensure that buffers are saved
         /// </summary>
         protected void checkExit(GameTime gameTime)
         {
+            // Save our project
+            //
+            m_project.dataContractSerialise();
+
             // Firstly check for any unsaved buffers and warn
             //
             bool unsaved = false;
-            foreach (FileBuffer fb in m_fileBuffers)
+            foreach (FileBuffer fb in m_project.getFileBuffers())
             {
                 if (fb.isModified())
                 {
@@ -921,7 +879,7 @@ namespace Xyglo
                 }
                 else
                 {
-                    if (m_ctrlDown)
+                    if (m_altDown)
                     {
                         // Add a new BufferView above current position
                         //
@@ -963,7 +921,7 @@ namespace Xyglo
                 }
                 else
                 {
-                    if (m_ctrlDown)
+                    if (m_altDown)
                     {
                         // Add a new BufferView below current position
                         //
@@ -1018,7 +976,7 @@ namespace Xyglo
                 }
                 else
                 {
-                    if (m_ctrlDown)
+                    if (m_altDown)
                     {
                         // Add a new BufferView to the left of current position
                         //
@@ -1045,8 +1003,6 @@ namespace Xyglo
                         {
                             m_activeBufferView.noHighlight(); // Disable
                         }
-
-                        //fixCursor();
                     }
                 }
             }
@@ -1058,7 +1014,7 @@ namespace Xyglo
                 }
                 else
                 {
-                    if (m_ctrlDown)
+                    if (m_altDown)
                     {
                         // Add a new BufferView to the right of current position
                         //
@@ -1092,15 +1048,13 @@ namespace Xyglo
                         {
                             m_activeBufferView.noHighlight(); // Disable
                         }
-
-                        //fixCursor();
                     }
                 }
             }
             else if (checkKeyState(Keys.End, gameTime))
             {
                 FilePosition fp = m_activeBufferView.getCursorPosition();
-                fp.X = m_activeBufferView.getFileBuffer().getLine(fp.Y + m_activeBufferView.getBufferShowStartY()).Length;
+                fp.X = m_activeBufferView.getFileBuffer().getLine(fp.Y).Length;
                 m_activeBufferView.setCursorPosition(fp);
 
                 if (m_shiftDown)
@@ -1178,17 +1132,19 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.F5, gameTime))
             {
-                m_activeBufferViewId--;
-
-                if (m_activeBufferViewId < 0)
+                int newValue = m_project.getSelectedBufferViewId() - 1;
+                if (newValue < 0)
                 {
-                    m_activeBufferViewId += m_bufferViews.Count;
+                    newValue += m_project.getBufferViews().Count;
                 }
+
+                m_project.setSelectedBufferViewId(newValue);
                 setActiveBuffer();
             }
             else if (checkKeyState(Keys.F6, gameTime))
             {
-                m_activeBufferViewId = (m_activeBufferViewId + 1) % m_bufferViews.Count;
+                int newValue = (m_project.getSelectedBufferViewId() + 1) % m_project.getBufferViews().Count;
+                m_project.setSelectedBufferViewId(newValue);
                 setActiveBuffer();
             }
             else if (checkKeyState(Keys.F7, gameTime))
@@ -1321,7 +1277,7 @@ namespace Xyglo
                             }
                             else if (m_confirmState == ConfirmState.FileSaveCancel)
                             {
-                                foreach (FileBuffer fb in m_fileBuffers)
+                                foreach (FileBuffer fb in m_project.getFileBuffers())
                                 {
                                     // Select a file path if we need one
                                     //
@@ -1370,12 +1326,12 @@ namespace Xyglo
                 {
                     if (checkKeyState(Keys.C, gameTime)) // Copy
                     {
-                        Logger.logMsg("Copying to clipboard");
+                        Logger.logMsg("Friendler::update() - copying to clipboard");
                         System.Windows.Forms.Clipboard.SetText(m_activeBufferView.getSelection().getClipboardString());
                     }
                     else if (checkKeyState(Keys.X, gameTime)) // Cut
                     {
-                        Logger.logMsg("CUT");
+                        Logger.logMsg("Friendler::update() - cut");
 
                         System.Windows.Forms.Clipboard.SetText(m_activeBufferView.getSelection().getClipboardString());
                         m_activeBufferView.deleteCurrentSelection();
@@ -1384,6 +1340,7 @@ namespace Xyglo
                     {
                         if (System.Windows.Forms.Clipboard.ContainsText())
                         {
+                            Logger.logMsg("Friendler::update() - pasting text");
                             // If we have a selection then replace it - else insert
                             //
                             if (m_activeBufferView.gotHighlight())
@@ -1421,8 +1378,6 @@ namespace Xyglo
                             Logger.logMsg("Friendlier::Update() - got exception " + e.Message);
                             setTemporaryMessage("[NOUNDO]", gameTime, 2);
                         }
-
-                        //fixCursor();
                     }
                     else if (checkKeyState(Keys.Y, gameTime))  // Redo
                     {
@@ -1449,8 +1404,6 @@ namespace Xyglo
                             Logger.logMsg("Friendlier::Update() - got exception " + e.Message);
                             setTemporaryMessage("[NOREDO]", gameTime, 2);
                         }
-
-                        //fixCursor();
                     }
                 }
                 else if (m_altDown) // ALT down action
@@ -1471,401 +1424,421 @@ namespace Xyglo
                     }
                 }
                 else
-                if (//Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftShift) ||
-                    //Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightShift) ||
-                    Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightControl) ||
-                    Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftControl) ||
-                    m_confirmState != ConfirmState.None)
-                {
-                    // we have an action key so we ignore it for insert purposes
-                    ;
-                }
-                else 
-                {
-                    // Detect a key being hit
-                    //
-                    foreach (Keys keyDown in Keyboard.GetState().GetPressedKeys())
+                    if (//Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftShift) ||
+                        //Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightShift) ||
+                        Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightControl) ||
+                        Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftControl) ||
+                        m_confirmState != ConfirmState.None)
                     {
-                        bool testKey = true;
-
-                        foreach (Keys lastKeys in m_lastKeyboardState.GetPressedKeys())
-                        {
-                            if (keyDown == lastKeys)
-                            {
-                                testKey = false;
-                            }
-                        }
-
-                        // Test to see if we've already processed this key - if not then we can print it out
+                        // we have an action key so we ignore it for insert purposes
+                        ;
+                    }
+                    else
+                    {
+                        // Detect a key being hit
                         //
-                        if (testKey)
+                        foreach (Keys keyDown in Keyboard.GetState().GetPressedKeys())
                         {
-                            FilePosition fp = m_activeBufferView.getCursorPosition();
+                            bool testKey = true;
 
-                            if (keyDown == Keys.Enter)
+                            foreach (Keys lastKeys in m_lastKeyboardState.GetPressedKeys())
                             {
-                                if (m_state == FriendlierState.FileSaveAs)
+                                if (keyDown == lastKeys)
                                 {
-                                    // Check that the filename is valid
-                                    //
-                                    if (m_saveFileName != "" && m_saveFileName != null)
-                                    {
-                                        m_activeBufferView.getFileBuffer().setFilepath(m_fileSystemView.getPath() + m_saveFileName);
-
-                                        Logger.logMsg("FILE NAME = " + m_activeBufferView.getFileBuffer().getFilepath());
-
-                                        completeSaveFile(gameTime);
-                                        //Logger.logMsg("Got return");
-                                    }
-                                }
-                                else if (m_state == FriendlierState.FileOpen)
-                                {
-                                    openHighlightedFile(gameTime);
-                                }
-                                else
-                                {
-                                    // Insert a line into the editor
-                                    //
-                                    m_activeBufferView.insertNewLine();
-
-                                    //fp = m_activeBufferView.getFileBuffer().insertNewLine(m_activeBufferView.getCursorPosition());
-
-                                    // When we come back from the insertNewLine call we have to check to see if
-                                    // the new position given to us is outside the viewable area and adjust if
-                                    // so.
-                                    //
-                                    /*
-                                    if (fp.Y >= m_activeBufferView.getBufferShowLength())
-                                    {
-                                        // Move down by the number of rows we're overlapping
-                                        //
-                                        for (int i = m_activeBufferView.getBufferShowLength(); i <= fp.Y; i++)
-                                        {
-                                            m_activeBufferView.moveCursorDown(false);
-                                        }
-                                    }
-                                     * */
+                                    testKey = false;
                                 }
                             }
-                            else
+
+                            // Test to see if we've already processed this key - if not then we can print it out
+                            //
+                            if (testKey)
                             {
-                                string key = "";
+                                FilePosition fp = m_activeBufferView.getCursorPosition();
 
-                                switch (keyDown)
-                                {
-                                    case Keys.LeftShift:
-                                    case Keys.RightShift:
-                                    case Keys.LeftControl:
-                                    case Keys.RightControl:
-                                    case Keys.LeftAlt:
-                                    case Keys.RightAlt:
-                                        break;
-
-                                    case Keys.OemPipe:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "|";
-                                        }
-                                        else
-                                        {
-                                            key = "\\";
-                                        }
-                                        break;
-
-                                    case Keys.OemQuestion:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "?";
-                                        }
-                                        else
-                                        {
-                                            key = "/";
-                                        }
-                                        break;
-
-                                    case Keys.OemSemicolon:
-                                        if (m_shiftDown)
-                                        {
-                                            key = ":";
-                                        }
-                                        else
-                                        {
-                                            key = ";";
-                                        }
-                                        break;
-
-                                    case Keys.OemQuotes:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "#";
-                                        }
-                                        else
-                                        {
-                                            key = "~";
-                                        }
-                                        break;
-
-                                    case Keys.OemTilde:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "@";
-                                        }
-                                        else
-                                        {
-                                            key = "'";
-                                        }
-                                        break;
-
-                                    case Keys.OemOpenBrackets:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "{";
-                                        }
-                                        else
-                                        {
-                                            key = "[";
-                                        }
-                                        break;
-
-                                    case Keys.OemCloseBrackets:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "}";
-                                        }
-                                        else
-                                        {
-                                            key = "]";
-                                        }
-                                        break;
-
-                                    case Keys.D0:
-                                        if (m_shiftDown)
-                                        {
-                                            key = ")";
-                                        }
-                                        else
-                                        {
-                                            key = "0";
-                                        }
-                                        break;
-
-                                    case Keys.D1:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "!";
-                                        }
-                                        else
-                                        {
-                                            key = "1";
-                                        }
-                                        break;
-
-                                    case Keys.D2:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "@";
-                                        }
-                                        else
-                                        {
-                                            key = "2";
-                                        }
-                                        break;
-
-                                    case Keys.D3:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "#";
-                                        }
-                                        else
-                                        {
-                                            key = "3";
-                                        }
-                                        break;
-
-                                    case Keys.D4:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "$";
-                                        }
-                                        else
-                                        {
-                                            key = "4";
-                                        }
-                                        break;
-
-                                    case Keys.D5:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "%";
-                                        }
-                                        else
-                                        {
-                                            key = "5";
-                                        }
-                                        break;
-
-                                    case Keys.D6:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "^";
-                                        }
-                                        else
-                                        {
-                                            key = "6";
-                                        }
-                                        break;
-
-                                    case Keys.D7:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "&";
-                                        }
-                                        else
-                                        {
-                                            key = "7";
-                                        }
-                                        break;
-
-                                    case Keys.D8:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "*";
-                                        }
-                                        else
-                                        {
-                                            key = "8";
-                                        }
-                                        break;
-
-                                    case Keys.D9:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "(";
-                                        }
-                                        else
-                                        {
-                                            key = "9";
-                                        }
-                                        break;
-
-
-                                    case Keys.Space:
-                                        key = " ";
-                                        break;
-
-                                    case Keys.OemPlus:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "+";
-                                        }
-                                        else
-                                        {
-                                            key = "=";
-                                        }
-                                        break;
-
-                                    case Keys.OemMinus:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "_";
-                                        }
-                                        else
-                                        {
-                                            key = "-";
-                                        }
-                                        break;
-
-                                    case Keys.OemPeriod:
-                                        if (m_shiftDown)
-                                        {
-                                            key = ">";
-                                        }
-                                        else
-                                        {
-                                            key = ".";
-                                        }
-                                        break;
-
-                                    case Keys.OemComma:
-                                        if (m_shiftDown)
-                                        {
-                                            key = "<";
-                                        }
-                                        else
-                                        {
-                                            key = ",";
-                                        }
-                                        break;
-
-                                    case Keys.A:
-                                    case Keys.B:
-                                    case Keys.C:
-                                    case Keys.D:
-                                    case Keys.E:
-                                    case Keys.F:
-                                    case Keys.G:
-                                    case Keys.H:
-                                    case Keys.I:
-                                    case Keys.J:
-                                    case Keys.K:
-                                    case Keys.L:
-                                    case Keys.M:
-                                    case Keys.N:
-                                    case Keys.O:
-                                    case Keys.P:
-                                    case Keys.Q:
-                                    case Keys.R:
-                                    case Keys.S:
-                                    case Keys.T:
-                                    case Keys.U:
-                                    case Keys.V:
-                                    case Keys.W:
-                                    case Keys.X:
-                                    case Keys.Y:
-                                    case Keys.Z:
-                                        if (m_shiftDown)
-                                        {
-                                            key = keyDown.ToString().ToUpper();
-                                        }
-                                        else
-                                        {
-                                            key = keyDown.ToString().ToLower();
-                                        }
-                                        break;
-
-                                    // Do nothing as default
-                                    //
-                                    default:
-                                        key = "";
-                                        Logger.logMsg("Got key = " + keyDown.ToString());
-                                        break;
-                                }
-
-                                if (key != "")
+                                if (keyDown == Keys.Enter)
                                 {
                                     if (m_state == FriendlierState.FileSaveAs)
                                     {
-                                        //Logger.logMsg("Writing letter " + key);
-                                        m_saveFileName += key;
+                                        // Check that the filename is valid
+                                        //
+                                        if (m_saveFileName != "" && m_saveFileName != null)
+                                        {
+                                            m_activeBufferView.getFileBuffer().setFilepath(m_fileSystemView.getPath() + m_saveFileName);
+
+                                            Logger.logMsg("FILE NAME = " + m_activeBufferView.getFileBuffer().getFilepath());
+
+                                            completeSaveFile(gameTime);
+                                            //Logger.logMsg("Got return");
+                                        }
+                                    }
+                                    else if (m_state == FriendlierState.FileOpen)
+                                    {
+                                        openHighlightedFile(gameTime);
                                     }
                                     else
                                     {
-                                        // Do we need to do some deletion or replacing?
+                                        // Insert a line into the editor
                                         //
-                                        if (m_activeBufferView.gotHighlight())
+                                        m_activeBufferView.insertNewLine();
+
+                                        //fp = m_activeBufferView.getFileBuffer().insertNewLine(m_activeBufferView.getCursorPosition());
+
+                                        // When we come back from the insertNewLine call we have to check to see if
+                                        // the new position given to us is outside the viewable area and adjust if
+                                        // so.
+                                        //
+                                        /*
+                                        if (fp.Y >= m_activeBufferView.getBufferShowLength())
                                         {
-                                            m_activeBufferView.replaceCurrentSelection(key); 
+                                            // Move down by the number of rows we're overlapping
+                                            //
+                                            for (int i = m_activeBufferView.getBufferShowLength(); i <= fp.Y; i++)
+                                            {
+                                                m_activeBufferView.moveCursorDown(false);
+                                            }
+                                        }
+                                         * */
+                                    }
+                                }
+                                else
+                                {
+                                    string key = "";
+
+                                    switch (keyDown)
+                                    {
+                                        case Keys.LeftShift:
+                                        case Keys.RightShift:
+                                        case Keys.LeftControl:
+                                        case Keys.RightControl:
+                                        case Keys.LeftAlt:
+                                        case Keys.RightAlt:
+                                            break;
+
+                                        case Keys.OemPipe:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "|";
+                                            }
+                                            else
+                                            {
+                                                key = "\\";
+                                            }
+                                            break;
+
+                                        case Keys.OemQuestion:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "?";
+                                            }
+                                            else
+                                            {
+                                                key = "/";
+                                            }
+                                            break;
+
+                                        case Keys.OemSemicolon:
+                                            if (m_shiftDown)
+                                            {
+                                                key = ":";
+                                            }
+                                            else
+                                            {
+                                                key = ";";
+                                            }
+                                            break;
+
+                                        case Keys.OemQuotes:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "#";
+                                            }
+                                            else
+                                            {
+                                                key = "~";
+                                            }
+                                            break;
+
+                                        case Keys.OemTilde:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "@";
+                                            }
+                                            else
+                                            {
+                                                key = "'";
+                                            }
+                                            break;
+
+                                        case Keys.OemOpenBrackets:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "{";
+                                            }
+                                            else
+                                            {
+                                                key = "[";
+                                            }
+                                            break;
+
+                                        case Keys.OemCloseBrackets:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "}";
+                                            }
+                                            else
+                                            {
+                                                key = "]";
+                                            }
+                                            break;
+
+                                        case Keys.D0:
+                                            if (m_shiftDown)
+                                            {
+                                                key = ")";
+                                            }
+                                            else
+                                            {
+                                                key = "0";
+                                            }
+                                            break;
+
+                                        case Keys.D1:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "!";
+                                            }
+                                            else
+                                            {
+                                                key = "1";
+                                            }
+                                            break;
+
+                                        case Keys.D2:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "@";
+                                            }
+                                            else
+                                            {
+                                                key = "2";
+                                            }
+                                            break;
+
+                                        case Keys.D3:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "#";
+                                            }
+                                            else
+                                            {
+                                                key = "3";
+                                            }
+                                            break;
+
+                                        case Keys.D4:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "$";
+                                            }
+                                            else
+                                            {
+                                                key = "4";
+                                            }
+                                            break;
+
+                                        case Keys.D5:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "%";
+                                            }
+                                            else
+                                            {
+                                                key = "5";
+                                            }
+                                            break;
+
+                                        case Keys.D6:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "^";
+                                            }
+                                            else
+                                            {
+                                                key = "6";
+                                            }
+                                            break;
+
+                                        case Keys.D7:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "&";
+                                            }
+                                            else
+                                            {
+                                                key = "7";
+                                            }
+                                            break;
+
+                                        case Keys.D8:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "*";
+                                            }
+                                            else
+                                            {
+                                                key = "8";
+                                            }
+                                            break;
+
+                                        case Keys.D9:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "(";
+                                            }
+                                            else
+                                            {
+                                                key = "9";
+                                            }
+                                            break;
+
+
+                                        case Keys.Space:
+                                            key = " ";
+                                            break;
+
+                                        case Keys.OemPlus:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "+";
+                                            }
+                                            else
+                                            {
+                                                key = "=";
+                                            }
+                                            break;
+
+                                        case Keys.OemMinus:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "_";
+                                            }
+                                            else
+                                            {
+                                                key = "-";
+                                            }
+                                            break;
+
+                                        case Keys.OemPeriod:
+                                            if (m_shiftDown)
+                                            {
+                                                key = ">";
+                                            }
+                                            else
+                                            {
+                                                key = ".";
+                                            }
+                                            break;
+
+                                        case Keys.OemComma:
+                                            if (m_shiftDown)
+                                            {
+                                                key = "<";
+                                            }
+                                            else
+                                            {
+                                                key = ",";
+                                            }
+                                            break;
+
+                                        case Keys.A:
+                                        case Keys.B:
+                                        case Keys.C:
+                                        case Keys.D:
+                                        case Keys.E:
+                                        case Keys.F:
+                                        case Keys.G:
+                                        case Keys.H:
+                                        case Keys.I:
+                                        case Keys.J:
+                                        case Keys.K:
+                                        case Keys.L:
+                                        case Keys.M:
+                                        case Keys.N:
+                                        case Keys.O:
+                                        case Keys.P:
+                                        case Keys.Q:
+                                        case Keys.R:
+                                        case Keys.S:
+                                        case Keys.U:
+                                        case Keys.V:
+                                        case Keys.W:
+                                        case Keys.X:
+                                        case Keys.Y:
+                                        case Keys.Z:
+                                            if (m_shiftDown)
+                                            {
+                                                key = keyDown.ToString().ToUpper();
+                                            }
+                                            else
+                                            {
+                                                key = keyDown.ToString().ToLower();
+                                            }
+                                            break;
+
+                                        case Keys.T:
+                                            if (m_state == FriendlierState.FileOpen)
+                                            {
+                                                // Open a file as read only and tail it
+                                                //
+                                                openHighlightedFile(gameTime, true, true);
+                                            }
+                                            else
+                                            {
+                                                if (m_shiftDown)
+                                                {
+                                                    key = keyDown.ToString().ToUpper();
+                                                }
+                                                else
+                                                {
+                                                    key = keyDown.ToString().ToLower();
+                                                }
+                                            }
+                                            break;
+
+
+                                        // Do nothing as default
+                                        //
+                                        default:
+                                            key = "";
+                                            Logger.logMsg("Got key = " + keyDown.ToString());
+                                            break;
+                                    }
+
+                                    if (key != "")
+                                    {
+                                        if (m_state == FriendlierState.FileSaveAs)
+                                        {
+                                            //Logger.logMsg("Writing letter " + key);
+                                            m_saveFileName += key;
                                         }
                                         else
                                         {
-                                            m_activeBufferView.insertText(key);
+                                            // Do we need to do some deletion or replacing?
+                                            //
+                                            if (m_activeBufferView.gotHighlight())
+                                            {
+                                                m_activeBufferView.replaceCurrentSelection(key);
+                                            }
+                                            else
+                                            {
+                                                m_activeBufferView.insertText(key);
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
             }
 
             // Check for this change as necessary
@@ -1884,65 +1857,6 @@ namespace Xyglo
 
         }
 
-
-        // Return the current selected text
-        //
-        protected TextSnippet getSelection()
-        {
-            TextSnippet rS = new TextSnippet();
-            /*
-            FilePosition shiftStart = m_shiftStart;
-            FilePosition shiftEnd = m_shiftEnd;
-            shiftStart.Y += m_activeBufferView.getBufferShowStartY();
-            shiftEnd.Y += m_activeBufferView.getBufferShowStartY();
-
-            // Swap the end points if start is greater than end.
-            //
-            if (m_shiftStart.Y > shiftEnd.Y || (shiftStart.Y == shiftEnd.Y && (shiftStart.X > shiftEnd.X)))
-            {
-                FilePosition swap = shiftStart;
-                shiftStart = shiftEnd;
-                shiftEnd = swap;
-            }
-
-            //Logger.logMsg("START = " + shiftStart.Y);
-            //Logger.logMsg("END   = " + shiftEnd.Y);
-            
-            string line;
-
-            // Are we deleting on the same line?
-            //
-            if (shiftStart.Y == shiftEnd.Y)
-            {
-                line = m_activeBufferView.getFileBuffer().getLine(shiftStart.Y).Substring(shiftStart.X, shiftEnd.X - shiftStart.X);
-                rS.setSnippetSingle(line);
-            }
-            else  // Multi-line text
-            {
-                string newLine;
-
-                for (int i = shiftStart.Y; i < shiftEnd.Y; i++)
-                {
-                    line = m_activeBufferView.getFileBuffer().getLine(i);
-
-                    if (i == shiftStart.Y)
-                    {
-                        newLine = line.Substring(shiftStart.X, line.Length - shiftStart.X);
-                    }
-                    else if (i == shiftEnd.Y)
-                    {
-                        newLine = line.Substring(0, shiftEnd.X);
-                    }
-                    else
-                    {
-                        newLine = line;
-                    }
-                    rS.m_lines.Add(line);
-                }
-            }
-             */
-            return rS;
-        }
 
         /// <summary>
         /// Set a temporary message until a given end time (seconds into the future)
@@ -1969,7 +1883,7 @@ namespace Xyglo
         /// <summary>
         /// Add a new FileBuffer and a new BufferView and set this as active
         /// </summary>
-        protected BufferView addNewFileBuffer(string filename = null)
+        protected BufferView addNewFileBuffer(string filename = null, bool readOnly = false, bool tailFile = false)
         {
             // Create an empty buffer and add it to the list of buffers
             //
@@ -1981,9 +1895,16 @@ namespace Xyglo
             }
             else
             {
-                newFB = new FileBuffer(filename);
+                newFB = new FileBuffer(filename, readOnly);
+
+                // Load the file
+                //
+                newFB.loadFile();
             }
-            m_fileBuffers.Add(newFB);
+
+            // Add the FileBuffer and keep the index for our BufferView
+            //
+            int fileIndex = m_project.addFileBuffer(newFB);
 
             // Always assign a new bufferview to the right if we have one - else default position
             //
@@ -1993,9 +1914,10 @@ namespace Xyglo
                 newPos = getFreeBufferViewPosition(BufferView.BufferPosition.Right);
             }
 
-            BufferView newBV = new BufferView(newFB, newPos, 0, 20, m_charWidth, m_lineHeight);
+            BufferView newBV = new BufferView(newFB, newPos, 0, 20, m_charWidth, m_lineHeight, fileIndex, readOnly);
+            newBV.setTailing(tailFile);
             newBV.m_textColour = Color.LightBlue;
-            m_bufferViews.Add(newBV);
+            m_project.addBufferView(newBV);
 
             return newBV;
         }
@@ -2016,7 +1938,7 @@ namespace Xyglo
             {
                 occupied = false;
 
-                foreach (BufferView cur in m_bufferViews)
+                foreach (BufferView cur in m_project.getBufferViews())
                 {
                     if (cur.getPosition() == newPos)
                     {
@@ -2042,7 +1964,7 @@ namespace Xyglo
 
             BufferView newBufferView = new BufferView(m_activeBufferView, newPos);
             //newBufferView.m_textColour = Color.LawnGreen;
-            m_bufferViews.Add(newBufferView);
+            m_project.addBufferView(newBufferView);
             setActiveBuffer(newBufferView);
         }
 
@@ -2288,10 +2210,10 @@ namespace Xyglo
             {
                 m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
             }
-            
-            for (int i = 0; i < m_bufferViews.Count; i++)
+
+            for (int i = 0; i < m_project.getBufferViews().Count; i++)
             {
-                drawFileBuffer(m_bufferViews[i]);
+                drawFileBuffer(m_project.getBufferViews()[i], gameTime);
             }
 
             // If we're choosing a file then
@@ -2356,6 +2278,18 @@ namespace Xyglo
                 fileName += " " + m_activeBufferView.getFileBuffer().getLineCount() + " lines";
             }
 
+            // Add some other useful states to our status line
+            //
+            if (m_activeBufferView.isReadOnly())
+            {
+                fileName += " [RDONLY]";
+            }
+
+            if (m_activeBufferView.isTailing())
+            {
+                fileName += " [TAIL]";
+            }
+
             if (m_shiftDown)
             {
                 fileName += " [SHFT]";
@@ -2412,7 +2346,7 @@ namespace Xyglo
             float modeStringXPos = m_graphics.GraphicsDevice.Viewport.Width - modeString.Length * m_charWidth - (m_charWidth * 10);
             
             string positionString = m_activeBufferView.getCursorPosition().Y + m_activeBufferView.getBufferShowStartY() + "," + m_activeBufferView.getCursorPosition().X;
-            float positionStringXPos = m_graphics.GraphicsDevice.Viewport.Width - positionString.Length * m_charWidth - (m_charWidth * 15);
+            float positionStringXPos = m_graphics.GraphicsDevice.Viewport.Width - positionString.Length * m_charWidth - (m_charWidth * 18);
 
             float filePercent = 0.0f;
 
@@ -2670,7 +2604,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="view"></param>
         /// <param name="file"></param>
-        protected void drawFileBuffer(BufferView view)
+        protected void drawFileBuffer(BufferView view, GameTime gameTime)
         {
             Color bufferColour = view.m_textColour;
 
@@ -2695,6 +2629,30 @@ namespace Xyglo
             string line;
             int bufPos = view.getBufferShowStartY();
 
+            // If we are tailing a file then let's look at the last X lines of it only
+            //
+            if (view.isTailing())
+            {
+                // We don't do this all the time so let the FileBuffer work out when we've updated
+                // the file and need to change the viewing position to tail it.
+                //
+                if (view.getFileBuffer().refetchFile(gameTime))
+                {
+                    bufPos = view.getFileBuffer().getLineCount() - view.getBufferShowLength();
+                }
+                else
+                {
+                    bufPos = view.getFileBuffer().getLineCount() - view.getBufferShowLength();
+                }
+
+                // Ensure that we're always at least at zero
+                //
+                if (bufPos < 0)
+                {
+                    bufPos = 0;
+                }
+            }
+
             for (int i = 0; i < view.getBufferShowLength(); i++)
             {
                 line = "~";
@@ -2718,7 +2676,7 @@ namespace Xyglo
             //
             if (m_zoomLevel > 800.0f)
             {
-                int viewId = m_bufferViews.IndexOf(view);
+                int viewId = m_project.getBufferViews().IndexOf(view);
                 string bufferId = viewId.ToString();
                 Color seeThroughColour = bufferColour;
                 seeThroughColour.A = 70;

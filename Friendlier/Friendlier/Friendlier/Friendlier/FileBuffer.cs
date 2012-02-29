@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using Microsoft.Xna.Framework;
+using System.Runtime.Serialization;
 
 namespace Xyglo
 {
@@ -11,9 +12,90 @@ namespace Xyglo
     /// <summary>
     /// Open and buffer a file and provide an interface for handling large files efficiently
     /// </summary>
+    [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class FileBuffer
     {
+        //////////// MEMBER VARIABLES ///////////////
+
+        [DataMember()]
         public string m_filename;
+
+        [DataMember()]
+        public string m_shortName;
+
+        /// <summary>
+        /// The local buffering of our file lines - we don't want to persist this
+        /// </summary>
+        List<string> m_lines = new List<string>();
+        
+        /// <summary>
+        /// Our list of commands for undo/redo - don't persist
+        /// </summary>
+        //[DataMember()]
+        List<Command> m_commands = new List<Command>();
+
+        /// <summary>
+        /// Position in the undo/redo stack - don't persist
+        /// </summary>
+        //[DataMember()]
+        protected int m_undoPosition = 0;
+
+        /// <summary>
+        /// Undo watermark is reset when we save a file - don't persist
+        /// </summary>
+        //[DataMember()]
+        int m_undoWatermark = 0;
+
+        /// <summary>
+        /// Number of lines we keep in memory
+        /// </summary>
+        [DataMember()]
+        int m_lineLimit = 5000;
+
+        /// <summary>
+        /// Is this FileBuffer read only?
+        /// </summary>
+        [DataMember()]
+        protected bool m_readOnly = false;
+
+        /// <summary>
+        /// Last GameTime that we fetched this file
+        /// </summary>
+        protected TimeSpan m_lastFetchTime = TimeSpan.Zero;
+
+        /// <summary>
+        /// The last System time we fetch this file
+        /// </summary>
+        protected DateTime m_lastFetchSystemTime = DateTime.Now.AddDays(-1);
+
+        /// <summary>
+        /// Fetch Window for a File - every half a second
+        /// </summary>
+        protected TimeSpan m_fetchWindow = new TimeSpan(0, 0, 0, 0, 500);
+
+        //////////// CONSTRUCTORS ////////////
+
+        /// <summary>
+        /// Default constructor
+        /// </summary>
+        public FileBuffer()
+        {
+            m_filename = "";
+            m_shortName = "";
+        }
+
+        public FileBuffer(string filename, bool readOnly = false)
+        {
+            m_filename = filename;
+            m_readOnly = readOnly;
+
+            // Fix the paths properly
+            //
+            fixPaths();
+        }
+
+
+        /////////////// METHODS ///////////////////
 
         /// <summary>
         /// Get the full filepath
@@ -34,17 +116,6 @@ namespace Xyglo
             fixPaths();
         }
 
-
-        public string m_shortName;
-
-        List<string> m_lines = new List<string>();
-        List<Command> m_commands = new List<Command>();
-
-        /// <summary>
-        /// Position in the undo/redo stack
-        /// </summary>
-        protected int m_undoPosition = 0;
-
         /// <summary>
         /// Fetch the current undo position
         /// </summary>
@@ -55,37 +126,8 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Undo watermark is reset when we save a file
+        /// Fic any backslashes to forward slashes and create short filename
         /// </summary>
-        int m_undoWatermark = 0;
-
-        /// <summary>
-        /// Number of lines we keep in memory
-        /// </summary>
-        int m_lineLimit = 5000;
-
-        /// <summary>
-        /// Default constructor
-        /// </summary>
-        public FileBuffer()
-        {
-            m_filename = "";
-            m_shortName = "";
-        }
-
-        public FileBuffer(string filename)
-        {
-            m_filename = filename;
-
-            // Fix the paths properly
-            //
-            fixPaths();
-
-            // Load and buffer the file
-            //
-            loadFile();
-        }
-
         protected void fixPaths()
         {
             // Convert all back slashes to forward ones just in case we're still using them
@@ -96,26 +138,75 @@ namespace Xyglo
             m_shortName = m_shortName.Substring(position, m_shortName.Length - position);
         }
         
+        /// <summary>
+        /// Return the short filename
+        /// </summary>
+        /// <returns></returns>
         public string getShortFileName()
         {
             return m_shortName;
         }
 
-        protected void loadFile()
+        /// <summary>
+        /// Load this file
+        /// </summary>
+        public void loadFile()
         {
-            // Check for file existing
+            // If we have recovered this FileBuffer from a persisted state then m_lines could
+            // very well be null at this point - initialise it if it is.
             //
-            using (StreamReader sr = new StreamReader(m_filename))
+            if (m_lines == null)
+            {
+                m_lines = new List<string>();
+            }
+
+            // Open a file non-exclusively for reading
+            //
+            FileStream fs = new FileStream(m_filename, FileMode.Open, FileAccess.Read, System.IO.FileShare.ReadWrite);
+            using (StreamReader sr = new StreamReader(fs))
             {
                 string line;
                 while ((line = sr.ReadLine()) != null && m_lines.Count < m_lineLimit)
                 {
-                    // Do some clipping here if we need it
-                    //line = line.Substring(0, 80);
-
                     m_lines.Add(line);
                 }
             }
+        }
+
+        /// <summary>
+        /// We call this when we want to refetch a file for example if we're tailing it
+        /// and need a recent copy.   For the moment this is horribly inefficient.
+        /// </summary>
+        public bool refetchFile(GameTime gametime)
+        {
+            // The outer counter determines the test window - when we check for
+            // the file modification.
+            //
+            if (gametime.TotalGameTime - m_lastFetchTime > m_fetchWindow)
+            {
+                //Logger.logMsg("FileBuffer::fetchFile() - testing file for fetch " + m_filename);
+
+                // Now we see if it's been updated recently and if so we refetch
+                // and reset our counters.
+                //
+                //FileInfo fileInfo = new FileInfo(m_filename);
+                //fileInfo.Refresh();
+
+                //DateTime fileModTime = fileInfo.LastWriteTime; // File.GetLastWriteTime(m_filename);
+
+                //if (fileModTime > m_lastFetchSystemTime)
+                //{
+                    m_lines.Clear();
+                    loadFile();
+                    m_lastFetchTime = gametime.TotalGameTime;
+                    m_lastFetchSystemTime = DateTime.Now;
+
+                    //Logger.logMsg("FileBuffer::fetchFile() - refetching file " + m_filename);
+                    return true;
+                //}
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -142,6 +233,12 @@ namespace Xyglo
         /// <param name="value"></param>
         public void setLine(int line, string value)
         {
+            if (m_readOnly)
+            {
+                Logger.logMsg("FileBuffer::setLine() - file is read only.  Cannot set.");
+                return;
+            }
+
             if (line >= m_lines.Count)
             {
                 Logger.logMsg("FileBuffer::setLine() - line " + line + " is not available in the FileBuffer");
@@ -159,6 +256,12 @@ namespace Xyglo
         /// <param name="value"></param>
         public void appendLine(int line, string value)
         {
+            if (m_readOnly)
+            {
+                Logger.logMsg("FileBuffer::appendLine() - file is read only.  Cannot append.");
+                return;
+            }
+
             if (line >= m_lines.Count)
             {
                 Logger.logMsg("FileBuffer::appendLine() - line " + line + " is not available in the FileBuffer");
@@ -175,6 +278,12 @@ namespace Xyglo
         /// <param name="line"></param>
         public void insertLine(int line, string value)
         {
+            if (m_readOnly)
+            {
+                Logger.logMsg("FileBuffer::insertLine() - file is read only.  Cannot insert.");
+                return;
+            }
+
             try
             {
                 m_lines.Insert(line, value);
@@ -207,7 +316,18 @@ namespace Xyglo
 
         public int getLineCount()
         {
-            return m_lines.Count();
+            int lC = 0;
+
+            try
+            {
+                lC = m_lines.Count();
+            }
+            catch (Exception e)
+            {
+                Logger.logMsg("FileBuffer::getLineCount() - m_lines is null - " + e.Message);
+            }
+
+            return lC;
         }
 
         public bool isTooBig()
@@ -254,6 +374,11 @@ namespace Xyglo
         /// <returns></returns>
         public FilePosition deleteSelection(FilePosition startSelection, FilePosition endSelection)
         {
+            if (m_readOnly)
+            {
+                return endSelection;
+            }
+
             DeleteTextCommand command = new DeleteTextCommand("Delete Selection", this, startSelection, endSelection);
             FilePosition fp = command.doCommand();
 
@@ -272,6 +397,11 @@ namespace Xyglo
         /// <returns></returns>
         public FilePosition replaceText(FilePosition startSelection, FilePosition endSelection, string text)
         {
+            if (m_readOnly)
+            {
+                return endSelection;
+            }
+
             ReplaceTextCommand command = new ReplaceTextCommand("Replace Text", this, startSelection, endSelection, text);
             FilePosition fp = command.doCommand();
 
@@ -290,6 +420,11 @@ namespace Xyglo
         /// <returns></returns>
         public FilePosition insertText(FilePosition insertPosition, string text)
         {
+            if (m_readOnly)
+            {
+                return insertPosition;
+            }
+
             InsertTextCommand command = new InsertTextCommand("Insert Text", this, insertPosition, text);
             FilePosition fp = command.doCommand();
 
@@ -377,12 +512,6 @@ namespace Xyglo
 #endif
 
             return fp;
-            /*
-             * else
-            {
-                throw new Exception("FileBuffer::undo() - not enough steps to undo");
-            }
-             * */
         }
 
         // Number of commands in stack
@@ -407,7 +536,13 @@ namespace Xyglo
         /// <returns></returns>
         public void save()
         {
-            Logger.logMsg("Starting write file " + m_filename);
+            if (m_readOnly)
+            {
+                Logger.logMsg("FileBuffer::save() - this file is marked read only and cannot be saved.");
+                return;
+            }
+
+            Logger.logMsg("FileBuffer::save() - starting file write " + m_filename);
             using (StreamWriter sw = new StreamWriter(m_filename))
             {
                 foreach (string line in m_lines)
@@ -416,11 +551,30 @@ namespace Xyglo
                 }
             }
 
-            Logger.logMsg("Completed file write");
+            Logger.logMsg("FileBuffer::save() - completed file write");
 
             // Reset this to make the file of unmodified status but keep the undo stack as is
             //
             m_undoWatermark = m_undoPosition;
+        }
+
+        /// <summary>
+        /// If we have deserialised this object then we need to initialise some stuff
+        /// </summary>
+        public void initialiseAfterDeseralising()
+        {
+            // Initialise commands
+            //
+            m_commands = new List<Command>();
+
+            // Initialise lines
+            //
+            m_lines = new List<string>();
+
+            // Set up a couple of things
+            //
+            m_undoPosition = 0;
+            m_undoWatermark = 0;
         }
     }
 }

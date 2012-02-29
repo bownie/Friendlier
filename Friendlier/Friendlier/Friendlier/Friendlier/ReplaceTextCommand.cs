@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Runtime.Serialization;
 
 namespace Xyglo
 {
+    [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class ReplaceTextCommand : Command
     {
         public ReplaceTextCommand(string name, FileBuffer buffer, FilePosition start, FilePosition end, string text)
@@ -294,11 +296,13 @@ namespace Xyglo
         /// <summary>
         /// We have a Save Snippet for the lines we're deleting
         /// </summary>
+        [DataMember()]
         TextSnippet m_saveSnippet = SnippetFactory.getSnippet();
 
         /// <summary>
         /// There is a Write Snippet for the lines we want to insert
         /// </summary>
+        [DataMember()]
         TextSnippet m_writeSnippet = SnippetFactory.getSnippet();
 
         /// <summary>
@@ -309,11 +313,13 @@ namespace Xyglo
         /// <summary>
         /// Text we're inserting with this command - also used for undo purposes for new lines
         /// </summary>
+        [DataMember()]
         string m_text;
 
         /// <summary>
         /// Do we need a new line?
         /// </summary>
+        [DataMember()]
         bool m_newLine = false;
     }
 }

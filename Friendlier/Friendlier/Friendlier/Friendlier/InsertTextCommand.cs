@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Runtime.Serialization;
 
 namespace Xyglo
 {
     /// <summary>
     /// Take a FilePosition and some text and insert it into a FileBuffer at that point.
     /// </summary>
+    [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     class InsertTextCommand : Command
     {
         /// <summary>
@@ -65,7 +67,7 @@ namespace Xyglo
             // Fetch the line if it's available
             //
             string fetchLine = "";
-            if (m_fileBuffer.getLineCount() > 0)
+            if (m_fileBuffer.getLineCount() > 0 && m_startPos.Y < m_fileBuffer.getLineCount())
             {
                 fetchLine = m_fileBuffer.getLine(m_startPos.Y);
             }
@@ -204,16 +206,19 @@ namespace Xyglo
         /// <summary>
         /// We use this only for undo as the original position will only be one line
         /// </summary>
+        [DataMember()]
         string m_originalText;
 
         /// <summary>
         /// Do we need a new line?
         /// </summary>
+        [DataMember()]
         bool m_newLine;
 
         /// <summary>
         /// Snippet for our text - the line can expand into a multi-line snipper
         /// </summary>
+        [DataMember()]
         TextSnippet m_snippet = SnippetFactory.getSnippet();
 
         /// <summary>

@@ -2,21 +2,48 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Runtime.Serialization;
 
 namespace Xyglo
 {
+    [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public abstract class Command : IDisposable
     {
+        /////////////// CONSTRUCTORS /////////////////
+
+        /// <summary>
+        /// Default constructor
+        /// </summary>
         public Command() 
         {
         }
 
+        /// <summary>
+        /// Named constructor
+        /// </summary>
+        /// <param name="name"></param>
         public Command(string name)
         {
             m_name = name;
         }
 
+        /////////////// MEMBER VARIABLES ////////////////
+
+        /// <summary>
+        /// Name of this command
+        /// </summary>
+        [DataMember()]
         protected string m_name;
+
+        // character we use to split lines
+        //
+        protected char m_splitCharacter = '\n';
+
+        [DataMember()]
+        protected FilePosition m_startPos;
+
+        [DataMember()]
+        protected FilePosition m_endPos;
 
         /// <summary>
         /// Define an abstract command for (re)do that returns a modified cursor position
@@ -50,12 +77,5 @@ namespace Xyglo
                 m_endPos = swap;
             }
         }
-
-        // character we use to split lines
-        //
-        protected char m_splitCharacter = '\n';
-
-        protected FilePosition m_startPos;
-        protected FilePosition m_endPos;
     }
 }
