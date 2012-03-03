@@ -656,10 +656,10 @@ namespace Xyglo
             switch (position)
             {
                 case BufferPosition.Above:
-                    return m_position - (new Vector3(0.0f, (m_bufferShowLength + 20) * m_lineHeight, 0.0f));
+                    return m_position - (new Vector3(0.0f, (m_bufferShowLength + 10) * m_lineHeight, 0.0f));
 
                 case BufferPosition.Below:
-                    return m_position + (new Vector3(0.0f, (m_bufferShowLength + 20) * m_lineHeight, 0.0f));
+                    return m_position + (new Vector3(0.0f, (m_bufferShowLength + 10) * m_lineHeight, 0.0f));
 
                 case BufferPosition.Left:
                     return m_position - (new Vector3(m_charWidth * (m_bufferShowWidth + 15), 0.0f, 0.0f));
@@ -782,6 +782,14 @@ namespace Xyglo
                     startPos.Y = ( m_position.Y + i  - m_bufferShowStartY) * m_lineHeight;
                     endPos.Y = (m_position.Y + i + 1 - m_bufferShowStartY) * m_lineHeight;
 
+                    // If we have nothing highlighted in the line then indicate this with a negative
+                    // half box line
+                    //
+                    if (startPos.X == endPos.X && endPos.X == m_position.X)
+                    {
+                        startPos.X -= m_charWidth / 2;
+                    }
+
                     bb.Add(new BoundingBox(startPos, endPos));
                 }
             }
@@ -844,6 +852,14 @@ namespace Xyglo
 
                     startPos.Y = (m_position.Y + i - m_bufferShowStartY) * m_lineHeight;
                     endPos.Y = (m_position.Y + i + 1 - m_bufferShowStartY) * m_lineHeight;
+
+                    // If we have nothing highlighted in the line then indicate this with a negative
+                    // half box line
+                    //
+                    if (startPos.X == endPos.X && endPos.X == m_position.X)
+                    {
+                        startPos.X -= m_charWidth / 2;
+                    }
 
                     bb.Add(new BoundingBox(startPos, endPos));
                 }
@@ -1070,5 +1086,50 @@ namespace Xyglo
             return m_readOnly;
         }
 
+        /// <summary>
+        /// Verify that the cursor and the highlights are within bounds
+        /// </summary>
+        public void verifyBoundaries()
+        {
+            // If cursor is less then zero or there are no rows in the file
+            //
+            if (m_cursorPosition.Y < 0 || m_fileBuffer.getLineCount() == 0)
+            {
+                m_cursorPosition.Y = 0;
+                m_cursorPosition.X = 0;
+
+                // Cancel highlight
+                //
+                m_highlightStart = m_cursorPosition;
+                m_highlightEnd = m_cursorPosition;
+            }
+            else if (m_cursorPosition.Y >= m_fileBuffer.getLineCount()) // If the cursor position Y is greater than the linecount
+            {
+                if (m_fileBuffer.getLineCount() > 0)
+                {
+                    m_cursorPosition.Y = m_fileBuffer.getLineCount() - 1;
+                    m_cursorPosition.X = m_fileBuffer.getLine(m_cursorPosition.Y).Length;
+
+                    // Cancel highlight
+                    //
+                    m_highlightStart = m_cursorPosition;
+                    m_highlightEnd = m_cursorPosition;
+                }
+            }
+            else
+            {
+                // check the row length against cursor position
+                string line = m_fileBuffer.getLine(m_cursorPosition.Y);
+                if (m_cursorPosition.X > line.Length)
+                {
+                    m_cursorPosition.X = line.Length;
+
+                    // Cancel highlight
+                    //
+                    m_highlightStart = m_cursorPosition;
+                    m_highlightEnd = m_cursorPosition;
+                }
+            }
+        }
     }
 }

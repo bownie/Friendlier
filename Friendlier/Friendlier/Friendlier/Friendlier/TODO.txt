@@ -2,8 +2,6 @@
 - CTRL to jump words 
 - repurpose the Function keys
 - Temporary file save messages to move somewhere
-- Log file view (attach and view)
-- Read only files
 - Long lines handling [CAN VIEW BUT NOT SCROLL TO]
 - Logging (timestamps and makes sense)
 - System load meter
@@ -18,6 +16,8 @@ TO TEST/BUGS
 
 DONE
 ----
+- Read only files [DONE]
+- Log file view (attach and view) [DONE but file watchers not working]
 - Drift focus when adding a new BufferView drift to position [DONE]
 - Alpha blending fonts / darkening and name overlay when zoomed out [DONE]
 - keyboard support?  [DONE for the moment - hardcoded]

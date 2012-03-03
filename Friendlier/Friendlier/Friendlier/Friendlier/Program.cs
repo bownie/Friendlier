@@ -54,7 +54,8 @@ namespace Xyglo
                 string rbFile2 = @"C:\appSchemaInstall.ksh";
 
                 BufferView newBV = project.addFileBuffer(editFile, 0);
-                project.addFileBufferRelative(editFile, newBV, BufferView.BufferPosition.Right);
+//                BufferView newBV = project.addFileBuffer(rbFile1, 0);
+                //project.addFileBufferRelative(rbFile2, newBV, BufferView.BufferPosition.Right);
             }
 
             Friendlier friendlier = new Friendlier(project);

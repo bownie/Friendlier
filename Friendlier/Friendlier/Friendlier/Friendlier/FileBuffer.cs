@@ -12,15 +12,15 @@ namespace Xyglo
     /// <summary>
     /// Open and buffer a file and provide an interface for handling large files efficiently
     /// </summary>
-    [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
+    //[DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class FileBuffer
     {
         //////////// MEMBER VARIABLES ///////////////
 
-        [DataMember()]
+        [DataMember]
         public string m_filename;
 
-        [DataMember()]
+        [DataMember]
         public string m_shortName;
 
         /// <summary>
@@ -50,12 +50,12 @@ namespace Xyglo
         /// Number of lines we keep in memory
         /// </summary>
         [DataMember()]
-        int m_lineLimit = 5000;
+        int m_lineLimit = 100000;
 
         /// <summary>
         /// Is this FileBuffer read only?
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected bool m_readOnly = false;
 
         /// <summary>
@@ -69,9 +69,10 @@ namespace Xyglo
         protected DateTime m_lastFetchSystemTime = DateTime.Now.AddDays(-1);
 
         /// <summary>
-        /// Fetch Window for a File - every half a second
+        /// Fetch Window for a File - every second
         /// </summary>
-        protected TimeSpan m_fetchWindow = new TimeSpan(0, 0, 0, 0, 500);
+        [IgnoreDataMember]
+        protected TimeSpan m_fetchWindow;
 
         //////////// CONSTRUCTORS ////////////
 
@@ -82,12 +83,20 @@ namespace Xyglo
         {
             m_filename = "";
             m_shortName = "";
+
+            // Define Timespan in the default constructor
+            //
+            m_fetchWindow =  new TimeSpan(0, 0, 0, 1, 0);
         }
 
         public FileBuffer(string filename, bool readOnly = false)
         {
             m_filename = filename;
             m_readOnly = readOnly;
+
+            // Define Timespan here
+            //
+            m_fetchWindow =  new TimeSpan(0, 0, 0, 1, 0);
 
             // Fix the paths properly
             //
@@ -179,6 +188,8 @@ namespace Xyglo
         /// </summary>
         public bool refetchFile(GameTime gametime)
         {
+            //m_fetchWindow = new TimeSpan(0, 0, 1);
+
             // The outer counter determines the test window - when we check for
             // the file modification.
             //
@@ -192,9 +203,14 @@ namespace Xyglo
                 //FileInfo fileInfo = new FileInfo(m_filename);
                 //fileInfo.Refresh();
 
-                //DateTime fileModTime = fileInfo.LastWriteTime; // File.GetLastWriteTime(m_filename);
+                //DateTime fileModTime = File.GetLastWriteTime(m_filename); // fileInfo.LastWriteTime; 
+                //DateTime fileCreTime = File.GetCreationTime(m_filename);
 
-                //if (fileModTime > m_lastFetchSystemTime)
+
+                //string name = m_filename;
+                //DateTime lastModTime = File.GetLastWriteTime(bv.getFileBuffer().getFilepath());
+                
+                //if (fileModTime != m_lastFetchSystemTime)
                 //{
                     m_lines.Clear();
                     loadFile();
@@ -207,6 +223,15 @@ namespace Xyglo
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Brute force refetch
+        /// </summary>
+        public void forceRefetchFile()
+        {
+            m_lines.Clear();
+            loadFile();
         }
 
         /// <summary>

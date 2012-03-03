@@ -31,12 +31,26 @@ namespace Xyglo
     /// </summary>
     public class Friendlier : Game
     {
+        ///////////////// MEMBER VARIABLES //////////////////
+
         // XNA stuff
         //
+
         GraphicsDeviceManager m_graphics;
+
+        /// <summary>
+        /// One SpriteBatch
+        /// </summary>
         SpriteBatch m_spriteBatch;
+
+        /// <summary>
+        /// Another SpriteBatch for the overlay
+        /// </summary>
         SpriteBatch m_overlaySpriteBatch;
 
+        /// <summary>
+        /// One local SpriteFont - not sure if we need this now
+        /// </summary>
         SpriteFont m_spriteFont;
 
         /// <summary>
@@ -91,7 +105,7 @@ namespace Xyglo
         /// <summary>
         /// Current project
         /// </summary>
-        Project m_project;
+        static protected Project m_project;
 
         /// <summary>
         /// Last keyboard state so that we can compare with current
@@ -123,12 +137,21 @@ namespace Xyglo
         /// </summary>
         bool m_altDown = false;
 
+        /// <summary>
+        /// Use this to store number when we've got ALT down - to select a new BufferView
+        /// </summary>
+        protected string m_gotoBufferView = "";
+
+        /// <summary>
+        /// Confirmation state 
+        /// </summary>
         enum ConfirmState
         {
             None,
             FileSave,
             FileSaveCancel
         }
+
         /// <summary>
         /// Confirmation state - expecting Y/N
         /// </summary>
@@ -143,11 +166,6 @@ namespace Xyglo
         /// A flat texture
         /// </summary>
         Texture2D m_flatTexture;
-
-        /// <summary>
-        /// Currently active BufferView
-        /// </summary>
-        //int m_activeBufferViewId = 0;
 
         /// <summary>
         /// Rotations are stored in this vector
@@ -175,14 +193,13 @@ namespace Xyglo
         Texture2D m_dirNodeTexture;
 
         /// <summary>
-        /// Get the FileBuffer id of the active view
+        /// File system watcher
         /// </summary>
-        /// <returns></returns>
-        protected int getActiveBufferIndex()
-        {
-            return m_project.getFileBuffers().IndexOf(m_activeBufferView.getFileBuffer());
-        }
-
+        protected List<FileSystemWatcher> m_watcherList = new List<FileSystemWatcher>(); 
+        
+        /// <summary>
+        /// Default constructor
+        /// </summary>
         public Friendlier()
         {
             m_graphics = new GraphicsDeviceManager(this);
@@ -197,6 +214,11 @@ namespace Xyglo
             m_state = FriendlierState.TextEditing;
         }
 
+
+        /// <summary>
+        /// Project constructor
+        /// </summary>
+        /// <param name="project"></param>
         public Friendlier(Project project)
         {
             m_graphics = new GraphicsDeviceManager(this);
@@ -214,12 +236,8 @@ namespace Xyglo
             //
             m_state = FriendlierState.TextEditing;
 
-            // Don't use these directly - use the InitGraphicsMode below
+            // Set windowed mode as default
             //
-            //m_graphics.IsFullScreen = true;
-            //PresentationParameters pp = GraphicsDevice.PresentationParameters;
-            //pp.BackBufferFormat = SurfaceFormat.
-
             windowedMode();
            
 #if WINDOWS_PHONE
@@ -227,6 +245,19 @@ namespace Xyglo
             graphics.IsFullScreen = true;
 #endif
         }
+
+        /////////////////////////////// METHODS //////////////////////////////////////
+
+
+        /// <summary>
+        /// Get the FileBuffer id of the active view
+        /// </summary>
+        /// <returns></returns>
+        protected int getActiveBufferIndex()
+        {
+            return m_project.getFileBuffers().IndexOf(m_activeBufferView.getFileBuffer());
+        }
+
 
         /// <summary>
         /// Enable windowed mode
@@ -316,11 +347,56 @@ namespace Xyglo
                 bv.setLineHeight(m_lineHeight);
             }
 
-            // Now calculate the relative positions
+            // Now do some jiggery pokery to make sure positioning is correct and that
+            // any cursors or highlights are within bounds.
             //
             foreach (BufferView bv in m_project.getBufferViews())
             {
+                // check positions
+                //
                 bv.calculateMyRelativePosition();
+
+                // check boundaries for cursor and highlighting
+                //
+                bv.verifyBoundaries();
+
+#if FILESYSTEMWATCHER
+                string name = bv.getFileBuffer().getFilepath();
+                DateTime lastModTime = File.GetLastWriteTime(bv.getFileBuffer().getFilepath());
+
+                // If this BufferView is tailing a file then find out what file it is and watch it
+                //
+                if (bv.isTailing())
+                {
+                    string dirName = System.IO.Path.GetDirectoryName(bv.getFileBuffer().getFilepath());
+                    string fileName = System.IO.Path.GetFileName(bv.getFileBuffer().getFilepath());
+
+                    bool alreadyWatching = false;
+                    foreach (FileSystemWatcher fw in m_watcherList)
+                    {
+                        if (fw.Path == dirName && fw.Filter == fileName)
+                        {
+                            alreadyWatching = true;
+                            break;
+                        }
+                    }
+
+                    if (!alreadyWatching)
+                    {
+                        FileSystemWatcher watch = new FileSystemWatcher(dirName);
+                        watch.Filter = fileName;
+                        watch.Changed += new FileSystemEventHandler(OnFileChanged);
+
+                        // Push to m_watcherlist to keep it alive
+                        //
+                        m_watcherList.Add(watch);
+
+                        // Begin watching
+                        //
+                        watch.EnableRaisingEvents = true;
+                    }
+                }
+#endif
             }
 
 
@@ -342,6 +418,40 @@ namespace Xyglo
             //
             m_fileSystemView = new FileSystemView(m_filePath, new Vector3(-800.0f, 0f, 0f), m_lineHeight, m_charWidth);
         }
+
+        /// <summary>
+        /// A event handler for FileSystemWatcher
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="e"></param>
+        private static void OnFileChanged(object source, FileSystemEventArgs e)
+        {
+            // Specify what is done when a file is changed, created, or deleted.
+            Logger.logMsg("Friendlier::OnFileChanged() - File: " + e.FullPath + " " + e.ChangeType);
+
+            foreach(FileBuffer fb in m_project.getFileBuffers())
+            {
+                if (fb.getFilepath() == e.FullPath)
+                {
+                    fb.forceRefetchFile();
+                }
+            }
+
+            /*
+            foreach(FileSystemWatcher fsw in m_watcherList)
+            {
+                string fullPath = fsw.Path + @"\" + fsw.Filter;
+
+                if (fullPath == e.FullPath)
+                {
+                    fsw.EnableRaisingEvents = true;
+                }
+            }
+             * */
+           
+            //FileSystemWatcher watcher = FileSystemWatcher(source);
+        }
+
 
         /// <summary>
         /// Attempt to set the display mode to the desired resolution.  Itterates through the display
@@ -517,6 +627,19 @@ namespace Xyglo
             // Initialise the project
             //
             initialiseProject();
+        }
+
+        /// <summary>
+        /// Use another method to set the active BufferView
+        /// </summary>
+        /// <param name="item"></param>
+        protected void setActiveBuffer(int item)
+        {
+            if (item >= 0 && item < m_project.getBufferViews().Count)
+            {
+                Logger.logMsg("Friendlier::setActiveBuffer() - setting active BufferView " + item);
+                setActiveBuffer(m_project.getBufferViews()[item]);
+            }
         }
 
         /// <summary>
@@ -849,6 +972,16 @@ namespace Xyglo
                 Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightAlt))
             {
                 m_altDown = false;
+
+                // Check for something in our number store
+                //
+                if (m_gotoBufferView != "")
+                {
+                    Logger.logMsg("Firendlier - got a number " + m_gotoBufferView);
+
+                    setActiveBuffer(Convert.ToInt16(m_gotoBufferView));
+                    m_gotoBufferView = "";
+                }
             }
             else
             {
@@ -987,8 +1120,51 @@ namespace Xyglo
                         if (m_activeBufferView.getCursorPosition().X > 0)
                         {
                             FilePosition fp = m_activeBufferView.getCursorPosition();
-                            fp.X--;
+                            // If control is down then word jump
+                            //
+                            if (m_ctrlDown)
+                            {
+                                string line = m_activeBufferView.getFileBuffer().getLine(fp.Y);
+                                /*
+                                try
+                                {
+
+                                    for(int i = fp.X; i > 0; i--)
+                                    {
+                                        if (line[i] = ' ')
+                                            retu
+                                    }
+
+                                    int jumpPosition = getPreviousSpace(line);
+
+                                    if (jumpPosition != -1)
+                                    {
+                                        if (fp.X == jumpPosition)
+                                        {
+                                            fp.X++;
+                                        }
+                                        else
+                                        {
+                                            fp.X = jumpPosition;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        fp.X = line.Length;
+                                    }
+                                }
+                                catch (Exception)
+                                {
+                                    Logger.logMsg("Friendlier:: couldn't jump");
+                                    fp.X--;
+                                }*/
+                            }
+                            else
+                            {
+                                fp.X--;
+                            }
                             m_activeBufferView.setCursorPosition(fp);
+
                         }
                         else
                         {
@@ -1019,27 +1195,58 @@ namespace Xyglo
                         // Add a new BufferView to the right of current position
                         //
                         addBufferView(BufferView.BufferPosition.Right);
-
-                        // This should be word jump rather than new window..
-                        //
                     }
                     else
                     {
-                        if (m_activeBufferView.getCursorPosition().X < m_activeBufferView.getBufferShowWidth())
+                        FilePosition fp = m_activeBufferView.getCursorPosition();
+                        string line = m_activeBufferView.getFileBuffer().getLine(fp.Y);
+
+                        if (m_activeBufferView.getCursorPosition().X < line.Length)
                         {
-                            FilePosition fp = m_activeBufferView.getCursorPosition();
-                            string line = m_activeBufferView.getFileBuffer().getLine(fp.Y);
                             if (fp.X < line.Length)
                             {
-                                fp.X++;
+                                // If control is down then word jump
+                                //
+                                if (m_ctrlDown)
+                                {
+                                    try
+                                    {
+                                        int jumpPosition = line.IndexOf(' ', fp.X);
+
+                                        if (jumpPosition != -1)
+                                        {
+                                            if (fp.X == jumpPosition)
+                                            {
+                                                fp.X++;
+                                            }
+                                            else
+                                            {
+                                                fp.X = jumpPosition;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            fp.X = line.Length;
+                                        }
+                                    }
+                                    catch (Exception /* e */)
+                                    {
+                                        Logger.logMsg("Friendlier:: couldn't jump");
+                                        fp.X++;
+                                    }
+                                }
+                                else
+                                {
+                                    fp.X++;
+                                }
                                 m_activeBufferView.setCursorPosition(fp);
                             }
-                            else
-                            {
-                                m_activeBufferView.moveCursorDown(true);
-                            }
                         }
-
+                        else
+                        {
+                            m_activeBufferView.moveCursorDown(true);
+                        }
+                        
                         if (m_shiftDown)
                         {
                             m_activeBufferView.extendHighlight(); // Extend
@@ -1421,6 +1628,19 @@ namespace Xyglo
                     else if (checkKeyState(Keys.O, gameTime))
                     {
                         selectOpenFile();
+                    }
+                    else if (checkKeyState(Keys.D0, gameTime) ||
+                             checkKeyState(Keys.D1, gameTime) ||
+                             checkKeyState(Keys.D2, gameTime) ||
+                             checkKeyState(Keys.D3, gameTime) ||
+                             checkKeyState(Keys.D4, gameTime) ||
+                             checkKeyState(Keys.D5, gameTime) ||
+                             checkKeyState(Keys.D6, gameTime) ||
+                             checkKeyState(Keys.D7, gameTime) ||
+                             checkKeyState(Keys.D8, gameTime) ||
+                             checkKeyState(Keys.D9, gameTime))
+                    {
+                        m_gotoBufferView += getNumberKey();
                     }
                 }
                 else
@@ -1857,7 +2077,62 @@ namespace Xyglo
 
         }
 
+        protected string getNumberKey()
+        {
+            string key = "";
 
+            foreach (Keys keyDown in Keyboard.GetState().GetPressedKeys())
+            {
+                switch(keyDown)
+                {
+                    case Keys.D0:
+                        key = "0";
+                        break;
+
+                    case Keys.D1:
+                        key = "1";
+                        break;
+
+                    case Keys.D2:
+                        key = "2";
+                        break;
+
+                    case Keys.D3:
+                        key = "3";
+                        break;
+
+                    case Keys.D4:
+                        key = "4";
+                        break;
+
+                    case Keys.D5:
+                        key = "5";
+                        break;
+
+                    case Keys.D6:
+                        key = "6";
+                        break;
+
+                    case Keys.D7:
+                        key = "7";
+                        break;
+
+                    case Keys.D8:
+                        key = "8";
+                        break;
+
+                    case Keys.D9:
+                        key = "9";
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+
+            return key;
+
+        }
         /// <summary>
         /// Set a temporary message until a given end time (seconds into the future)
         /// </summary>
@@ -2071,9 +2346,12 @@ namespace Xyglo
                     return true;
                 }
 
-                // Check to see if the key has been held down for a while
+                // Check to see if the key has been held down for a while - for file selection menus
+                // (see the m_state clause) we make the repeat interval smaller.
                 //
-                if (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime > repeatHold) 
+                if (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime > repeatHold ||
+                    (m_state != FriendlierState.TextEditing &&
+                    (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime  > repeatHold / 4)))
                 {
                     return true;
                 }
@@ -2231,10 +2509,13 @@ namespace Xyglo
                 //
                 drawOverlay(gameTime);
 
-                // Cursor and cursor highlight
+                // Cursor and cursor highlight - none for tailed bufferviews
                 //
-                drawCursor(m_activeBufferView.getCursorCoordinates(), gameTime);
-                drawHighlight(gameTime);
+                if (!m_activeBufferView.isTailing())
+                {
+                    drawCursor(gameTime);
+                    drawHighlight(gameTime);
+                }
             }
 
             base.Draw(gameTime);
@@ -2381,7 +2662,7 @@ namespace Xyglo
         /// Draw a cursor and make it blink in position
         /// </summary>
         /// <param name="v"></param>
-        protected void drawCursor(Vector3 p, GameTime gameTime)
+        protected void drawCursor(GameTime gameTime)
         {
             double dTS = gameTime.TotalGameTime.TotalSeconds;
             int blinkRate = 3;
@@ -2393,18 +2674,15 @@ namespace Xyglo
                 return;
             }
 
-            //Vector3 viewSpaceTextPosition = Vector3.Transform(p, m_basicEffect.View);
-
             // Blinks rate
             //
-            Vector3 v1 = p; // Vector3.Transform(p, m_view);
+            Vector3 v1 = m_activeBufferView.getCursorCoordinates();
             v1.Y += m_activeBufferView.getLineHeight();
 
-            Vector3 v2 = p; // Vector3.Transform(p, m_view);
+            Vector3 v2 = m_activeBufferView.getCursorCoordinates();
             v2.X += 1;
 
             renderQuad(v1, v2);
-            //DebugShapeRenderer.AddBoundingBox(new BoundingBox(v1, v2), m_activeBufferView.m_cursorColour);
         }
 
         /// <summary>
@@ -2636,14 +2914,9 @@ namespace Xyglo
                 // We don't do this all the time so let the FileBuffer work out when we've updated
                 // the file and need to change the viewing position to tail it.
                 //
-                if (view.getFileBuffer().refetchFile(gameTime))
-                {
-                    bufPos = view.getFileBuffer().getLineCount() - view.getBufferShowLength();
-                }
-                else
-                {
-                    bufPos = view.getFileBuffer().getLineCount() - view.getBufferShowLength();
-                }
+                view.getFileBuffer().refetchFile(gameTime);
+                bufPos = view.getFileBuffer().getLineCount() - view.getBufferShowLength();
+
 
                 // Ensure that we're always at least at zero
                 //
