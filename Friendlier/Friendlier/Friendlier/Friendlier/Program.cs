@@ -36,26 +36,19 @@ namespace Xyglo
             // Create a project or load one
             //
             Project project;
-            string xmlFile = @"C:\Temp\serialise.txt";
+            string projectFile = Project.getUserDataPath() + "default_project.xml";
 
-            if (File.Exists(xmlFile))
+            Logger.logMsg(" DIR = " + projectFile);
+
+            if (File.Exists(projectFile))
             {
-                project = Project.dataContractDeserialise(xmlFile);
+                project = Project.dataContractDeserialise(projectFile);
                 project.loadFiles();
                 project.connectFloatingWorld();
             }
             else
             {
-                project = new Project("My First Project");
-                // Create a project and load it
-                //
-                string editFile = @"C:\devel\SubFriendly\Friendlier\Friendlier\Friendlier\Friendlier.cs";
-                string rbFile1 = @"C:\FinanceIT\FiRE\Server\scripts\appSchemaInstall.ksh";
-                string rbFile2 = @"C:\appSchemaInstall.ksh";
-
-                BufferView newBV = project.addFileBuffer(editFile, 0);
-//                BufferView newBV = project.addFileBuffer(rbFile1, 0);
-                //project.addFileBufferRelative(rbFile2, newBV, BufferView.BufferPosition.Right);
+                project = new Project("New Project", projectFile);
             }
 
             Friendlier friendlier = new Friendlier(project);

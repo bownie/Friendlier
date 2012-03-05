@@ -20,10 +20,10 @@ namespace Xyglo
 {
     public enum FriendlierState
     {
-        TextEditing,
-        FileOpen,
-        FileSaveAs,
-        BrowseDirectory
+        TextEditing, // default mode
+        FileOpen,    // opening a file
+        FileSaveAs,  // saving a file as
+        Information  // show an information pane
     };
 
     /// <summary>
@@ -153,6 +153,11 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Turn on and off file save confirmation
+        /// </summary>
+        bool m_confirmFileSave = false;
+
+        /// <summary>
         /// Confirmation state - expecting Y/N
         /// </summary>
         ConfirmState m_confirmState = ConfirmState.None;
@@ -213,6 +218,11 @@ namespace Xyglo
             //
             m_state = FriendlierState.TextEditing;
         }
+
+        /// <summary>
+        /// List of files that need writing
+        /// </summary>
+        protected List<FileBuffer> m_filesToWrite;
 
 
         /// <summary>
@@ -335,9 +345,17 @@ namespace Xyglo
         /// <param name="project"></param>
         public void initialiseProject()
         {
-            // Load all the files
+            // Load all the files - if we have nothing in this project then create a BufferView
+            // and a FileBuffer.
             //
-            m_project.loadFiles();
+            if (m_project.getFileBuffers().Count == 0)
+            {
+                addNewFileBuffer();
+            }
+            else
+            {
+                m_project.loadFiles();
+            }
 
             // Ensure that all the BufferViews are populated with the charwidth and lineheights and
             // also that the relative positioning is correct - we have to do this in two passes.
@@ -630,6 +648,16 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// At a zoom level where we want to rotate and reset the active buffer
+        /// </summary>
+        /// <param name="direction"></param>
+        protected void setActiveBuffer(BufferView.ViewCycleDirection direction)
+        {
+            m_activeBufferView.rotateQuadrant(direction);
+            setActiveBuffer();
+        }
+
+        /// <summary>
         /// Use another method to set the active BufferView
         /// </summary>
         /// <param name="item"></param>
@@ -670,8 +698,9 @@ namespace Xyglo
 
             Logger.logMsg("Friendlier:setActiveBuffer() - active buffer view is " + m_project.getSelectedBufferViewId());
 
-            Vector3 eyePos = m_activeBufferView.getEyePosition();
-            eyePos.Z = m_zoomLevel;
+            // All the maths is done in the Buffer View
+            //
+            Vector3 eyePos = m_activeBufferView.getEyePosition(m_zoomLevel);
 
             flyToPosition(eyePos);
 
@@ -753,11 +782,33 @@ namespace Xyglo
             flyToPosition(newPosition);
         }
 
+        /// <summary>
+        /// Got to the FileOpen mode in the overall application state.  This will zoom out from the
+        /// bufferview and grey it out and allow us to select a file
+        /// </summary>
         protected void selectOpenFile()
         {
             // Enter this mode and clear and existing message
             //
             m_state = FriendlierState.FileOpen;
+            m_temporaryMessage = "";
+
+            // Set temporary bird's eye view
+            //
+            Vector3 newPosition = m_eye;
+            newPosition.Z = 600.0f;
+
+            // Fly there
+            //
+            flyToPosition(newPosition);
+        }
+
+        /// <summary>
+        /// Show an overlaying information screen on top of the existing FileBuffer
+        /// </summary>
+        protected void showInformationScreen()
+        {
+            m_state = FriendlierState.Information;
             m_temporaryMessage = "";
 
             // Set temporary bird's eye view
@@ -910,6 +961,7 @@ namespace Xyglo
 
                     case FriendlierState.FileOpen:
                     case FriendlierState.FileSaveAs:
+                    case FriendlierState.Information:
                     default:
                                 break;
                 }
@@ -919,6 +971,15 @@ namespace Xyglo
                 // Fly back to correct position
                 //
                 flyToPosition(newPosition);
+            }
+
+            // If we're viewing some information then only escape can get us out
+            // of this mode.  Note that we also have to mind any animations so we
+            // also want to ensure that m_changingEyePosition is not true.
+            //
+            if (m_state == FriendlierState.Information && m_changingEyePosition == false)
+            {
+                return;
             }
 
             // Control key state
@@ -1125,40 +1186,7 @@ namespace Xyglo
                             if (m_ctrlDown)
                             {
                                 string line = m_activeBufferView.getFileBuffer().getLine(fp.Y);
-                                /*
-                                try
-                                {
-
-                                    for(int i = fp.X; i > 0; i--)
-                                    {
-                                        if (line[i] = ' ')
-                                            retu
-                                    }
-
-                                    int jumpPosition = getPreviousSpace(line);
-
-                                    if (jumpPosition != -1)
-                                    {
-                                        if (fp.X == jumpPosition)
-                                        {
-                                            fp.X++;
-                                        }
-                                        else
-                                        {
-                                            fp.X = jumpPosition;
-                                        }
-                                    }
-                                    else
-                                    {
-                                        fp.X = line.Length;
-                                    }
-                                }
-                                catch (Exception)
-                                {
-                                    Logger.logMsg("Friendlier:: couldn't jump");
-                                    fp.X--;
-                                }*/
-                            }
+                             }
                             else
                             {
                                 fp.X--;
@@ -1291,6 +1319,16 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.F1, gameTime))
             {
+                m_zoomLevel = 1000.0f;
+                setActiveBuffer(BufferView.ViewCycleDirection.Anticlockwise);
+            }
+            else if (checkKeyState(Keys.F2, gameTime))
+            {
+                m_zoomLevel = 1000.0f;
+                setActiveBuffer(BufferView.ViewCycleDirection.Clockwise);
+            }
+            else if (checkKeyState(Keys.F3, gameTime))
+            {
                 if (m_shiftDown)
                 {
                     m_zoomLevel -= 1;
@@ -1310,7 +1348,7 @@ namespace Xyglo
                 }
                 setActiveBuffer();
             }
-            else if (checkKeyState(Keys.F2, gameTime))
+            else if (checkKeyState(Keys.F4, gameTime))
             {
                 if (m_shiftDown)
                 {
@@ -1327,12 +1365,12 @@ namespace Xyglo
 
                 setActiveBuffer();
             }
-            else if (checkKeyState(Keys.F3, gameTime))
+            else if (checkKeyState(Keys.F11, gameTime))
             {
                 fullScreenMode();
                 setSpriteFont();
             }
-            else if (checkKeyState(Keys.F4, gameTime))
+            else if (checkKeyState(Keys.F12, gameTime))
             {
                 windowedMode();
                 setSpriteFont();
@@ -1484,22 +1522,31 @@ namespace Xyglo
                             }
                             else if (m_confirmState == ConfirmState.FileSaveCancel)
                             {
+                                // First of all save all open buffer we can write and save
+                                // a list of all those we can't
+                                //
+                                m_filesToWrite = new List<FileBuffer>();
+
                                 foreach (FileBuffer fb in m_project.getFileBuffers())
                                 {
-                                    // Select a file path if we need one
-                                    //
-                                    if (fb.getFilepath() == "")
-                                    {
-                                        selectSaveFile();
-                                    }
-                                    else
+                                    if (fb.isWriteable())
                                     {
                                         fb.save();
                                     }
+                                    else
+                                    {
+                                        m_filesToWrite.Add(fb);
+                                    }
                                 }
 
-                                setTemporaryMessage("[Saved.  Exiting.]", gameTime, 5);
-                                this.Exit();
+                                // Go to the first file to write
+                                //
+                                if (m_filesToWrite.Count > 0)
+                                {
+                                    m_activeBufferView = m_project.setSelectedBufferView(m_filesToWrite[0]);
+                                    m_eye = m_activeBufferView.getEyePosition();
+                                    selectSaveFile();
+                                }
                             }
                         }
                         catch (Exception e)
@@ -1617,8 +1664,33 @@ namespace Xyglo
                 {
                     if (checkKeyState(Keys.S, gameTime) && m_activeBufferView.getFileBuffer().isModified())
                     {
-                        setTemporaryMessage("[Confirm Save? Y/N]", gameTime, 0);
-                        m_confirmState = ConfirmState.FileSave;
+                        // If we want to confirm save then ask
+                        //
+                        if (m_confirmFileSave)
+                        {
+                            setTemporaryMessage("[Confirm Save? Y/N]", gameTime, 0);
+                            m_confirmState = ConfirmState.FileSave;
+                        }
+                        else  // just save
+                        {
+                            // Select a file path if we need one
+                            //
+                            if (m_activeBufferView.getFileBuffer().getFilepath() == "")
+                            {
+                                selectSaveFile();
+                            }
+                            else
+                            {
+                                // Attempt save
+                                //
+                                m_activeBufferView.getFileBuffer().save();
+
+                                // Save has completed without error
+                                //
+                                setTemporaryMessage("[Saved]", gameTime, 2);
+                                m_state = FriendlierState.TextEditing;
+                            }
+                        }
                     }
                     else if (checkKeyState(Keys.N, gameTime))
                     {
@@ -1628,6 +1700,10 @@ namespace Xyglo
                     else if (checkKeyState(Keys.O, gameTime))
                     {
                         selectOpenFile();
+                    }
+                    else if (checkKeyState(Keys.I, gameTime))
+                    {
+                        showInformationScreen();
                     }
                     else if (checkKeyState(Keys.D0, gameTime) ||
                              checkKeyState(Keys.D1, gameTime) ||
@@ -1688,7 +1764,29 @@ namespace Xyglo
                                             Logger.logMsg("FILE NAME = " + m_activeBufferView.getFileBuffer().getFilepath());
 
                                             completeSaveFile(gameTime);
-                                            //Logger.logMsg("Got return");
+
+                                            // Now if we have remaining files to write then we need to carry on saving files
+                                            //
+                                            if (m_filesToWrite != null)
+                                            {
+                                                m_filesToWrite.Remove(m_activeBufferView.getFileBuffer());
+
+                                                // If we have remaining files to edit then set the active BufferView to one that
+                                                // looks over this file - then fly to it and choose and file location.
+                                                //
+                                                if (m_filesToWrite.Count > 0)
+                                                {
+                                                    m_activeBufferView = m_project.setSelectedBufferView(m_filesToWrite[0]);
+                                                    m_eye = m_activeBufferView.getEyePosition();
+                                                    selectSaveFile();
+                                                }
+                                                else // We're done 
+                                                {
+                                                    m_filesToWrite = null;
+                                                    Logger.logMsg("Friender - saved some files.  Quitting");
+                                                    this.Exit();
+                                                }
+                                            }
                                         }
                                     }
                                     else if (m_state == FriendlierState.FileOpen)
@@ -2041,7 +2139,7 @@ namespace Xyglo
                                             //Logger.logMsg("Writing letter " + key);
                                             m_saveFileName += key;
                                         }
-                                        else
+                                        else if (m_state == FriendlierState.TextEditing)
                                         {
                                             // Do we need to do some deletion or replacing?
                                             //
@@ -2191,7 +2289,6 @@ namespace Xyglo
 
             BufferView newBV = new BufferView(newFB, newPos, 0, 20, m_charWidth, m_lineHeight, fileIndex, readOnly);
             newBV.setTailing(tailFile);
-            newBV.m_textColour = Color.LightBlue;
             m_project.addBufferView(newBV);
 
             return newBV;
@@ -2509,12 +2606,17 @@ namespace Xyglo
                 //
                 drawOverlay(gameTime);
 
-                // Cursor and cursor highlight - none for tailed bufferviews
+                // Draw the cursor and highlight only if we don't have an overlay information screen
                 //
-                if (!m_activeBufferView.isTailing())
+                if (m_state != FriendlierState.Information)
                 {
-                    drawCursor(gameTime);
-                    drawHighlight(gameTime);
+                    // Cursor and cursor highlight - none for tailed bufferviews
+                    //
+                    if (!m_activeBufferView.isTailing())
+                    {
+                        drawCursor(gameTime);
+                        drawHighlight(gameTime);
+                    }
                 }
             }
 
@@ -2534,12 +2636,28 @@ namespace Xyglo
         protected string m_saveFileName;
 
         /// <summary>
-        /// Draw the HUD Overlay for the editor
+        /// Greyed out colour
+        /// </summary>
+        protected Color m_greyedColour = new Color(100, 100, 100, 100);
+
+
+        /// <summary>
+        /// Draw the HUD Overlay for the editor with information about the current file we're viewing
+        /// and position in that file.
         /// </summary>
         protected void drawOverlay(GameTime gameTime)
         {
+            // Set our colour according to the state of Friendlier
+            //
+            Color overlayColour = Color.White;
+            if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen ||
+                m_state == FriendlierState.Information)
+            {
+                overlayColour = m_greyedColour; 
+            }
+
             string fileName = "";
-            if (m_activeBufferView != null)
+            if (m_activeBufferView != null && m_activeBufferView.getFileBuffer() != null)
             {
                 // Set the filename
                 if (m_activeBufferView.getFileBuffer().getShortFileName() != "")
@@ -2557,6 +2675,10 @@ namespace Xyglo
                 }
 
                 fileName += " " + m_activeBufferView.getFileBuffer().getLineCount() + " lines";
+            }
+            else
+            {
+                fileName = "<New Buffer>";
             }
 
             // Add some other useful states to our status line
@@ -2631,7 +2753,7 @@ namespace Xyglo
 
             float filePercent = 0.0f;
 
-            if (m_activeBufferView.getFileBuffer().getLineCount() > 0)
+            if (m_activeBufferView.getFileBuffer() != null && m_activeBufferView.getFileBuffer().getLineCount() > 0)
             {
                 filePercent = (float)(m_activeBufferView.getCursorPosition().Y + m_activeBufferView.getBufferShowStartY()) /
                               (float)(m_activeBufferView.getFileBuffer().getLineCount());
@@ -2650,11 +2772,11 @@ namespace Xyglo
 
             // hardcode the font size to 1.0f so it looks nice
             //
-            m_overlaySpriteBatch.DrawString(FontManager.getOverlayFont(), fileName, new Vector2(0.0f, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
-            m_overlaySpriteBatch.DrawString(FontManager.getOverlayFont(), eyePosition, new Vector2(0.0f, 0.0f), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
-            m_overlaySpriteBatch.DrawString(FontManager.getOverlayFont(), modeString, new Vector2(modeStringXPos, 0.0f), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
-            m_overlaySpriteBatch.DrawString(FontManager.getOverlayFont(), positionString, new Vector2(positionStringXPos, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
-            m_overlaySpriteBatch.DrawString(FontManager.getOverlayFont(), filePercentString, new Vector2(filePercentStringXPos, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+            m_overlaySpriteBatch.DrawString(FontManager.getOverlayFont(), fileName, new Vector2(0.0f, yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
+            m_overlaySpriteBatch.DrawString(FontManager.getOverlayFont(), eyePosition, new Vector2(0.0f, 0.0f), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
+            m_overlaySpriteBatch.DrawString(FontManager.getOverlayFont(), modeString, new Vector2(modeStringXPos, 0.0f), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
+            m_overlaySpriteBatch.DrawString(FontManager.getOverlayFont(), positionString, new Vector2(positionStringXPos, yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
+            m_overlaySpriteBatch.DrawString(FontManager.getOverlayFont(), filePercentString, new Vector2(filePercentStringXPos, yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
             m_overlaySpriteBatch.End();
         }
 
@@ -2682,7 +2804,7 @@ namespace Xyglo
             Vector3 v2 = m_activeBufferView.getCursorCoordinates();
             v2.X += 1;
 
-            renderQuad(v1, v2);
+            renderQuad(v1, v2, m_activeBufferView.getHighlightColor());
         }
 
         /// <summary>
@@ -2782,7 +2904,7 @@ namespace Xyglo
                     lineNumber++;
                 }
             }
-            else
+            else // This is where we draw Directories and Files
             {
                 // For drives and directories we highlight item 1  - not zero
                 //
@@ -2878,22 +3000,20 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Draw a BufferView
+        /// Draw a BufferView in any state that we wish to - this means showing the lines of the
+        /// file/buffer we want to see at the current cursor position with highlighting as required.
         /// </summary>
         /// <param name="view"></param>
         /// <param name="file"></param>
         protected void drawFileBuffer(BufferView view, GameTime gameTime)
         {
-            Color bufferColour = view.m_textColour;
+            Color bufferColour = view.getTextColour();
 
-            if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen)
+            if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen ||
+                m_state == FriendlierState.Information)
             {
                 Color fadeColour = new Color(100, 100 ,100, 100);
                 bufferColour = fadeColour;
-            }
-            else if (view == m_activeBufferView)
-            {
-                bufferColour = Color.White;
             }
 
             float yPosition = 0.0f;
@@ -2930,14 +3050,17 @@ namespace Xyglo
             {
                 line = "~";
 
-                if (i + bufPos < view.getFileBuffer().getLineCount() &&
-                    view.getFileBuffer().getLineCount() != 0)
+                if (view.getFileBuffer() != null)
                 {
-                    line = view.getFileBuffer().getLine(i + bufPos);
-
-                    if (line.Length > view.getBufferShowWidth())
+                    if (i + bufPos < view.getFileBuffer().getLineCount() &&
+                        view.getFileBuffer().getLineCount() != 0)
                     {
-                        line = line.Substring(0, view.getBufferShowWidth()) + "  [>]";
+                        line = view.getFileBuffer().getLine(i + bufPos);
+
+                        if (line.Length > view.getBufferShowWidth())
+                        {
+                            line = line.Substring(0, view.getBufferShowWidth()) + "  [>]";
+                        }
                     }
                 }
 
@@ -2980,7 +3103,12 @@ namespace Xyglo
 
             // Draw viewing window
             float start = view.getBufferShowStartY();
-            float length = view.getFileBuffer().getLineCount();
+            float length = 0;
+
+            if (view.getFileBuffer() != null)
+            {
+                length = view.getFileBuffer().getLineCount();
+            }
 
             // Check for length of FileBuffer in case it's empty
             //
@@ -3038,7 +3166,7 @@ namespace Xyglo
             //
             foreach (BoundingBox highlight in bb)
             {
-                renderQuad(highlight.Min, highlight.Max);
+                renderQuad(highlight.Min, highlight.Max, m_activeBufferView.getHighlightColor());
             }
         }
 
@@ -3047,7 +3175,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="topLeft"></param>
         /// <param name="bottomRight"></param>
-        protected void renderQuad(Vector3 topLeft, Vector3 bottomRight)
+        protected void renderQuad(Vector3 topLeft, Vector3 bottomRight, Color quadColour)
         {
             Vector3 bottomLeft = new Vector3(topLeft.X, bottomRight.Y, topLeft.Z);
             Vector3 topRight = new Vector3(bottomRight.X, topLeft.Y, bottomRight.Z);
@@ -3066,7 +3194,7 @@ namespace Xyglo
                                                  Convert.ToInt16(topLeft.Y),
                                                  Convert.ToInt16(bottomRight.X) - Convert.ToInt16(topLeft.X),
                                                  Convert.ToInt16(bottomRight.Y) - Convert.ToInt16(topLeft.Y)),
-                                                 m_activeBufferView.m_highlightColour);  
+                                                 quadColour);  
             m_spriteBatch.End();
         }
     }

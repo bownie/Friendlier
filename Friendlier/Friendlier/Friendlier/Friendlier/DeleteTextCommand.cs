@@ -51,7 +51,7 @@ namespace Xyglo
                     }
                     else
                     {
-                        if (m_fileBuffer.getLineCount() > m_startPos.Y)
+                        if (m_fileBuffer.getLineCount() - 1 > m_startPos.Y)
                         {
                             // Append next line to current
                             //
@@ -60,6 +60,10 @@ namespace Xyglo
                             // Remove next
                             m_fileBuffer.deleteLines(m_startPos.Y + 1, 1);
                             m_snippet.incrementLinesDeleted(1);
+                        }
+                        else
+                        {
+                            throw new Exception("DeleteTextCommand - nothing to delete");
                         }
                     }
                 }

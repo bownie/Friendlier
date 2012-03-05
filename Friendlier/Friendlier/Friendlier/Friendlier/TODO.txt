@@ -1,5 +1,10 @@
-
-- CTRL to jump words 
+- Persistance file to correct app location [DONE]
+- Saving/opening/browsing - ensure states are correct
+- information screen (file information) [HALF DONE]
+- bufferview colours for editing and non-editable windows
+- project information screen (files, buffers, lines etc)
+- work update status (sessions - time developing etc)
+- undo buffer view
 - repurpose the Function keys
 - Temporary file save messages to move somewhere
 - Long lines handling [CAN VIEW BUT NOT SCROLL TO]
@@ -11,11 +16,15 @@
 
 TO TEST/BUGS
 ------------
-- Undo/redo
+- Undo/redo testing and fixing
 - Pasting multiple lines for Replace [HALF COMPLETE]
+- fix flashing scrollbars bug
 
 DONE
 ----
+- extra slash on file save directories [DONE]
+- multiple file save on quit [DONE]
+- CTRL to jump words [DONE]
 - Read only files [DONE]
 - Log file view (attach and view) [DONE but file watchers not working]
 - Drift focus when adding a new BufferView drift to position [DONE]

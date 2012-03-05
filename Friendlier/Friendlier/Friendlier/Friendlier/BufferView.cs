@@ -18,6 +18,9 @@ namespace Xyglo
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class BufferView
     {
+        /// <summary>
+        /// BufferPosition is used to help determine positions of other BufferViews
+        /// </summary>
         public enum BufferPosition
         {
             Above,
@@ -25,6 +28,38 @@ namespace Xyglo
             Left,
             Right
         };
+
+        /// <summary>
+        /// Which Quadrant of four BufferViews are we viewing from the current one - cycling
+        /// through these possibilities makes it nine total screens we can view
+        /// </summary>
+        public enum ViewQuadrant
+        {
+            TopRight,
+            BottomRight,
+            BottomLeft,
+            TopLeft
+        }
+
+        /// <summary>
+        /// Which direction we're cycling through quadrant views
+        /// </summary>
+        public enum ViewCycleDirection
+        {
+            Clockwise,
+            Anticlockwise
+        }
+
+        /// <summary>
+        /// Which quadrant are we viewing
+        /// </summary>
+        protected ViewQuadrant m_viewQuadrant;
+
+        /// <summary>
+        /// Which direction are we cycling
+        /// </summary>
+        protected ViewCycleDirection m_cycleDirection;
+
 
         /// <summary>
         /// A little struct used to hold relative positions of BufferViews
@@ -62,19 +97,19 @@ namespace Xyglo
         /// The BufferView remembers its own highlight positions
         /// </summary>
         [DataMember()]
-        FilePosition m_highlightStart;
+        protected FilePosition m_highlightStart;
 
         /// <summary>
         /// Store the BufferViewPosition relative to another
         /// </summary>
         [DataMember()]
-        BufferViewPosition m_bufferViewPosition;
+        protected BufferViewPosition m_bufferViewPosition;
 
         /// <summary>
         /// The BufferView remembers its own highlight positions
         /// </summary>
         [DataMember()]
-        FilePosition m_highlightEnd;
+        protected FilePosition m_highlightEnd;
 
         /// <summary>
         /// Where we set the highlight to when there isn't one
@@ -125,19 +160,31 @@ namespace Xyglo
         /// Text colour
         /// </summary>
         [DataMember()]
-        public Color m_textColour = Color.LawnGreen;
+        protected Color m_textColour = Color.White;
 
         /// <summary>
         /// Cursor colour
         /// </summary>
         [DataMember()]
-        public Color m_cursorColour = Color.Yellow;
+        protected Color m_cursorColour = Color.Yellow;
 
         /// <summary>
         /// Highlight colour
         /// </summary>
         [DataMember()]
-        public Color m_highlightColour = Color.PaleVioletRed;
+        protected Color m_highlightColour = Color.PaleVioletRed;
+
+        /// <summary>
+        /// Tailing colour
+        /// </summary>
+        [DataMember()]
+        protected Color m_tailColour = Color.Blue;
+
+        /// <summary>
+        /// Read only colour
+        /// </summary>
+        [DataMember()]
+        protected Color m_readOnlyColour = Color.LightYellow;
 
         /// <summary>
         /// Width of a single character in the font that we're displaying in
@@ -277,6 +324,35 @@ namespace Xyglo
         //////// METHODS ///////
 
         /// <summary>
+        /// Get text colour dependent on mode
+        /// </summary>
+        public Color getTextColour()
+        {
+            if (m_tailing)
+            {
+                return m_tailColour;
+            }
+            else if (m_readOnly)
+            {
+                return m_readOnlyColour;
+            }
+            else
+            {
+                return m_textColour;
+            }
+        }
+
+        /// <summary>
+        /// Return the highlight colour
+        /// </summary>
+        /// <returns></returns>
+        public Color getHighlightColor()
+        {
+            return m_highlightColour;
+        }
+
+
+        /// <summary>
         /// Get the index of the FileBuffer associated with this BufferView
         /// </summary>
         /// <returns></returns>
@@ -391,6 +467,24 @@ namespace Xyglo
         public void setBufferShowStartX(int x)
         {
             m_bufferShowStartX = x;
+        }
+
+        /// <summary>
+        /// Visible width of 'window' 
+        /// </summary>
+        /// <returns></returns>
+        public float getVisibleWidth()
+        {
+            return (m_bufferShowWidth * m_charWidth);
+        }
+
+        /// <summary>
+        /// Visible height of 'window'
+        /// </summary>
+        /// <returns></returns>
+        public float getVisibleHeight()
+        {
+            return (m_bufferShowLength * m_lineHeight);
         }
 
         /// <summary>
@@ -700,6 +794,91 @@ namespace Xyglo
             return rV;
         }
 
+        /// <summary>
+        /// Rotate our BufferView at quadrant viewing height
+        /// </summary>
+        /// <param name="direction"></param>
+        public void rotateQuadrant(BufferView.ViewCycleDirection direction)
+        {
+            // We probably don't need to store this
+            //
+            m_cycleDirection = direction;
+
+            // First rotate the view
+            //
+            if (direction == ViewCycleDirection.Clockwise)
+            {
+                if (m_viewQuadrant == ViewQuadrant.TopLeft)
+                {
+                    m_viewQuadrant = ViewQuadrant.TopRight;
+                }
+                else
+                {
+                    m_viewQuadrant++;
+                }
+            }
+            else
+            {
+                m_viewQuadrant--;
+                if (m_viewQuadrant < 0)
+                {
+                    m_viewQuadrant += 4;
+                }
+            }
+
+            Logger.logMsg("BufferView::rotateQuadrant() - quadrant is now " + m_viewQuadrant.ToString());
+
+        }
+
+        /// <summary>
+        /// Return the eye vector of the centre of this BufferView for a given zoom level
+        /// - at a certain height we ensure that we're using Quadrant view
+        /// </summary>
+        /// <returns></returns>
+        public Vector3 getEyePosition(float zoomLevel)
+        {
+            Vector3 rV = m_position;
+
+            rV.Y = -rV.Y; // invert Y
+            rV.X += m_charWidth * m_bufferShowWidth / 2;
+            rV.Y -= m_lineHeight * m_bufferShowLength / 2;
+            rV.Z = zoomLevel;
+
+            if (zoomLevel == 1000.0f)
+            {
+
+                switch (m_viewQuadrant)
+                {
+                    case ViewQuadrant.TopRight:
+                        rV.X -= 3 * getVisibleWidth() / 4;
+                        rV.Y -= getVisibleHeight();
+                        break;
+
+                    case ViewQuadrant.BottomRight:
+                        rV.X -= 3 * getVisibleWidth() / 4;
+                        rV.Y += getVisibleHeight();
+                        break;
+
+                    case ViewQuadrant.BottomLeft:
+                        rV.X += 3 * getVisibleWidth() / 4;
+                        rV.Y += getVisibleHeight();
+                        break;
+
+                    case ViewQuadrant.TopLeft:
+                        rV.X += 3 * getVisibleWidth() / 4;
+                        rV.Y -= getVisibleHeight();
+                        break;
+
+                    default:
+                        Logger.logMsg("BufferView::getEyePosition - unknown orientation for quadrant");
+                        break;
+                }
+
+            }
+
+            return rV;
+        }
+
 
         /// <summary>
         /// Return the coordinates of the highlighted area use a list of bounding boxes
@@ -782,12 +961,12 @@ namespace Xyglo
                     startPos.Y = ( m_position.Y + i  - m_bufferShowStartY) * m_lineHeight;
                     endPos.Y = (m_position.Y + i + 1 - m_bufferShowStartY) * m_lineHeight;
 
-                    // If we have nothing highlighted in the line then indicate this with a negative
+                    // If we have nothing highlighted in the line then indicate this with a
                     // half box line
                     //
                     if (startPos.X == endPos.X && endPos.X == m_position.X)
                     {
-                        startPos.X -= m_charWidth / 2;
+                        startPos.X += m_charWidth / 2;
                     }
 
                     bb.Add(new BoundingBox(startPos, endPos));
@@ -858,7 +1037,7 @@ namespace Xyglo
                     //
                     if (startPos.X == endPos.X && endPos.X == m_position.X)
                     {
-                        startPos.X -= m_charWidth / 2;
+                        startPos.X += m_charWidth / 2;
                     }
 
                     bb.Add(new BoundingBox(startPos, endPos));
@@ -1091,6 +1270,13 @@ namespace Xyglo
         /// </summary>
         public void verifyBoundaries()
         {
+            // Check for no FileBuffer
+            //
+            if (m_fileBuffer == null)
+            {
+                return;
+            }
+            
             // If cursor is less then zero or there are no rows in the file
             //
             if (m_cursorPosition.Y < 0 || m_fileBuffer.getLineCount() == 0)

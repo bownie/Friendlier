@@ -14,21 +14,104 @@ namespace Xyglo
     /// </summary>
     public class FileSystemView 
     {
+        ///////////////////// MEMBER VARIABLES //////////////////////
+
+        /// <summary>
+        /// Our current directory
+        /// </summary>
         protected string m_path;
 
+        /// <summary>
+        /// Number of characters to show in a BufferView line
+        /// </summary>
+        protected int m_bufferShowWidth = 80;
+
+        /// <summary>
+        /// Are we scanning at drive level?
+        /// </summary>
+        bool m_driveLevel = false;
+
+        /// <summary>
+        /// Directory information object
+        /// </summary>
+        protected DirectoryInfo m_directoryInfo;
+
+        /// <summary>
+        /// File information object
+        /// </summary>
+        protected FileInfo m_fileInfo;
+
+        /// <summary>
+        /// Font related hight
+        /// </summary>
+        float m_lineHeight;
+
+        /// <summary>
+        /// Character related width
+        /// </summary>
+        float m_charWidth;
+
+
+        /// <summary>
+        /// Index of the currently highlighted directory in a directory picker
+        /// </summary>
+        protected int m_directoryHighlight = 0;
+
+        /// <summary>
+        /// Position in 3D land
+        /// </summary>
+        Vector3 m_position;
+
+        ///////////////////////// CONSTRUCTORS ////////////////////////
+        public FileSystemView(string path, Vector3 position, float lineHeight, float charWidth)
+        {
+            m_path = fixPathEnding(path);
+            m_position = position;
+            m_lineHeight = lineHeight;
+            m_charWidth = charWidth;
+            scanDirectory();
+        }
+
+
+        ////////////////////////// METHODS ///////////////////////////
+
+        /// <summary>
+        /// Ensure that a path always ends in a backslash
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        protected string fixPathEnding(string path)
+        {
+            if (path.Length > 0)
+            {
+                if (path[path.Length - 1] != '\\')
+                {
+                    path += @"\";
+                }
+            }
+
+            return path;
+        }
+
+        /// <summary>
+        /// Return current directory
+        /// </summary>
+        /// <returns></returns>
         public string getPath()
         {
             return m_path;
         }
 
-        // Reset to this directory and test for directory and file access at this level
-        //
+        /// <summary>
+        /// Reset to this directory and test for directory and file access at this level
+        /// </summary>
+        /// <param name="directory"></param>
         public void setDirectory(string directory)
         {
             if (directory != null)
             {
                 m_driveLevel = false;
-                m_path = directory;
+                m_path = fixPathEnding(directory);
                 scanDirectory();
             }
             else
@@ -63,8 +146,7 @@ namespace Xyglo
         /// <summary>
         /// Are we scanning at drive level?
         /// </summary>
-        bool m_driveLevel = false;
-
+        /// <returns></returns>
         public bool atDriveLevel()
         {
             return m_driveLevel;
@@ -79,8 +161,10 @@ namespace Xyglo
             return DriveInfo.GetDrives();
         }
 
-        // Return the count of active drives
-        //
+        /// <summary>
+        /// Return the count of active drives
+        /// </summary>
+        /// <returns></returns>
         public int countActiveDrives()
         {
             int count = 0;
@@ -95,26 +179,13 @@ namespace Xyglo
             return count;
         }
 
-        //protected Hashtable m_directoryTree = new Hashtable();
-
-        protected DirectoryInfo m_directoryInfo;
-        protected FileInfo m_fileInfo;
-
+        /// <summary>
+        /// Fetch the directory information - simple wrapper
+        /// </summary>
+        /// <returns></returns>
         public DirectoryInfo getDirectoryInfo()
         {
             return m_directoryInfo;
-        }
-
-        float m_lineHeight;
-        float m_charWidth;
-
-        public FileSystemView(string path, Vector3 position, float lineHeight, float charWidth)
-        {
-            m_path = path;
-            m_position = position;
-            m_lineHeight = lineHeight;
-            m_charWidth = charWidth;
-            scanDirectory();
         }
 
         /// <summary>
@@ -150,8 +221,6 @@ namespace Xyglo
             m_fileInfo = new FileInfo(m_path);
         }
 
-        Vector3 m_position;
-
         public Vector3 getPosition()
         {
             return m_position;
@@ -168,25 +237,36 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Index of the currently highlighted directory in a directory picker
+        /// Get the highlight index
         /// </summary>
-        protected int m_directoryHighlight = 0;
-
+        /// <returns></returns>
         public int getHighlightIndex()
         {
             return m_directoryHighlight;
         }
 
+        /// <summary>
+        /// Set highlight position
+        /// </summary>
+        /// <param name="directoryHighlight"></param>
         public void setHighlightIndex(int directoryHighlight)
         {
             m_directoryHighlight = directoryHighlight;
         }
 
+        /// <summary>
+        /// Increment highlight position
+        /// </summary>
+        /// <param name="inc"></param>
         public void incrementHighlightIndex(int inc)
         {
             m_directoryHighlight += inc;
         }
 
+        /// <summary>
+        /// Get the highlight position
+        /// </summary>
+        /// <returns></returns>
         public string getHighlightedFile()
         {
             string file = m_directoryInfo.FullName;
@@ -211,11 +291,6 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Number of characters to show in a BufferView line
-        /// </summary>
-        protected int m_bufferShowWidth = 80;
-
-        /// <summary>
         /// Accessor for BufferShowWidth
         /// </summary>
         /// <returns></returns>
@@ -223,7 +298,5 @@ namespace Xyglo
         {
             return m_bufferShowWidth;
         }
-
-        
     }
 }

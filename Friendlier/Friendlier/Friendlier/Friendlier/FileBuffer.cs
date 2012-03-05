@@ -157,10 +157,33 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Test to see if the current filename is writeable
+        /// </summary>
+        /// <returns></returns>
+        public bool isWriteable()
+        {
+            if (File.Exists(m_filename))
+            {
+                if (File.GetAttributes(m_filename) != FileAttributes.ReadOnly)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Load this file
         /// </summary>
         public void loadFile()
         {
+            // test to see if file exists
+            if (!File.Exists(m_filename))
+            {
+                Logger.logMsg("FileBuffer::loadFile() - file \"" + m_filename + "\" does not exist so cannot load it");
+                return;
+            }
+
             // If we have recovered this FileBuffer from a persisted state then m_lines could
             // very well be null at this point - initialise it if it is.
             //
@@ -387,7 +410,10 @@ namespace Xyglo
             //
             m_commands.Add(command);
             m_undoPosition = m_commands.Count;
+
+#if UNDO_DEBUG
             Logger.logMsg("FileBuffer:tidyUndoStack() - added new command to undo stack - size is now " + m_commands.Count);
+#endif
 
         }
 
@@ -404,12 +430,22 @@ namespace Xyglo
                 return endSelection;
             }
 
-            DeleteTextCommand command = new DeleteTextCommand("Delete Selection", this, startSelection, endSelection);
-            FilePosition fp = command.doCommand();
+            FilePosition fp = endSelection;
 
-            // Ensure we are neat and tidy
-            //
-            tidyUndoStack(command);
+            try
+            {
+                DeleteTextCommand command = new DeleteTextCommand("Delete Selection", this, startSelection, endSelection);
+                fp = command.doCommand();
+
+                // Ensure we are neat and tidy
+                //
+                tidyUndoStack(command);
+            }
+            catch (Exception e)
+            {
+                Logger.logMsg("FileBuffer::deleteSelection() - nothing to delete : " + e.Message);
+            }
+
 
             return fp;
         }
