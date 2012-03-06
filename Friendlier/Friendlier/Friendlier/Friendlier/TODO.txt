@@ -1,4 +1,7 @@
-- Persistance file to correct app location [DONE]
+- Rearrange windows manually
+- Close BufferViews
+- File browsing...
+- Configuration - builder, logging window
 - Saving/opening/browsing - ensure states are correct
 - information screen (file information) [HALF DONE]
 - bufferview colours for editing and non-editable windows
@@ -14,8 +17,10 @@
 - Licensing
 - Icons etc
 
+
 TO TEST/BUGS
 ------------
+- Persistance file to correct app location [DONE]
 - Undo/redo testing and fixing
 - Pasting multiple lines for Replace [HALF COMPLETE]
 - fix flashing scrollbars bug
@@ -53,3 +58,5 @@ For Later
 - Hud file system positions?
 - Command line interface
 - Mouse click (think that will be 1.1)
+- Basic interpreter
+- 

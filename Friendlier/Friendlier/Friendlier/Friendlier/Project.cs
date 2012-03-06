@@ -65,6 +65,7 @@ namespace Xyglo
         [DataMember()]
         protected DateTime m_lastAccessTime;
 
+
         ////////// CONSTRUCTORS ///////////
 
         /// <summary>
@@ -146,6 +147,69 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Remove a BufferView - we don't remove FileBuffers as part of this removal
+        /// </summary>
+        /// <param name="view"></param>
+        /// <returns></returns>
+        public bool removeBufferView(BufferView view)
+        {
+            return m_bufferViews.Remove(view);
+        }
+
+        /// <summary>
+        /// Remove a FileBuffer from our project - any BufferViews that are open against it
+        /// are also removed.
+        /// </summary>
+        /// <param name="fb"></param>
+        /// <returns></returns>
+        public bool removeFileBuffer(FileBuffer fb)
+        {
+            // Firstly ensure that FileBuffer exists
+            //
+            FileBuffer result = m_fileBuffers.Find(item => item.getFilepath() == fb.getFilepath());
+
+            if (result != null)
+            {
+                Logger.logMsg("Project::removeFileBuffer() - cannot find file to remove " + fb.getFilepath());
+                return false;
+            }
+
+            // Create a removal list
+            //
+            List<BufferView> removeList = new List<BufferView>();
+
+            foreach (BufferView bv in m_bufferViews)
+            {
+                if (bv.getFileBuffer().getFilepath() == fb.getFilepath())
+                {
+                    removeList.Add(bv);
+                }
+            }
+
+            // Remove our list from the m_bufferViews
+            //
+            foreach (BufferView bv in removeList)
+            {
+                m_bufferViews.Remove(bv);
+            }
+
+            // Now remove the FileBuffer
+            //
+            return m_fileBuffers.Remove(fb);
+        }
+
+
+        /// <summary>
+        /// Return the project file
+        /// </summary>
+        /// <returns></returns>
+        public string getProjectFile()
+        {
+            return m_projectFile;
+        }
+
+
+        /// <summary>
         /// Add an existing BufferView and return the index of it
         /// </summary>
         /// <param name="bv"></param>
@@ -189,16 +253,6 @@ namespace Xyglo
 
             return newBV;
         }
-
-        /// <summary>
-        /// Return the project file
-        /// </summary>
-        /// <returns></returns>
-        public string getProjectFile()
-        {
-            return m_projectFile;
-        }
-
 
         static public Project dataContractDeserialise(string fileName)
         {
@@ -299,6 +353,38 @@ namespace Xyglo
             }
         }
 
+
+        /// <summary>
+        /// Return the application directory string
+        /// </summary>
+        /// <returns></returns>
+        static public string getUserDataPath()
+        {
+            string dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            dir = System.IO.Path.Combine(dir, @"Xyglo\Friendlier\");
+            if (!Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+            return dir;
+        }
+
+        /// <summary>
+        /// Set the selected view in the project by a view reference
+        /// </summary>
+        /// <param name="view"></param>
+        public void setSelectedView(BufferView view)
+        {
+            int i = 0;
+            foreach(BufferView bv in m_bufferViews)
+            {
+                if (view == bv)
+                {
+                    m_selectedViewId = i;
+                    break;
+                }
+                ++i;
+            }
+        }
+
         /// <summary>
         /// Simple accessor for selected BufferView
         /// </summary>
@@ -334,19 +420,6 @@ namespace Xyglo
             }
 
             return null;
-        }
-
-        /// <summary>
-        /// Return the application directory string
-        /// </summary>
-        /// <returns></returns>
-        static public string getUserDataPath()
-        {
-            string dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            dir = System.IO.Path.Combine(dir, @"Xyglo\Friendlier\");
-            if (!Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-            return dir;
         }
     }
 }

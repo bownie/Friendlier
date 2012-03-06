@@ -165,7 +165,7 @@ namespace Xyglo
         /// <summary>
         /// The buffer we are currently editing
         /// </summary>
-        BufferView m_activeBufferView = null;
+//        BufferView m_activeBufferView = null;
 
         /// <summary>
         /// A flat texture
@@ -265,7 +265,7 @@ namespace Xyglo
         /// <returns></returns>
         protected int getActiveBufferIndex()
         {
-            return m_project.getFileBuffers().IndexOf(m_activeBufferView.getFileBuffer());
+            return m_project.getFileBuffers().IndexOf(m_project.getSelectedBufferView().getFileBuffer());
         }
 
 
@@ -420,12 +420,12 @@ namespace Xyglo
 
             // Get the BufferView id we've selected and set the BufferView
             //
-            m_activeBufferView = m_project.getSelectedBufferView();
+            //m_activeBufferView = m_project.getSelectedBufferView();
 
             // Ensure that we are in the correct position to view this buffer so there's no initial movement
             //
-            m_eye = m_activeBufferView.getEyePosition();
-            m_target = m_activeBufferView.getLookPosition();
+            m_eye = m_project.getSelectedBufferView().getEyePosition();
+            m_target = m_project.getSelectedBufferView().getLookPosition();
             m_eye.Z = m_zoomLevel;
 
             // Set the active buffer view
@@ -653,7 +653,7 @@ namespace Xyglo
         /// <param name="direction"></param>
         protected void setActiveBuffer(BufferView.ViewCycleDirection direction)
         {
-            m_activeBufferView.rotateQuadrant(direction);
+            m_project.getSelectedBufferView().rotateQuadrant(direction);
             setActiveBuffer();
         }
 
@@ -678,16 +678,9 @@ namespace Xyglo
         {
             try
             {
-                // Set active buffer
-                //
-                if (item == null)
-                {
-                    m_activeBufferView = m_project.getSelectedBufferView();
-                }
-                else
+                if (item != null)
                 {
                     m_project.setSelectedBufferView(item);
-                    m_activeBufferView = item;
                 }
             }
             catch (Exception e)
@@ -700,7 +693,7 @@ namespace Xyglo
 
             // All the maths is done in the Buffer View
             //
-            Vector3 eyePos = m_activeBufferView.getEyePosition(m_zoomLevel);
+            Vector3 eyePos = m_project.getSelectedBufferView().getEyePosition(m_zoomLevel);
 
             flyToPosition(eyePos);
 
@@ -822,6 +815,29 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Close the active buffer view
+        /// </summary>
+        protected void closeActiveBuffer()
+        {
+            if (m_project.getBufferViews().Count > 1)
+            {
+                int index = m_project.getBufferViews().IndexOf(m_project.getSelectedBufferView());
+                m_project.removeBufferView(m_project.getSelectedBufferView());
+
+                // Ensure that the index is not greater than number of bufferviews
+                //
+                if (index > m_project.getBufferViews().Count - 1)
+                {
+                    index = m_project.getBufferViews().Count - 1;
+                }
+
+                //m_project.setSelectedBufferViewId(index);
+
+                setActiveBuffer(index);
+            }
+        }
+
+        /// <summary>
         /// Open a file at the selected location
         /// </summary>
         protected void openHighlightedFile(GameTime gameTime, bool readOnly = false, bool tailFile = false)
@@ -888,7 +904,7 @@ namespace Xyglo
 
             try
             {
-                m_activeBufferView.getFileBuffer().save();
+                m_project.getSelectedBufferView().getFileBuffer().save();
                 Vector3 newPosition = m_eye;
                 newPosition.Z = 500.0f;
 
@@ -899,7 +915,7 @@ namespace Xyglo
             }
             catch (Exception)
             {
-                setTemporaryMessage("Failed to save to " + m_activeBufferView.getFileBuffer().getFilepath(), gameTime, 2);
+                setTemporaryMessage("Failed to save to " + m_project.getSelectedBufferView().getFileBuffer().getFilepath(), gameTime, 2);
             }
         }
 
@@ -1020,9 +1036,9 @@ namespace Xyglo
 
                     // Also set our current bufferview highlighting if we're not already highlighting
                     //
-                    if (!m_activeBufferView.gotHighlight())
+                    if (!m_project.getSelectedBufferView().gotHighlight())
                     {
-                        m_activeBufferView.startHighlight();
+                        m_project.getSelectedBufferView().startHighlight();
                     }
                 }
             }
@@ -1081,15 +1097,15 @@ namespace Xyglo
                     }
                     else
                     {
-                        m_activeBufferView.moveCursorUp(false);
+                        m_project.getSelectedBufferView().moveCursorUp(false);
 
                         if (m_shiftDown)
                         {
-                            m_activeBufferView.extendHighlight();  // Extend 
+                            m_project.getSelectedBufferView().extendHighlight();  // Extend 
                         }
                         else
                         {
-                            m_activeBufferView.noHighlight(); // Disable
+                            m_project.getSelectedBufferView().noHighlight(); // Disable
                         }
                     }
                 }
@@ -1123,15 +1139,15 @@ namespace Xyglo
                     }
                     else
                     {
-                        m_activeBufferView.moveCursorDown(false);
+                        m_project.getSelectedBufferView().moveCursorDown(false);
 
                         if (m_shiftDown)
                         {
-                            m_activeBufferView.extendHighlight();
+                            m_project.getSelectedBufferView().extendHighlight();
                         }
                         else
                         {
-                            m_activeBufferView.noHighlight(); // Disable
+                            m_project.getSelectedBufferView().noHighlight(); // Disable
                         }
                     }
                 }
@@ -1178,34 +1194,34 @@ namespace Xyglo
                     }
                     else
                     {
-                        if (m_activeBufferView.getCursorPosition().X > 0)
+                        if (m_project.getSelectedBufferView().getCursorPosition().X > 0)
                         {
-                            FilePosition fp = m_activeBufferView.getCursorPosition();
+                            FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
                             // If control is down then word jump
                             //
                             if (m_ctrlDown)
                             {
-                                string line = m_activeBufferView.getFileBuffer().getLine(fp.Y);
+                                string line = m_project.getSelectedBufferView().getFileBuffer().getLine(fp.Y);
                              }
                             else
                             {
                                 fp.X--;
                             }
-                            m_activeBufferView.setCursorPosition(fp);
+                            m_project.getSelectedBufferView().setCursorPosition(fp);
 
                         }
                         else
                         {
-                            m_activeBufferView.moveCursorUp(true);
+                            m_project.getSelectedBufferView().moveCursorUp(true);
                         }
 
                         if (m_shiftDown)
                         {
-                            m_activeBufferView.extendHighlight();  // Extend
+                            m_project.getSelectedBufferView().extendHighlight();  // Extend
                         }
                         else
                         {
-                            m_activeBufferView.noHighlight(); // Disable
+                            m_project.getSelectedBufferView().noHighlight(); // Disable
                         }
                     }
                 }
@@ -1226,10 +1242,10 @@ namespace Xyglo
                     }
                     else
                     {
-                        FilePosition fp = m_activeBufferView.getCursorPosition();
-                        string line = m_activeBufferView.getFileBuffer().getLine(fp.Y);
+                        FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
+                        string line = m_project.getSelectedBufferView().getFileBuffer().getLine(fp.Y);
 
-                        if (m_activeBufferView.getCursorPosition().X < line.Length)
+                        if (m_project.getSelectedBufferView().getCursorPosition().X < line.Length)
                         {
                             if (fp.X < line.Length)
                             {
@@ -1267,54 +1283,54 @@ namespace Xyglo
                                 {
                                     fp.X++;
                                 }
-                                m_activeBufferView.setCursorPosition(fp);
+                                m_project.getSelectedBufferView().setCursorPosition(fp);
                             }
                         }
                         else
                         {
-                            m_activeBufferView.moveCursorDown(true);
+                            m_project.getSelectedBufferView().moveCursorDown(true);
                         }
                         
                         if (m_shiftDown)
                         {
-                            m_activeBufferView.extendHighlight(); // Extend
+                            m_project.getSelectedBufferView().extendHighlight(); // Extend
                         }
                         else
                         {
-                            m_activeBufferView.noHighlight(); // Disable
+                            m_project.getSelectedBufferView().noHighlight(); // Disable
                         }
                     }
                 }
             }
             else if (checkKeyState(Keys.End, gameTime))
             {
-                FilePosition fp = m_activeBufferView.getCursorPosition();
-                fp.X = m_activeBufferView.getFileBuffer().getLine(fp.Y).Length;
-                m_activeBufferView.setCursorPosition(fp);
+                FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
+                fp.X = m_project.getSelectedBufferView().getFileBuffer().getLine(fp.Y).Length;
+                m_project.getSelectedBufferView().setCursorPosition(fp);
 
                 if (m_shiftDown)
                 {
-                    m_activeBufferView.extendHighlight(); // Extend
+                    m_project.getSelectedBufferView().extendHighlight(); // Extend
                 }
                 else
                 {
-                    m_activeBufferView.noHighlight(); // Disable
+                    m_project.getSelectedBufferView().noHighlight(); // Disable
                 }
 
             }
             else if (checkKeyState(Keys.Home, gameTime))
             {
-                FilePosition fp = m_activeBufferView.getCursorPosition();
+                FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
                 fp.X = 0;
-                m_activeBufferView.setCursorPosition(fp);
+                m_project.getSelectedBufferView().setCursorPosition(fp);
 
                 if (m_shiftDown)
                 {
-                    m_activeBufferView.extendHighlight(); // Extend
+                    m_project.getSelectedBufferView().extendHighlight(); // Extend
                 }
                 else
                 {
-                    m_activeBufferView.noHighlight(); // Disable
+                    m_project.getSelectedBufferView().noHighlight(); // Disable
                 }
             }
             else if (checkKeyState(Keys.F1, gameTime))
@@ -1404,39 +1420,39 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.PageDown, gameTime))
             {
-                m_activeBufferView.pageDown();
+                m_project.getSelectedBufferView().pageDown();
 
                 if (m_shiftDown)
                 {
-                    m_activeBufferView.extendHighlight(); // Extend
+                    m_project.getSelectedBufferView().extendHighlight(); // Extend
                 }
                 else
                 {
-                    m_activeBufferView.noHighlight(); // Disable
+                    m_project.getSelectedBufferView().noHighlight(); // Disable
                 }
             }
             else if (checkKeyState(Keys.PageUp, gameTime))
             {
-                m_activeBufferView.pageUp();
+                m_project.getSelectedBufferView().pageUp();
 
                 if (m_shiftDown)
                 {
-                    m_activeBufferView.extendHighlight(); // Extend
+                    m_project.getSelectedBufferView().extendHighlight(); // Extend
                 }
                 else
                 {
-                    m_activeBufferView.noHighlight(); // Disable
+                    m_project.getSelectedBufferView().noHighlight(); // Disable
                 }
             }
             else if (checkKeyState(Keys.Scroll, gameTime))
             {
-                if (m_activeBufferView.isLocked())
+                if (m_project.getSelectedBufferView().isLocked())
                 {
-                    m_activeBufferView.setLock(false, 0);
+                    m_project.getSelectedBufferView().setLock(false, 0);
                 }
                 else
                 {
-                    m_activeBufferView.setLock(true, m_activeBufferView.getCursorPosition().Y);
+                    m_project.getSelectedBufferView().setLock(true, m_project.getSelectedBufferView().getCursorPosition().Y);
                 }
             }
             else if (checkKeyState(Keys.Delete, gameTime) || checkKeyState(Keys.Back, gameTime))
@@ -1451,38 +1467,38 @@ namespace Xyglo
                         m_saveFileName = m_saveFileName.Substring(0, m_saveFileName.Length - 1);
                     }
                 }
-                else if (m_activeBufferView.gotHighlight()) // If we have a valid highlighted selection then delete it (normal editing)
+                else if (m_project.getSelectedBufferView().gotHighlight()) // If we have a valid highlighted selection then delete it (normal editing)
                 {
                     // All the clever stuff with the cursor is done at the BufferView level and it also
                     // calls the command in the FileBuffer.
                     //
-                    m_activeBufferView.deleteCurrentSelection();
+                    m_project.getSelectedBufferView().deleteCurrentSelection();
                 }
                 else // delete at cursor
                 {
                     if (checkKeyState(Keys.Delete, gameTime))
                     {
-                        m_activeBufferView.deleteSingle();
+                        m_project.getSelectedBufferView().deleteSingle();
                     }
                     else if (checkKeyState(Keys.Back, gameTime))
                     {
-                        FilePosition fp = m_activeBufferView.getCursorPosition();
+                        FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
 
                         if (fp.X > 0)
                         {
                             // Decrement and set X
                             //
                             fp.X--;
-                            m_activeBufferView.setCursorPosition(fp);
-                            m_activeBufferView.deleteSingle();
+                            m_project.getSelectedBufferView().setCursorPosition(fp);
+                            m_project.getSelectedBufferView().deleteSingle();
                         }
                         else if (fp.Y > 0)
                         {
                             fp.Y -= 1;
-                            fp.X = m_activeBufferView.getFileBuffer().getLine(Convert.ToInt16(fp.Y)).Length;
-                            m_activeBufferView.setCursorPosition(fp);
+                            fp.X = m_project.getSelectedBufferView().getFileBuffer().getLine(Convert.ToInt16(fp.Y)).Length;
+                            m_project.getSelectedBufferView().setCursorPosition(fp);
 
-                            m_activeBufferView.deleteSingle();
+                            m_project.getSelectedBufferView().deleteSingle();
                         }
                     }
                 }
@@ -1504,7 +1520,7 @@ namespace Xyglo
                             {
                                 // Select a file path if we need one
                                 //
-                                if (m_activeBufferView.getFileBuffer().getFilepath() == "")
+                                if (m_project.getSelectedBufferView().getFileBuffer().getFilepath() == "")
                                 {
                                     selectSaveFile();
                                 }
@@ -1512,7 +1528,7 @@ namespace Xyglo
                                 {
                                     // Attempt save
                                     //
-                                    m_activeBufferView.getFileBuffer().save();
+                                    m_project.getSelectedBufferView().getFileBuffer().save();
 
                                     // Save has completed without error
                                     //
@@ -1543,8 +1559,8 @@ namespace Xyglo
                                 //
                                 if (m_filesToWrite.Count > 0)
                                 {
-                                    m_activeBufferView = m_project.setSelectedBufferView(m_filesToWrite[0]);
-                                    m_eye = m_activeBufferView.getEyePosition();
+                                    m_project.setSelectedBufferView(m_filesToWrite[0]);
+                                    m_eye = m_project.getSelectedBufferView().getEyePosition();
                                     selectSaveFile();
                                 }
                             }
@@ -1581,14 +1597,14 @@ namespace Xyglo
                     if (checkKeyState(Keys.C, gameTime)) // Copy
                     {
                         Logger.logMsg("Friendler::update() - copying to clipboard");
-                        System.Windows.Forms.Clipboard.SetText(m_activeBufferView.getSelection().getClipboardString());
+                        System.Windows.Forms.Clipboard.SetText(m_project.getSelectedBufferView().getSelection().getClipboardString());
                     }
                     else if (checkKeyState(Keys.X, gameTime)) // Cut
                     {
                         Logger.logMsg("Friendler::update() - cut");
 
-                        System.Windows.Forms.Clipboard.SetText(m_activeBufferView.getSelection().getClipboardString());
-                        m_activeBufferView.deleteCurrentSelection();
+                        System.Windows.Forms.Clipboard.SetText(m_project.getSelectedBufferView().getSelection().getClipboardString());
+                        m_project.getSelectedBufferView().deleteCurrentSelection();
                     }
                     else if (checkKeyState(Keys.V, gameTime)) // Paste
                     {
@@ -1597,13 +1613,13 @@ namespace Xyglo
                             Logger.logMsg("Friendler::update() - pasting text");
                             // If we have a selection then replace it - else insert
                             //
-                            if (m_activeBufferView.gotHighlight())
+                            if (m_project.getSelectedBufferView().gotHighlight())
                             {
-                                m_activeBufferView.replaceCurrentSelection(System.Windows.Forms.Clipboard.GetText());
+                                m_project.getSelectedBufferView().replaceCurrentSelection(System.Windows.Forms.Clipboard.GetText());
                             }
                             else
                             {
-                                m_activeBufferView.insertText(System.Windows.Forms.Clipboard.GetText());
+                                m_project.getSelectedBufferView().insertText(System.Windows.Forms.Clipboard.GetText());
                             }
                         }
                     }
@@ -1616,9 +1632,9 @@ namespace Xyglo
                             // We call the undo against the FileBuffer and this returns the cursor position
                             // resulting from this action.
                             //
-                            if (m_activeBufferView.getFileBuffer().getUndoPosition() > 0)
+                            if (m_project.getSelectedBufferView().getFileBuffer().getUndoPosition() > 0)
                             {
-                                m_activeBufferView.setCursorPosition(m_activeBufferView.getFileBuffer().undo(1));
+                                m_project.getSelectedBufferView().setCursorPosition(m_project.getSelectedBufferView().getFileBuffer().undo(1));
                             }
                             else
                             {
@@ -1642,10 +1658,10 @@ namespace Xyglo
                             // We call the undo against the FileBuffer and this returns the cursor position
                             // resulting from this action.
                             //
-                            if (m_activeBufferView.getFileBuffer().getUndoPosition() <
-                                m_activeBufferView.getFileBuffer().getCommandStackLength())
+                            if (m_project.getSelectedBufferView().getFileBuffer().getUndoPosition() <
+                                m_project.getSelectedBufferView().getFileBuffer().getCommandStackLength())
                             {
-                                m_activeBufferView.setCursorPosition(m_activeBufferView.getFileBuffer().redo(1));
+                                m_project.getSelectedBufferView().setCursorPosition(m_project.getSelectedBufferView().getFileBuffer().redo(1));
                             }
                             else
                             {
@@ -1662,7 +1678,7 @@ namespace Xyglo
                 }
                 else if (m_altDown) // ALT down action
                 {
-                    if (checkKeyState(Keys.S, gameTime) && m_activeBufferView.getFileBuffer().isModified())
+                    if (checkKeyState(Keys.S, gameTime) && m_project.getSelectedBufferView().getFileBuffer().isModified())
                     {
                         // If we want to confirm save then ask
                         //
@@ -1675,7 +1691,7 @@ namespace Xyglo
                         {
                             // Select a file path if we need one
                             //
-                            if (m_activeBufferView.getFileBuffer().getFilepath() == "")
+                            if (m_project.getSelectedBufferView().getFileBuffer().getFilepath() == "")
                             {
                                 selectSaveFile();
                             }
@@ -1683,7 +1699,7 @@ namespace Xyglo
                             {
                                 // Attempt save
                                 //
-                                m_activeBufferView.getFileBuffer().save();
+                                m_project.getSelectedBufferView().getFileBuffer().save();
 
                                 // Save has completed without error
                                 //
@@ -1704,6 +1720,10 @@ namespace Xyglo
                     else if (checkKeyState(Keys.I, gameTime))
                     {
                         showInformationScreen();
+                    }
+                    else if (checkKeyState(Keys.C, gameTime))
+                    {
+                        closeActiveBuffer();
                     }
                     else if (checkKeyState(Keys.D0, gameTime) ||
                              checkKeyState(Keys.D1, gameTime) ||
@@ -1749,7 +1769,7 @@ namespace Xyglo
                             //
                             if (testKey)
                             {
-                                FilePosition fp = m_activeBufferView.getCursorPosition();
+                                FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
 
                                 if (keyDown == Keys.Enter)
                                 {
@@ -1759,9 +1779,9 @@ namespace Xyglo
                                         //
                                         if (m_saveFileName != "" && m_saveFileName != null)
                                         {
-                                            m_activeBufferView.getFileBuffer().setFilepath(m_fileSystemView.getPath() + m_saveFileName);
+                                            m_project.getSelectedBufferView().getFileBuffer().setFilepath(m_fileSystemView.getPath() + m_saveFileName);
 
-                                            Logger.logMsg("FILE NAME = " + m_activeBufferView.getFileBuffer().getFilepath());
+                                            Logger.logMsg("FILE NAME = " + m_project.getSelectedBufferView().getFileBuffer().getFilepath());
 
                                             completeSaveFile(gameTime);
 
@@ -1769,15 +1789,15 @@ namespace Xyglo
                                             //
                                             if (m_filesToWrite != null)
                                             {
-                                                m_filesToWrite.Remove(m_activeBufferView.getFileBuffer());
+                                                m_filesToWrite.Remove(m_project.getSelectedBufferView().getFileBuffer());
 
                                                 // If we have remaining files to edit then set the active BufferView to one that
                                                 // looks over this file - then fly to it and choose and file location.
                                                 //
                                                 if (m_filesToWrite.Count > 0)
                                                 {
-                                                    m_activeBufferView = m_project.setSelectedBufferView(m_filesToWrite[0]);
-                                                    m_eye = m_activeBufferView.getEyePosition();
+                                                    m_project.setSelectedBufferView(m_filesToWrite[0]);
+                                                    m_eye = m_project.getSelectedBufferView().getEyePosition();
                                                     selectSaveFile();
                                                 }
                                                 else // We're done 
@@ -1797,7 +1817,7 @@ namespace Xyglo
                                     {
                                         // Insert a line into the editor
                                         //
-                                        m_activeBufferView.insertNewLine();
+                                        m_project.getSelectedBufferView().insertNewLine();
 
                                         //fp = m_activeBufferView.getFileBuffer().insertNewLine(m_activeBufferView.getCursorPosition());
 
@@ -2143,13 +2163,13 @@ namespace Xyglo
                                         {
                                             // Do we need to do some deletion or replacing?
                                             //
-                                            if (m_activeBufferView.gotHighlight())
+                                            if (m_project.getSelectedBufferView().gotHighlight())
                                             {
-                                                m_activeBufferView.replaceCurrentSelection(key);
+                                                m_project.getSelectedBufferView().replaceCurrentSelection(key);
                                             }
                                             else
                                             {
-                                                m_activeBufferView.insertText(key);
+                                                m_project.getSelectedBufferView().insertText(key);
                                             }
                                         }
                                     }
@@ -2282,7 +2302,7 @@ namespace Xyglo
             // Always assign a new bufferview to the right if we have one - else default position
             //
             Vector3 newPos = Vector3.Zero;
-            if (m_activeBufferView != null)
+            if (m_project.getSelectedBufferView() != null)
             {
                 newPos = getFreeBufferViewPosition(BufferView.BufferPosition.Right);
             }
@@ -2305,7 +2325,7 @@ namespace Xyglo
 
             // Initial new pos is here from active BufferView
             //
-            Vector3 newPos = m_activeBufferView.calculateRelativePosition(position);
+            Vector3 newPos = m_project.getSelectedBufferView().calculateRelativePosition(position);
             do
             {
                 occupied = false;
@@ -2334,7 +2354,7 @@ namespace Xyglo
         {
             Vector3 newPos = getFreeBufferViewPosition(position);
 
-            BufferView newBufferView = new BufferView(m_activeBufferView, newPos);
+            BufferView newBufferView = new BufferView(m_project.getSelectedBufferView(), newPos);
             //newBufferView.m_textColour = Color.LawnGreen;
             m_project.addBufferView(newBufferView);
             setActiveBuffer(newBufferView);
@@ -2612,7 +2632,7 @@ namespace Xyglo
                 {
                     // Cursor and cursor highlight - none for tailed bufferviews
                     //
-                    if (!m_activeBufferView.isTailing())
+                    if (!m_project.getSelectedBufferView().isTailing())
                     {
                         drawCursor(gameTime);
                         drawHighlight(gameTime);
@@ -2657,24 +2677,24 @@ namespace Xyglo
             }
 
             string fileName = "";
-            if (m_activeBufferView != null && m_activeBufferView.getFileBuffer() != null)
+            if (m_project.getSelectedBufferView() != null && m_project.getSelectedBufferView().getFileBuffer() != null)
             {
                 // Set the filename
-                if (m_activeBufferView.getFileBuffer().getShortFileName() != "")
+                if (m_project.getSelectedBufferView().getFileBuffer().getShortFileName() != "")
                 {
-                    fileName = "\"" + m_activeBufferView.getFileBuffer().getShortFileName() + "\"";
+                    fileName = "\"" + m_project.getSelectedBufferView().getFileBuffer().getShortFileName() + "\"";
                 }
                 else
                 {
                     fileName = "<New Buffer>";
                 }
 
-                if (m_activeBufferView.getFileBuffer().isModified())
+                if (m_project.getSelectedBufferView().getFileBuffer().isModified())
                 {
                     fileName += " [Modified]";
                 }
 
-                fileName += " " + m_activeBufferView.getFileBuffer().getLineCount() + " lines";
+                fileName += " " + m_project.getSelectedBufferView().getFileBuffer().getLineCount() + " lines";
             }
             else
             {
@@ -2683,12 +2703,12 @@ namespace Xyglo
 
             // Add some other useful states to our status line
             //
-            if (m_activeBufferView.isReadOnly())
+            if (m_project.getSelectedBufferView().isReadOnly())
             {
                 fileName += " [RDONLY]";
             }
 
-            if (m_activeBufferView.isTailing())
+            if (m_project.getSelectedBufferView().isTailing())
             {
                 fileName += " [TAIL]";
             }
@@ -2747,16 +2767,16 @@ namespace Xyglo
             }
 
             float modeStringXPos = m_graphics.GraphicsDevice.Viewport.Width - modeString.Length * m_charWidth - (m_charWidth * 10);
-            
-            string positionString = m_activeBufferView.getCursorPosition().Y + m_activeBufferView.getBufferShowStartY() + "," + m_activeBufferView.getCursorPosition().X;
+
+            string positionString = m_project.getSelectedBufferView().getCursorPosition().Y + m_project.getSelectedBufferView().getBufferShowStartY() + "," + m_project.getSelectedBufferView().getCursorPosition().X;
             float positionStringXPos = m_graphics.GraphicsDevice.Viewport.Width - positionString.Length * m_charWidth - (m_charWidth * 18);
 
             float filePercent = 0.0f;
 
-            if (m_activeBufferView.getFileBuffer() != null && m_activeBufferView.getFileBuffer().getLineCount() > 0)
+            if (m_project.getSelectedBufferView().getFileBuffer() != null && m_project.getSelectedBufferView().getFileBuffer().getLineCount() > 0)
             {
-                filePercent = (float)(m_activeBufferView.getCursorPosition().Y + m_activeBufferView.getBufferShowStartY()) /
-                              (float)(m_activeBufferView.getFileBuffer().getLineCount());
+                filePercent = (float)(m_project.getSelectedBufferView().getCursorPosition().Y + m_project.getSelectedBufferView().getBufferShowStartY()) /
+                              (float)(m_project.getSelectedBufferView().getFileBuffer().getLineCount());
             }
 
 
@@ -2798,13 +2818,13 @@ namespace Xyglo
 
             // Blinks rate
             //
-            Vector3 v1 = m_activeBufferView.getCursorCoordinates();
-            v1.Y += m_activeBufferView.getLineHeight();
+            Vector3 v1 = m_project.getSelectedBufferView().getCursorCoordinates();
+            v1.Y += m_project.getSelectedBufferView().getLineHeight();
 
-            Vector3 v2 = m_activeBufferView.getCursorCoordinates();
+            Vector3 v2 = m_project.getSelectedBufferView().getCursorCoordinates();
             v2.X += 1;
 
-            renderQuad(v1, v2, m_activeBufferView.getHighlightColor());
+            renderQuad(v1, v2, m_project.getSelectedBufferView().getHighlightColor());
         }
 
         /// <summary>
@@ -2824,7 +2844,7 @@ namespace Xyglo
             Vector2 lineOrigin = new Vector2();
             float yPosition = 0.0f;
 
-            Vector3 startPosition = m_activeBufferView.getPosition();
+            Vector3 startPosition = m_project.getSelectedBufferView().getPosition();
 
             if (m_state == FriendlierState.FileOpen)
             {
@@ -3160,13 +3180,13 @@ namespace Xyglo
         /// </summary>
         void drawHighlight(GameTime gameTime)
         {
-            List<BoundingBox> bb = m_activeBufferView.computeHighlight();
+            List<BoundingBox> bb = m_project.getSelectedBufferView().computeHighlight();
 
             // Draw the bounding boxes
             //
             foreach (BoundingBox highlight in bb)
             {
-                renderQuad(highlight.Min, highlight.Max, m_activeBufferView.getHighlightColor());
+                renderQuad(highlight.Min, highlight.Max, m_project.getSelectedBufferView().getHighlightColor());
             }
         }
 
