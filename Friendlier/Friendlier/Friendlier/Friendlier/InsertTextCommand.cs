@@ -75,6 +75,10 @@ namespace Xyglo
             string firstLine = fetchLine.Substring(0, m_startPos.X);
             string secondLine = "";
 
+            // Always as default set the original line to this
+            //
+            m_originalText = fetchLine;
+
             if (fetchLine.Length > 0)
             {
                 secondLine = fetchLine.Substring(m_startPos.X, fetchLine.Length - m_startPos.X);
@@ -100,6 +104,10 @@ namespace Xyglo
                 //
                 if (m_fileBuffer.getLineCount() == 0)
                 {
+                    // Originally we had nothing - so put that back when we undo
+                    //
+                    m_originalText = "";
+
                     if (m_snippet.m_lines.Count == 0)
                     {
                         m_fileBuffer.insertLine(0, "");
@@ -129,8 +137,6 @@ namespace Xyglo
                     // In this case we only ever want to insert one line
                     //
                     m_fileBuffer.insertLine(m_startPos.Y + 1, secondLine);
-                    m_originalText = fetchLine; // store original line
-
                     fp.X = 0; // Reset to zero on X
                     fp.Y++; // Increment Y
                 }
@@ -172,21 +178,34 @@ namespace Xyglo
             // Did we insert a line or some text?
             if (m_newLine)
             {
-                // Check to see whether the new line has something on it - if so we need to reconstruct the original
-                // line and then delete the new one
-                if (m_fileBuffer.getLine(m_startPos.Y + 1).Length > 0)
-                {
-                    m_fileBuffer.setLine(m_startPos.Y, m_originalText);
-                }
-
-                // Delete the new line now
+                // If we only have one line
                 //
-                m_fileBuffer.deleteLines(m_startPos.Y + 1, 1);
+                if (m_fileBuffer.getLineCount() == 1)
+                {
+                    m_fileBuffer.setLine(0, m_originalText);
+                }
+                else
+                {
+                    // Check to see whether the new line has something on it - if so we need to reconstruct the original
+                    // line and then delete the new one
+                    if (m_fileBuffer.getLine(m_startPos.Y + 1).Length > 0)
+                    {
+                        m_fileBuffer.setLine(m_startPos.Y, m_originalText);
+                    }
+
+                    // Delete the new line now
+                    //
+                    m_fileBuffer.deleteLines(m_startPos.Y + 1, 1);
+                }
             }
             else
             {
-                string fetchLine = m_fileBuffer.getLine(m_startPos.Y);
-                m_fileBuffer.setLine(m_startPos.Y, fetchLine.Remove(m_startPos.X, m_originalText.Length));
+                // We could have inserted multiple lines here - enusure that they are removed
+                if (m_snippet.m_lines.Count() > 1)
+                {
+                    m_fileBuffer.deleteLines(m_startPos.Y + 1, m_snippet.m_lines.Count() - 1);
+                }
+                m_fileBuffer.setLine(m_startPos.Y, m_originalText);
             }
 
             // Return the start position when undoing
