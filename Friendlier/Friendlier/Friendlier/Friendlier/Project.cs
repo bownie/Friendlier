@@ -65,6 +65,35 @@ namespace Xyglo
         [DataMember()]
         protected DateTime m_lastAccessTime;
 
+        /// <summary>
+        /// A path to the build log
+        /// </summary>
+        [DataMember()]
+        protected string m_buildLog = @"C:\temp\output.log";
+
+        /// <summary>
+        /// A command line for the build command
+        /// </summary>
+        [DataMember()]
+        //protected string m_buildCommand = @"C:\Q\mingw\bin\mingw32-make.exe";
+        protected string m_buildCommand = @"C:\QtSDK\mingw\bin\mingw32-make.exe -f D:\garderobe-build-desktop\Makefile";
+
+        /// <summary>
+        /// A command line for the build command
+        /// </summary>
+        [DataMember()]
+        //protected string m_buildDirectory = @"C:\devel\garderobe-build-desktop";
+        protected string m_buildDirectory = @"D:\garderobe-build-desktop";
+
+        /// <summary>
+        /// Store where we last opened a file from
+        /// </summary>
+        protected string m_openDirectory = "";
+
+        /// <summary>
+        /// Store where we last saved a file to
+        /// </summary>
+        protected string m_saveDirectory;
 
         ////////// CONSTRUCTORS ///////////
 
@@ -76,6 +105,7 @@ namespace Xyglo
             m_projectName = "<unnamed>";
             m_lastAccessTime = DateTime.Now;
         }
+
 
         /// <summary>
         /// Name constructor
@@ -254,6 +284,11 @@ namespace Xyglo
             return newBV;
         }
 
+        /// <summary>
+        /// Deserialise the xml file and create objects
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <returns></returns>
         static public Project dataContractDeserialise(string fileName)
         {
             Logger.logMsg("Project::dataContractDeserialise() - deserializing an instance of the Project object.");
@@ -391,7 +426,14 @@ namespace Xyglo
         /// <returns></returns>
         public BufferView getSelectedBufferView()
         {
-            return m_bufferViews[m_selectedViewId];
+            if (m_selectedViewId < m_bufferViews.Count())
+            {
+                return m_bufferViews[m_selectedViewId];
+            }
+            else
+            {
+                return null;
+            }
         }
 
         /// <summary>
@@ -421,5 +463,138 @@ namespace Xyglo
 
             return null;
         }
+
+        /// <summary>
+        /// Set the build log path
+        /// </summary>
+        /// <param name="log"></param>
+        public void setBuildLog(string log)
+        {
+            m_buildLog = log;
+        }
+
+        /// <summary>
+        /// Get the build log path
+        /// </summary>
+        /// <returns></returns>
+        public string getBuildLog()
+        {
+            return m_buildLog;
+        }
+
+        /// <summary>
+        /// Set the build command
+        /// </summary>
+        /// <param name="command"></param>
+        public void setBuildCommand(string command)
+        {
+            m_buildCommand = command;
+        }
+
+        /// <summary>
+        /// Return the build command
+        /// </summary>
+        /// <returns></returns>
+        public string getBuildCommand()
+        {
+            return m_buildCommand;
+        }
+
+        /// <summary>
+        /// Set the build directory
+        /// </summary>
+        /// <param name="directory"></param>
+        public void setBuildDirectory(string directory)
+        {
+            m_buildDirectory = directory;
+        }
+
+        /// <summary>
+        /// Get the build directory
+        /// </summary>
+        /// <returns></returns>
+        public string getBuildDirectory()
+        {
+            return m_buildDirectory;
+        }
+
+        /// <summary>
+        /// Attempt to find a FileBuffer from a filename
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        public FileBuffer findFileBuffer(string filename)
+        {
+            foreach (FileBuffer fb in m_fileBuffers)
+            {
+                if (fb.getFilepath() == filename)
+                {
+                    return fb;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Return an associated BufferView for a filename if one exists
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        public BufferView findBufferView(string filename)
+        {
+            FileBuffer fb = findFileBuffer(filename);
+
+            if (fb != null)
+            {
+                foreach(BufferView bv in m_bufferViews)
+                {
+                    if (bv.getFileBuffer() == fb)
+                    {
+                        return bv;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Get just the command string only from the m_buildCommand
+        /// </summary>
+        /// <returns></returns>
+        public string getCommand()
+        {
+            string[] command = m_buildCommand.Split(' ');
+
+            if (command.Length > 0)
+            {
+                return command[0];
+            }
+
+            return "";
+        }
+
+        /// <summary>
+        /// Get the argument list only from the m_buildCommand
+        /// </summary>
+        /// <returns></returns>
+        public string getArguments()
+        {
+            string[] command = m_buildCommand.Split(' ');
+
+            string retArgs = "";
+            int i = 0;
+            foreach (string arg in command)
+            {
+                if (i++ > 0)
+                {
+                    retArgs += arg + " ";
+                }
+            }
+
+            return retArgs;
+        }
+
     }
 }

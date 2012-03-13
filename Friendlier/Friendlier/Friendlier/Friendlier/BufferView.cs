@@ -117,68 +117,68 @@ namespace Xyglo
         [XmlIgnore]
         static public FilePosition NoHighlightPosition = new FilePosition(-1, -1);
 
-        [DataMember()]
+        [DataMember]
         protected int m_bufferShowStartX = 0;
 
         /// <summary>
         /// Store the cursor coordinates locally
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected Vector3 m_cursorCoordinates = new Vector3();
 
         /// <summary>
         /// Length of visible buffer
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected int m_bufferShowLength = 20;
 
         /// <summary>
         /// Number of characters to show in a BufferView line
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected int m_bufferShowWidth = 80;
 
         /// <summary>
         /// Current cursor coordinates in this BufferView
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected FilePosition m_cursorPosition;
 
         /// <summary>
         /// The position in the buffer at which this view is locked
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected int m_viewLockPosition = 0;
 
         /// <summary>
         /// Is this view locked such that when we edit other views this one stays at the same relative position
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected bool m_viewLocked = false;
 
         /// <summary>
         /// Text colour
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected Color m_textColour = Color.White;
 
         /// <summary>
         /// Cursor colour
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected Color m_cursorColour = Color.Yellow;
 
         /// <summary>
         /// Highlight colour
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected Color m_highlightColour = Color.PaleVioletRed;
 
         /// <summary>
         /// Tailing colour
         /// </summary>
-        [DataMember()]
-        protected Color m_tailColour = Color.Blue;
+        [DataMember]
+        protected Color m_tailColour = Color.LightBlue;
 
         /// <summary>
         /// Read only colour
@@ -958,8 +958,8 @@ namespace Xyglo
                         endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_charWidth;
                     }
 
-                    startPos.Y = ( m_position.Y + i  - m_bufferShowStartY) * m_lineHeight;
-                    endPos.Y = (m_position.Y + i + 1 - m_bufferShowStartY) * m_lineHeight;
+                    startPos.Y = m_position.Y + (i  - m_bufferShowStartY) * m_lineHeight;
+                    endPos.Y = m_position.Y + (i + 1 - m_bufferShowStartY) * m_lineHeight;
 
                     // If we have nothing highlighted in the line then indicate this with a
                     // half box line
@@ -1029,8 +1029,8 @@ namespace Xyglo
                         endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_charWidth;
                     }
 
-                    startPos.Y = (m_position.Y + i - m_bufferShowStartY) * m_lineHeight;
-                    endPos.Y = (m_position.Y + i + 1 - m_bufferShowStartY) * m_lineHeight;
+                    startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_lineHeight;
+                    endPos.Y = m_position.Y + (i + 1 - m_bufferShowStartY) * m_lineHeight;
 
                     // If we have nothing highlighted in the line then indicate this with a negative
                     // half box line
@@ -1260,13 +1260,19 @@ namespace Xyglo
             return m_tailing;
         }
 
+        /// <summary>
+        /// Is this BufferView read only?
+        /// </summary>
+        /// <returns></returns>
         public bool isReadOnly()
         {
             return m_readOnly;
         }
 
         /// <summary>
-        /// Verify that the cursor and the highlights are within bounds
+        /// Verify that the cursor and the highlights are within bounds - used when we load
+        /// a project and for example the underlying files have changed and we're still holding
+        /// stale data about valid positions within these files.
         /// </summary>
         public void verifyBoundaries()
         {
@@ -1316,6 +1322,74 @@ namespace Xyglo
                     m_highlightEnd = m_cursorPosition;
                 }
             }
+        }
+
+        /// <summary>
+        /// From the current cursor position jump a word to the left
+        /// </summary>
+        public void wordJumpCursorLeft()
+        {
+            FilePosition fp = m_cursorPosition;
+            string line = m_fileBuffer.getLine(fp.Y);
+
+            if (fp.X > 0)
+            {
+                // Find the nearest space to the current position to the left
+                //
+                int breakPos = 0;
+                for (int i = 0; i < Math.Min(fp.X, line.Length - 1); i++)
+                {
+                    if (line[i] == ' ' || line[i] == '\t')
+                    {
+                        breakPos = i;
+                    }
+                }
+
+                m_cursorPosition.X = breakPos;
+            }
+        }
+
+        /// <summary>
+        /// From the current cursor position jump a word to the right
+        /// </summary>
+        public void wordJumpCursorRight()
+        {
+            FilePosition fp = m_cursorPosition;
+            string line = m_fileBuffer.getLine(fp.Y);
+
+            if (fp.X < line.Length)
+            {
+                try
+                {
+                    int jumpPosition = line.IndexOf(' ', fp.X);
+
+                    if (jumpPosition != -1)
+                    {
+                        if (fp.X == jumpPosition)
+                        {
+                            fp.X++;
+                        }
+                        else
+                        {
+                            fp.X = jumpPosition;
+                        }
+                    }
+                    else
+                    {
+                        fp.X = line.Length;
+                    }
+                }
+                catch (Exception /* e */)
+                {
+                    Logger.logMsg("Friendlier:: couldn't jump");
+                    fp.X++;
+                }
+            }
+            else
+            {
+                fp.X++;
+            }
+            m_cursorPosition = fp;
         }
     }
 }

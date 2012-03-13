@@ -1,10 +1,8 @@
-- Rearrange windows manually
-- Close BufferViews
-- File browsing...
-- Configuration - builder, logging window
+- Editing Build details/General editing parameters
+- cursor end of line (X)
+- Rearrange windows manually - create manual direction [DONE apart from NEW]
 - Saving/opening/browsing - ensure states are correct
 - information screen (file information) [HALF DONE]
-- bufferview colours for editing and non-editable windows
 - project information screen (files, buffers, lines etc)
 - work update status (sessions - time developing etc)
 - undo buffer view
@@ -12,7 +10,6 @@
 - Temporary file save messages to move somewhere
 - Long lines handling [CAN VIEW BUT NOT SCROLL TO]
 - Logging (timestamps and makes sense)
-- System load meter
 - Packaging
 - Licensing
 - Icons etc
@@ -27,6 +24,11 @@ TO TEST/BUGS
 
 DONE
 ----
+- Configuration - builder, logging window [DONE]
+- highlight not working on cursor up and down (Y) [DONE]
+- System load meter [DONE]
+- Close BufferViews [DONE]
+- bufferview colours for editing and non-editable windows [DONE]
 - extra slash on file save directories [DONE]
 - multiple file save on quit [DONE]
 - CTRL to jump words [DONE]
@@ -52,6 +54,7 @@ Refactoring
 
 For Later
 ---------
+- File browsing - new view
 - Hud cursor position
 - Hud panner overview?
 - Hud Unsaved status better?
@@ -59,4 +62,3 @@ For Later
 - Command line interface
 - Mouse click (think that will be 1.1)
 - Basic interpreter
-- 
