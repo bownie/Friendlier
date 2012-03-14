@@ -27,6 +27,7 @@ namespace Xyglo
         FileOpen,      // opening a file
         FileSaveAs,    // saving a file as
         Information,   // show an information pane
+        Configuration, // configuration mode
         PositionScreen // where to position a new screen
     };
 
@@ -50,11 +51,6 @@ namespace Xyglo
         /// Another SpriteBatch for the overlay
         /// </summary>
         SpriteBatch m_overlaySpriteBatch;
-
-        /// <summary>
-        /// One local SpriteFont - not sure if we need this now
-        /// </summary>
-//        SpriteFont m_spriteFont;
 
         /// <summary>
         /// The state of our application - what we're doing at the moment
@@ -90,16 +86,6 @@ namespace Xyglo
         /// Are we spinning?
         /// </summary>
         bool spinning = false;
-
-        /// <summary>
-        /// The coordinate height of a line
-        /// </summary>
-        //float m_lineHeight = 0.0f;
-
-        /// <summary>
-        /// The coordinate width of a character
-        /// </summary>
-        //float m_charWidth = 0.0f;
 
         /// <summary>
         /// Current project
@@ -160,11 +146,6 @@ namespace Xyglo
         /// Confirmation state - expecting Y/N
         /// </summary>
         ConfirmState m_confirmState = ConfirmState.None;
-
-        /// <summary>
-        /// The buffer we are currently editing
-        /// </summary>
-//        BufferView m_activeBufferView = null;
 
         /// <summary>
         /// A flat texture
@@ -276,11 +257,6 @@ namespace Xyglo
         /// </summary>
         protected float m_zoomLevel = 500.0f;
 
-        //Vector3 m_up = new Vector3(0, 1, 0);
-        //Vector3 m_look = new Vector3(0, 0, -1);
-        //Vector3 m_right = new Vector3(1, 0, 0);
-
-
         /// <summary>
         /// The new destination for our Eye position
         /// </summary>
@@ -290,7 +266,6 @@ namespace Xyglo
         /// Are we changing eye position?
         /// </summary>
         protected bool m_changingEyePosition = false;
-
 
         /// <summary>
         /// Used when changing the eye position - movement timer
@@ -313,7 +288,6 @@ namespace Xyglo
         /// </summary>
         protected int m_flySteps = 15;
 
-
         /// <summary>
         /// Initial path for FileSystemView
         /// </summary>
@@ -332,18 +306,42 @@ namespace Xyglo
         /// <summary>
         /// Greyed out colour for background text
         /// </summary>
-        protected Color m_greyedColour = new Color(100, 100, 100, 100);
+        protected Color m_greyedColour = new Color(50, 50, 50, 50);
 
         /// <summary>
         /// User help string
         /// </summary>
         protected string m_userHelp;
 
-
         /// <summary>
         /// We have a local instance of our FontManager
         /// </summary>
         protected FontManager m_fontManager = new FontManager();
+
+        /// <summary>
+        /// Position in configuration list when selecting something
+        /// </summary>
+        protected int m_configPosition;
+
+        /// <summary>
+        /// Item colour for a list of things
+        /// </summary>
+        protected Color m_itemColour = Color.DarkOrange;
+
+        /// <summary>
+        /// Highlight color for an element in a list
+        /// </summary>
+        protected Color m_highlightColour = Color.LightGreen;
+
+        /// <summary>
+        /// If we're in the Configuration state then look at this variable
+        /// </summary>
+        protected bool m_editConfigurationItem = false;
+
+        /// <summary>
+        /// The new value of the configuration item
+        /// </summary>
+        protected string m_editConfigurationItemValue;
 
 
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
@@ -519,6 +517,11 @@ namespace Xyglo
         /// <param name="project"></param>
         public void initialiseProject()
         {
+            // Initialise the configuration item if it's null - this is in case we've persisted
+            // a version of the project without this item.
+            //
+            m_project.buildInitialConfiguration();
+
             // Load all the files - if we have nothing in this project then create a BufferView
             // and a FileBuffer.
             //
@@ -984,6 +987,15 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Switch to the Configuration mode
+        /// </summary>
+        protected void showConfigurationScreen()
+        {
+            m_state = FriendlierState.Configuration;
+            m_temporaryMessage = "";
+        }
+
+        /// <summary>
         /// Close the active buffer view
         /// </summary>
         protected void closeActiveBuffer(GameTime gameTime)
@@ -1159,6 +1171,7 @@ namespace Xyglo
                     case FriendlierState.FileOpen:
                     case FriendlierState.FileSaveAs:
                     case FriendlierState.Information:
+                    case FriendlierState.Configuration:
                     case FriendlierState.PositionScreen:
                     default:
                                 break;
@@ -1318,6 +1331,13 @@ namespace Xyglo
                         m_fileSystemView.incrementHighlightIndex(-1);
                     }
                 }
+                else if (m_state == FriendlierState.Configuration && m_editConfigurationItem == false) // Configuration changes
+                {
+                    if (m_configPosition > 0)
+                    {
+                        m_configPosition--;
+                    }
+                }
                 else
                 {
                     if (m_altDown)
@@ -1358,6 +1378,13 @@ namespace Xyglo
                     else if (m_fileSystemView.getHighlightIndex() < m_fileSystemView.getDirectoryLength())
                     {
                         m_fileSystemView.incrementHighlightIndex(1);
+                    }
+                }
+                else if (m_state == FriendlierState.Configuration && m_editConfigurationItem == false) // Configuration changes
+                {
+                    if (m_configPosition < m_project.getConfigurationListLength() - 1)
+                    {
+                        m_configPosition++;
                     }
                 }
                 else
@@ -1666,6 +1693,13 @@ namespace Xyglo
                         m_saveFileName = m_saveFileName.Substring(0, m_saveFileName.Length - 1);
                     }
                 }
+                else if (m_state == FriendlierState.Configuration && m_editConfigurationItem && checkKeyState(Keys.Back, gameTime))
+                {
+                    if (m_editConfigurationItemValue.Length > 0)
+                    {
+                        m_editConfigurationItemValue = m_editConfigurationItemValue.Substring(0, m_editConfigurationItemValue.Length - 1);
+                    }
+                }
                 else if (m_project.getSelectedBufferView().gotHighlight()) // If we have a valid highlighted selection then delete it (normal editing)
                 {
                     // All the clever stuff with the cursor is done at the BufferView level and it also
@@ -1922,6 +1956,10 @@ namespace Xyglo
                     {
                         showInformationScreen();
                     }
+                    else if (checkKeyState(Keys.G, gameTime))
+                    {
+                        showConfigurationScreen();
+                    }
                     else if (checkKeyState(Keys.C, gameTime))
                     {
                         closeActiveBuffer(gameTime);
@@ -1982,7 +2020,7 @@ namespace Xyglo
                                         {
                                             m_project.getSelectedBufferView().getFileBuffer().setFilepath(m_fileSystemView.getPath() + m_saveFileName);
 
-                                            Logger.logMsg("FILE NAME = " + m_project.getSelectedBufferView().getFileBuffer().getFilepath());
+                                            Logger.logMsg("Friendlier::Update() - file name = " + m_project.getSelectedBufferView().getFileBuffer().getFilepath());
 
                                             completeSaveFile(gameTime);
 
@@ -2004,7 +2042,7 @@ namespace Xyglo
                                                 else // We're done 
                                                 {
                                                     m_filesToWrite = null;
-                                                    Logger.logMsg("Friender - saved some files.  Quitting");
+                                                    Logger.logMsg("Friendlier::Update() - saved some files.  Quitting.");
                                                     this.Exit();
                                                 }
                                             }
@@ -2013,6 +2051,24 @@ namespace Xyglo
                                     else if (m_state == FriendlierState.FileOpen)
                                     {
                                         openHighlightedFile(gameTime);
+                                    }
+                                    else if (m_state == FriendlierState.Configuration)
+                                    {
+                                        // Set this status so that we edit the item
+                                        //
+                                        if (m_editConfigurationItem == false)
+                                        {
+                                            // Go into item edit mode and copy across the current value
+                                            m_editConfigurationItem = true;
+                                            m_editConfigurationItemValue = m_project.getConfigurationItem(m_configPosition).Value;
+                                        }
+                                        else
+                                        {
+                                            // Completed editing the item - now set it
+                                            //
+                                            m_editConfigurationItem = false;
+                                            m_project.updateConfigurationItem(m_project.getConfigurationItem(m_configPosition).Name, m_editConfigurationItemValue);
+                                        }
                                     }
                                     else
                                     {
@@ -2355,10 +2411,14 @@ namespace Xyglo
 
                                     if (key != "")
                                     {
-                                        if (m_state == FriendlierState.FileSaveAs)
+                                        if (m_state == FriendlierState.FileSaveAs) // File name
                                         {
                                             //Logger.logMsg("Writing letter " + key);
                                             m_saveFileName += key;
+                                        }
+                                        else if (m_state == FriendlierState.Configuration && m_editConfigurationItem) // Configuration item
+                                        {
+                                            m_editConfigurationItemValue += key;
                                         }
                                         else if (m_state == FriendlierState.TextEditing)
                                         {
@@ -2792,6 +2852,8 @@ namespace Xyglo
                 m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
             }
 
+            // Draw all the BufferViews
+            //
             for (int i = 0; i < m_project.getBufferViews().Count; i++)
             {
                 drawFileBuffer(m_project.getBufferViews()[i], gameTime);
@@ -2810,8 +2872,19 @@ namespace Xyglo
 
                 drawInformationScreen(gameTime, m_userHelp);
             }
+            else if (m_state == FriendlierState.Configuration)
+            {
+                m_spriteBatch.End();
+
+                drawConfigurationScreen(gameTime);
+            }
             else
             {
+
+                // We only draw the scrollbar on the active view
+                //
+                drawScrollbar(m_project.getSelectedBufferView());
+
                 m_spriteBatch.End();
 
                 // Draw the Overlay HUD
@@ -2841,7 +2914,8 @@ namespace Xyglo
             //
             Color overlayColour = Color.White;
             if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen ||
-                m_state == FriendlierState.Information || m_state == FriendlierState.PositionScreen)
+                m_state == FriendlierState.Information || m_state == FriendlierState.PositionScreen ||
+                m_state == FriendlierState.Configuration)
             {
                 overlayColour = m_greyedColour; 
             }
@@ -3074,6 +3148,13 @@ namespace Xyglo
         /// <param name="v"></param>
         protected void drawCursor(GameTime gameTime)
         {
+            // Don't draw the cursor if we're not the active window
+            //
+            if (!this.IsActive)
+            {
+                return;
+            }
+
             double dTS = gameTime.TotalGameTime.TotalSeconds;
             int blinkRate = 3;
 
@@ -3135,8 +3216,6 @@ namespace Xyglo
             m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(startPosition.X, startPosition.Y - 100.0f), Color.White, 0, lineOrigin, m_fontManager.getTextScale() * 2.0f, 0, 0);
 
             Color dirColour = Color.White;
-            Color fileColour = Color.DarkOrange;
-            Color highlightColour = Color.LightGreen;
             
             startPosition.X += 50.0f;
 
@@ -3183,7 +3262,7 @@ namespace Xyglo
                         m_spriteBatch.DrawString(m_fontManager.getFont(),
                              line,
                              new Vector2(startPosition.X, startPosition.Y + yPosition),
-                             (lineNumber == m_fileSystemView.getHighlightIndex() ? highlightColour : (lineNumber == endShowing ? Color.White : dirColour)),
+                             (lineNumber == m_fileSystemView.getHighlightIndex() ? m_highlightColour : (lineNumber == endShowing ? Color.White : dirColour)),
                              0,
                              lineOrigin,
                              m_fontManager.getTextScale() * 1.5f,
@@ -3210,7 +3289,7 @@ namespace Xyglo
 #endif
 
                 line = m_fileSystemView.getPath() + m_saveFileName;
-                m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(startPosition.X, startPosition.Y), (m_fileSystemView.getHighlightIndex() == 0 ? highlightColour : dirColour), 0, lineOrigin, m_fontManager.getTextScale() * 2.0f, 0, 0);
+                m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(startPosition.X, startPosition.Y), (m_fileSystemView.getHighlightIndex() == 0 ? m_highlightColour : dirColour), 0, lineOrigin, m_fontManager.getTextScale() * 2.0f, 0, 0);
 
                 yPosition += m_fontManager.getLineHeight() * 3.0f;
 
@@ -3232,7 +3311,7 @@ namespace Xyglo
                         m_spriteBatch.DrawString(m_fontManager.getFont(),
                              line,
                              new Vector2(startPosition.X, startPosition.Y + yPosition),
-                             (lineNumber == m_fileSystemView.getHighlightIndex() ? highlightColour : (lineNumber == endShowing ? Color.White : dirColour)),
+                             (lineNumber == m_fileSystemView.getHighlightIndex() ? m_highlightColour : (lineNumber == endShowing ? Color.White : dirColour)),
                              0,
                              lineOrigin,
                              m_fontManager.getTextScale() * 1.5f,
@@ -3262,7 +3341,7 @@ namespace Xyglo
                         m_spriteBatch.DrawString(m_fontManager.getFont(),
                                                  line,
                                                  new Vector2(startPosition.X, startPosition.Y + yPosition),
-                                                 (lineNumber == m_fileSystemView.getHighlightIndex() ? highlightColour : (lineNumber == endShowing ? Color.White : fileColour)),
+                                                 (lineNumber == m_fileSystemView.getHighlightIndex() ? m_highlightColour : (lineNumber == endShowing ? Color.White : m_itemColour)),
                                                  0,
                                                  lineOrigin,
                                                  m_fontManager.getTextScale() * 1.5f,
@@ -3301,10 +3380,10 @@ namespace Xyglo
             Color bufferColour = view.getTextColour();
 
             if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen ||
-                m_state == FriendlierState.Information || m_state == FriendlierState.PositionScreen)
+                m_state == FriendlierState.Information || m_state == FriendlierState.PositionScreen ||
+                m_state == FriendlierState.Configuration)
             {
-                Color fadeColour = new Color(100, 100 ,100, 100);
-                bufferColour = fadeColour;
+                bufferColour = m_greyedColour;
             }
 
             float yPosition = 0.0f;
@@ -3369,8 +3448,6 @@ namespace Xyglo
                 seeThroughColour.A = 70;
                 m_spriteBatch.DrawString(m_fontManager.getFont(), bufferId, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y), seeThroughColour, 0, lineOrigin, m_fontManager.getTextScale() * 19.0f, 0, 0);
             }
-
-            drawScrollbar(view);
         }
 
         /// <summary>
@@ -3396,6 +3473,8 @@ namespace Xyglo
             float start = view.getBufferShowStartY();
             float length = 0;
 
+            // Get the line count
+            //
             if (view.getFileBuffer() != null)
             {
                 length = view.getFileBuffer().getLineCount();
@@ -3492,11 +3571,12 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Populate the user help string
+        /// Populate the user help string - could do this from a resource file really
         /// </summary>
         protected void populateUserHelp()
         {
             m_userHelp += "User Help\n\n";
+
             m_userHelp += "F1  - Cycle down through BufferViews\n";
             m_userHelp += "F2  - Cycle up through BufferViews\n";
             m_userHelp += "F3  - Zoom Out\n";
@@ -3507,9 +3587,16 @@ namespace Xyglo
             m_userHelp += "F11 - Full Screen Mode\n";
             m_userHelp += "F12 - Windowed Mode\n";
 
-            m_userHelp += "\n\nExternal Build Information\n\n";
-            m_userHelp += "Build Command = " + m_project.getBuildCommand() + "\n";
-            m_userHelp += "Build Log     = " + m_project.getBuildLog() + "\n";
+            m_userHelp += "Alt + N - New buffer view on existing file\n";
+            m_userHelp += "Alt + O - Open file\n";
+            m_userHelp += "Alt + S - Save (as) file\n";
+            m_userHelp += "Alt + C - Close buffer view\n";
+
+            m_userHelp += "Alt + I - Information screen\n";
+            m_userHelp += "Alt + G - Settings screen\n";
+            
+            m_userHelp += "Alt + Z - Undo\n";
+            m_userHelp += "Alt + Y - Redo\n";
         }
 
 
@@ -3570,6 +3657,58 @@ namespace Xyglo
 
         }
 
+        /// <summary>
+        /// Draw a screen which allows us to configure some settings
+        /// </summary>
+        /// <param name="gameTime"></param>
+        /// <param name="text"></param>
+        protected void drawConfigurationScreen(GameTime gameTime)
+        {
+            Vector3 fp = m_project.getSelectedBufferView().getPosition();
+
+            // Starting positions
+            //
+            float yPos = 5 * m_fontManager.getLineHeight(FontManager.FontType.Overlay);
+            float xPos = 10 * m_fontManager.getCharWidth(FontManager.FontType.Overlay);
+
+            // Start the spritebatch
+            //
+            m_overlaySpriteBatch.Begin();
+
+            if (m_editConfigurationItem) // Edit a single configuration item
+            {
+                string text = "Edit configuration item";
+
+                m_overlaySpriteBatch.DrawString(m_fontManager.getOverlayFont(), text, new Vector2(xPos, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+                yPos += m_fontManager.getLineHeight(FontManager.FontType.Overlay) * 2;
+
+                m_overlaySpriteBatch.DrawString(m_fontManager.getOverlayFont(), m_project.getConfigurationItem(m_configPosition).Name, new Vector2(xPos, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+                yPos += m_fontManager.getLineHeight(FontManager.FontType.Overlay);
+
+
+                m_overlaySpriteBatch.DrawString(m_fontManager.getOverlayFont(), m_editConfigurationItemValue, new Vector2(xPos, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+            }
+            else
+            {
+                string text = "External Build Information";
+
+                m_overlaySpriteBatch.DrawString(m_fontManager.getOverlayFont(), text, new Vector2(xPos, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+                yPos += m_fontManager.getLineHeight(FontManager.FontType.Overlay) * 2;
+
+                // Write all the configuration items out - if we're highlight one of them then change
+                // the colour.
+                //
+                for (int i = 0; i < m_project.getConfigurationListLength(); i++)
+                {
+                    string item = m_project.getConfigurationItem(i).Name + "  =  " + m_project.getConfigurationItem(i).Value;
+                    m_overlaySpriteBatch.DrawString(m_fontManager.getOverlayFont(), item, new Vector2(xPos, yPos), (i == m_configPosition ? m_highlightColour : m_itemColour), 0, Vector2.Zero, 1.0f, 0, 0);
+                    yPos += m_fontManager.getLineHeight(FontManager.FontType.Overlay);
+                }
+            }
+
+            m_overlaySpriteBatch.End();
+        }
+
 
         /// <summary>
         /// Perform an external build
@@ -3582,7 +3721,8 @@ namespace Xyglo
             //
             try
             {
-                string[] commandList = m_project.getBuildCommand().Split(' ');
+                //string[] commandList = m_project.getBuildCommand().Split(' ');
+                string[] commandList = m_project.getConfigurationValue("BUILDCOMMAND").Split(' ');
 
                 if (commandList.Length == 0)
                 {
@@ -3598,19 +3738,22 @@ namespace Xyglo
                     }
                     else
                     {
-                        if (!Directory.Exists(m_project.getBuildDirectory()))
+                        string buildDir = m_project.getConfigurationValue("BUILDDIRECTORY");
+                        string buildLog = m_project.getConfigurationValue("BUILDLOG");
+
+                        if (!Directory.Exists(buildDir))
                         {
-                            setTemporaryMessage("Build directory doesn't exist : \"" + m_project.getBuildDirectory() + "\"", gameTime, 2);
+                            setTemporaryMessage("Build directory doesn't exist : \"" + buildDir + "\"", gameTime, 2);
                             return;
                         }
 
                         // Now ensure that the build log is visible on the screen somewhere
                         //
-                        BufferView bv = m_project.findBufferView(m_project.getBuildLog());
+                        BufferView bv = m_project.findBufferView(buildLog);
 
                         if (bv == null)
                         {
-                            bv = addNewFileBuffer(m_project.getBuildLog(), true, true);
+                            bv = addNewFileBuffer(buildLog, true, true);
                         }
 
                         // Move to that BufferView
@@ -3620,7 +3763,7 @@ namespace Xyglo
                         // Build the argument list
                         //
                         ProcessStartInfo info = new ProcessStartInfo();
-                        info.WorkingDirectory = m_project.getBuildDirectory();
+                        info.WorkingDirectory = buildDir;
                         info.UseShellExecute = false;
                         info.FileName = m_project.getCommand();
                         info.WindowStyle = ProcessWindowStyle.Hidden;
@@ -3669,9 +3812,9 @@ namespace Xyglo
         protected void logBuildStdOut(object sender, DataReceivedEventArgs e)
         {
             string logBody = (string)e.Data;
-            string time = string.Format("{0:yyyyMMdd hh:mm:ss}", DateTime.Now);
+            string time = string.Format("{0:yyyyMMdd HH:mm:ss}", DateTime.Now);
 
-            System.IO.TextWriter logFile = new StreamWriter(m_project.getBuildLog(), true);
+            System.IO.TextWriter logFile = new StreamWriter(m_project.getConfigurationValue("BUILDLOG"), true);
             logFile.WriteLine(time + " - " + logBody);
             logFile.Flush();
             logFile.Close();

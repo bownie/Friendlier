@@ -1,12 +1,11 @@
-- Editing Build details/General editing parameters
+- file saving/saving all?
 - cursor end of line (X)
 - Rearrange windows manually - create manual direction [DONE apart from NEW]
-- Saving/opening/browsing - ensure states are correct
-- information screen (file information) [HALF DONE]
+- Saving/opening/browsing - ensure status is correct
 - project information screen (files, buffers, lines etc)
 - work update status (sessions - time developing etc)
 - undo buffer view
-- repurpose the Function keys
+- repurpose the Function keys [IN PROGRESS]
 - Temporary file save messages to move somewhere
 - Long lines handling [CAN VIEW BUT NOT SCROLL TO]
 - Logging (timestamps and makes sense)
@@ -17,13 +16,16 @@
 
 TO TEST/BUGS
 ------------
-- Persistance file to correct app location [DONE]
 - Undo/redo testing and fixing
 - Pasting multiple lines for Replace [HALF COMPLETE]
-- fix flashing scrollbars bug
 
 DONE
 ----
+- Editing Build details/General editing parameters [DONE]
+- no cursor when no focus [DONE]
+- information screen (file information) [DONE]
+- Persistance file to correct app location [DONE]
+- fix flashing scrollbars bug [DONE]
 - Configuration - builder, logging window [DONE]
 - highlight not working on cursor up and down (Y) [DONE]
 - System load meter [DONE]

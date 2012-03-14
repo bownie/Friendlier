@@ -10,6 +10,32 @@ using Microsoft.Xna.Framework;
 
 namespace Xyglo
 {
+
+    /// <summary>
+    /// Configuration item
+    /// </summary>
+    [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
+    public class Configuration
+    {
+        /// <summary>
+        /// The name of this configuration item
+        /// </summary>
+        [DataMember]
+        public string Name;
+
+        /// <summary>
+        /// The value of this configuration item
+        /// </summary>
+        [DataMember]
+        public string Value;
+
+        public Configuration(string name, string value)
+        {
+            Name = name;
+            Value = value;
+        }
+    }
+
     /// <summary>
     /// A Friendlier project file
     /// </summary>
@@ -21,11 +47,11 @@ namespace Xyglo
         /// <summary>
         /// The name of our project
         /// </summary>
-        [DataMember()]
+        [DataMember]
         public string m_projectName
         { get; set; }
 
-        [DataMember()]
+        [DataMember]
         public string m_projectFile
         { get; set; }
 
@@ -66,24 +92,10 @@ namespace Xyglo
         protected DateTime m_lastAccessTime;
 
         /// <summary>
-        /// A path to the build log
+        /// Our local configuration
         /// </summary>
-        [DataMember()]
-        protected string m_buildLog = @"C:\temp\output.log";
-
-        /// <summary>
-        /// A command line for the build command
-        /// </summary>
-        [DataMember()]
-        //protected string m_buildCommand = @"C:\Q\mingw\bin\mingw32-make.exe";
-        protected string m_buildCommand = @"C:\QtSDK\mingw\bin\mingw32-make.exe -f D:\garderobe-build-desktop\Makefile";
-
-        /// <summary>
-        /// A command line for the build command
-        /// </summary>
-        [DataMember()]
-        //protected string m_buildDirectory = @"C:\devel\garderobe-build-desktop";
-        protected string m_buildDirectory = @"D:\garderobe-build-desktop";
+        [DataMember]
+        protected List<Configuration> m_configuration;
 
         /// <summary>
         /// Store where we last opened a file from
@@ -104,6 +116,10 @@ namespace Xyglo
         {
             m_projectName = "<unnamed>";
             m_lastAccessTime = DateTime.Now;
+
+            // Build some configuation if we need to
+            //
+            buildInitialConfiguration();
         }
 
 
@@ -116,9 +132,161 @@ namespace Xyglo
             m_projectName = name;
             m_lastAccessTime = DateTime.Now;
             m_projectFile = projectFile;
+
+            // Build some configuation if we need to
+            //
+            buildInitialConfiguration();
         }
 
         ////////////// METHODS ////////////////
+
+        /// <summary>
+        /// Return the configuration 
+        /// </summary>
+        /// <returns></returns>
+        public int getConfigurationListLength()
+        {
+            if (m_configuration == null)
+            {
+                return 0;
+            }
+            else
+            {
+                return m_configuration.Count;
+            }
+        }
+
+        /// <summary>
+        /// Build the configuration object from scratch
+        /// </summary>
+        public void buildInitialConfiguration()
+        {
+            if (m_configuration == null)
+            {
+                m_configuration = new List<Configuration>();
+
+                // And for the moment populate from here
+                //
+                addConfigurationItem("BUILDCOMMAND", @"C:\QtSDK\mingw\bin\mingw32-make.exe -f D:\garderobe-build-desktop\Makefile");
+                addConfigurationItem("BUILDDIRECTORY", @"D:\garderobe-build-desktop");
+                addConfigurationItem("BUILDLOG", @"C:\temp\output.log");
+            }
+        }
+
+        /// <summary>
+        /// Add an item to the configuration if it doesn't exist
+        /// </summary>
+        /// <param name="item"></param>
+        /// <param name="value"></param>
+        protected bool addConfigurationItem(string item, string value)
+        {
+            foreach (Configuration config in m_configuration)
+            {
+                if (config.Name == item)
+                {
+                    return false; // already exists
+                }
+            }
+
+            // Add the item and return
+            //
+            m_configuration.Add(new Configuration(item, value));
+            return true;
+        }
+
+        /// <summary>
+        /// Remove a configuration item
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        protected bool deleteConfigurationItem(string item)
+        {
+            Configuration foundConfig = null;
+
+            foreach (Configuration config in m_configuration)
+            {
+                if (config.Name == item)
+                {
+                    foundConfig = config;
+                    break;
+                }
+            }
+
+            if (foundConfig == null)
+            {
+                return false;
+            }
+            else
+            {
+                m_configuration.Remove(foundConfig);
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Return a configuration item
+        /// </summary>
+        /// <param name="number"></param>
+        /// <returns></returns>
+        public Configuration getConfigurationItem(int number)
+        {
+            if (number >= 0 && number < m_configuration.Count)
+            {
+                return m_configuration[number];
+            }
+           
+            return null;
+        }
+
+        /// <summary>
+        /// Get a configuration value by name
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+        public string getConfigurationValue(string name)
+        {
+            foreach (Configuration config in m_configuration)
+            {
+                if (config.Name == name)
+                {
+                    return config.Value;
+                }
+            }
+
+            throw new Exception("No configuration item for " + name);
+        }
+
+
+        /// <summary>
+        /// Update an existing configuration item
+        /// </summary>
+        /// <param name="item"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public bool updateConfigurationItem(string item, string value)
+        {
+            Configuration foundConfig = null;
+
+            foreach (Configuration config in m_configuration)
+            {
+                if (config.Name == item)
+                {
+                    foundConfig = config;
+                    break;
+                }
+            }
+
+            if (foundConfig == null)
+            {
+                return false;
+            }
+            else
+            {
+                foundConfig.Value = value;
+                return true;
+            }
+        }
+
 
         /// <summary>
         /// Return the selected BufferView id
@@ -228,7 +396,6 @@ namespace Xyglo
             return m_fileBuffers.Remove(fb);
         }
 
-
         /// <summary>
         /// Return the project file
         /// </summary>
@@ -237,7 +404,6 @@ namespace Xyglo
         {
             return m_projectFile;
         }
-
 
         /// <summary>
         /// Add an existing BufferView and return the index of it
@@ -465,60 +631,6 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Set the build log path
-        /// </summary>
-        /// <param name="log"></param>
-        public void setBuildLog(string log)
-        {
-            m_buildLog = log;
-        }
-
-        /// <summary>
-        /// Get the build log path
-        /// </summary>
-        /// <returns></returns>
-        public string getBuildLog()
-        {
-            return m_buildLog;
-        }
-
-        /// <summary>
-        /// Set the build command
-        /// </summary>
-        /// <param name="command"></param>
-        public void setBuildCommand(string command)
-        {
-            m_buildCommand = command;
-        }
-
-        /// <summary>
-        /// Return the build command
-        /// </summary>
-        /// <returns></returns>
-        public string getBuildCommand()
-        {
-            return m_buildCommand;
-        }
-
-        /// <summary>
-        /// Set the build directory
-        /// </summary>
-        /// <param name="directory"></param>
-        public void setBuildDirectory(string directory)
-        {
-            m_buildDirectory = directory;
-        }
-
-        /// <summary>
-        /// Get the build directory
-        /// </summary>
-        /// <returns></returns>
-        public string getBuildDirectory()
-        {
-            return m_buildDirectory;
-        }
-
-        /// <summary>
         /// Attempt to find a FileBuffer from a filename
         /// </summary>
         /// <param name="filename"></param>
@@ -565,7 +677,7 @@ namespace Xyglo
         /// <returns></returns>
         public string getCommand()
         {
-            string[] command = m_buildCommand.Split(' ');
+            string[] command = getConfigurationValue("BUILDCOMMAND").Split(' ');
 
             if (command.Length > 0)
             {
@@ -581,7 +693,7 @@ namespace Xyglo
         /// <returns></returns>
         public string getArguments()
         {
-            string[] command = m_buildCommand.Split(' ');
+            string[] command = getConfigurationValue("BUILDCOMMAND").Split(' ');
 
             string retArgs = "";
             int i = 0;
@@ -595,6 +707,5 @@ namespace Xyglo
 
             return retArgs;
         }
-
     }
 }
