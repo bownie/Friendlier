@@ -66,7 +66,17 @@ namespace Xyglo
         /// <summary>
         /// The last System time we fetch this file
         /// </summary>
-        protected DateTime m_lastFetchSystemTime = DateTime.Now.AddDays(-1);
+        protected DateTime m_lastFetchSystemTime = DateTime.MinValue;
+
+        /// <summary>
+        /// When this FileBuffer was created
+        /// </summary>
+        protected DateTime m_creationSystemTime = DateTime.Now;
+
+        /// <summary>
+        /// Last time we wrote this file
+        /// </summary>
+        protected DateTime m_lastWriteSystemTime = DateTime.MinValue;
 
         /// <summary>
         /// Fetch Window for a File - every second

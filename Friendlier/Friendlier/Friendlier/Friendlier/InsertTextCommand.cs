@@ -60,6 +60,10 @@ namespace Xyglo
         /// </summary>
         public override FilePosition doCommand()
         {
+#if INSERT_COMMAND_DEBUG
+            Logger.logMsg("InsertTextCommand::doCommand() - start position X = " + m_startPos.X + ", Y = " + m_startPos.Y);
+#endif
+
             // Store the initial cursor position locally
             //
             FilePosition fp = m_startPos;
@@ -72,6 +76,7 @@ namespace Xyglo
                 fetchLine = m_fileBuffer.getLine(m_startPos.Y);
             }
 
+            
             string firstLine = fetchLine.Substring(0, m_startPos.X);
             string secondLine = "";
 
@@ -86,10 +91,10 @@ namespace Xyglo
 
             // Force a new line if we're inserting beyond the end of the current buffer
             //
-            if (m_startPos.Y >= m_fileBuffer.getLineCount())
-            {
-                m_newLine = true;
-            }
+            //if (m_startPos.Y >= m_fileBuffer.getLineCount())
+            //{
+                //m_newLine = true;
+            //}
 
             // Set first line always like this
             //
@@ -143,15 +148,27 @@ namespace Xyglo
             }
             else
             {
-                m_fileBuffer.appendLine(m_startPos.Y, m_snippet.m_lines[0]);
+                // Add a line if there is none
+                //
+                if (m_fileBuffer.getLineCount() == 0)
+                {
+                    m_fileBuffer.insertLine(0, "");
+                }
+
+                
+
                 if (m_snippet.m_lines.Count() == 1)
                 {
-                    m_fileBuffer.appendLine(m_startPos.Y, secondLine);
+                    m_fileBuffer.setLine(m_startPos.Y, firstLine + m_snippet.m_lines[0] + secondLine);
                     fp.X += m_snippet.m_lines[0].Length;
                 }
                 else
                 {
-                    // Insert lines in reverse snippet order
+                    // Append the first line onto the current line firstly
+                    //
+                    m_fileBuffer.appendLine(m_startPos.Y, m_snippet.m_lines[0]);
+
+                    // Now insert additional lines in reverse snippet order so that they flow downwards
                     //
                     for (int i = m_snippet.m_lines.Count() - 1; i > 0; i--)
                     {
@@ -205,8 +222,24 @@ namespace Xyglo
                 {
                     m_fileBuffer.deleteLines(m_startPos.Y + 1, m_snippet.m_lines.Count() - 1);
                 }
-                m_fileBuffer.setLine(m_startPos.Y, m_originalText);
+
+
+                if (m_startPos.Y == 0 && m_originalText == "")
+                {
+                    m_fileBuffer.deleteLines(0, 1);
+                    return (new FilePosition(0, 0));
+
+                }
+                else
+                {
+                    m_fileBuffer.setLine(m_startPos.Y, m_originalText);
+                }
+
             }
+
+#if INSERT_COMMAND_DEBUG
+            Logger.logMsg("InsertTextCommand::undoCommand() - undo position X = " + m_startPos.X + ", Y = " + m_startPos.Y);
+#endif
 
             // Return the start position when undoing
             //

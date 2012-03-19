@@ -23,13 +23,16 @@ namespace Xyglo
 {
     public enum FriendlierState
     {
-        TextEditing,   // default mode
-        FileOpen,      // opening a file
-        FileSaveAs,    // saving a file as
-        Information,   // show an information pane
-        Configuration, // configuration mode
-        PositionScreen // where to position a new screen
+        TextEditing,        // default mode
+        FileOpen,           // opening a file
+        FileSaveAs,         // saving a file as
+        Information,        // show an information pane
+        Configuration,      // configuration mode
+        PositionScreenOpen, // where to position a screen when opening a file
+        PositionScreenNew,  // where to position a new screen
+        FindText            // Enter some text to find
     };
+
 
     /// <summary>
     /// This is the main type for your game
@@ -190,12 +193,12 @@ namespace Xyglo
         /// <summary>
         /// CPU performance meter
         /// </summary>
-        PerformanceCounter m_cpuCounter;
+        //protected PerformanceCounter m_cpuCounter;
 
         /// <summary>
         /// RAM counter
         /// </summary>
-        PerformanceCounter m_memCounter;
+        //protected PerformanceCounter m_memCounter;
 
         /// <summary>
         /// Store the last performance counter for CPU
@@ -344,6 +347,21 @@ namespace Xyglo
         protected string m_editConfigurationItemValue;
 
 
+        /// <summary>
+        /// Worker thread for the PerformanceCounters
+        /// </summary>
+        protected PerformanceWorker m_counterWorker;
+
+        /// <summary>
+        /// The thread that is used for the counter
+        /// </summary>
+        protected Thread m_counterWorkerThread;
+
+        /// <summary>
+        /// What we're searching for
+        /// </summary>
+        protected string m_searchText = "";
+
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
         /// <summary>
@@ -364,11 +382,11 @@ namespace Xyglo
 
             // Initialise the m_cpuCounter
             //
-            m_cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+            //m_cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
 
             // And likewise the Memory counter
             //
-            m_memCounter = new PerformanceCounter("Memory", "Available MBytes");
+            //m_memCounter = new PerformanceCounter("Memory", "Available MBytes");
 
             // Set physical memory
             //
@@ -404,11 +422,11 @@ namespace Xyglo
 
             // Initialise the m_cpuCounter
             //
-            m_cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+            //m_cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
 
             // And likewise the Memory counter
             //
-            m_memCounter = new PerformanceCounter("Memory", "Available MBytes");
+            //m_memCounter = new PerformanceCounter("Memory", "Available MBytes");
 
             // Set physical memory
             //
@@ -763,6 +781,17 @@ namespace Xyglo
         /// </summary>
         protected override void LoadContent()
         {
+            // Start up the worker thread
+            //
+            m_counterWorker = new PerformanceWorker();
+            m_counterWorkerThread = new Thread(m_counterWorker.startWorking);
+            m_counterWorkerThread.Start();
+
+            // Loop until worker thread activates.
+            //
+            while (!m_counterWorkerThread.IsAlive) ;
+            Thread.Sleep(1);
+
             // Initialise and load fonts into our Content context by family.
             //
             //FontManager.initialise(Content, "Lucida Sans Typewriter");
@@ -1023,9 +1052,9 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Open a file at the selected location
+        /// Traverase a directory and allow opening/saving at that point according to state
         /// </summary>
-        protected void openHighlightedFile(GameTime gameTime, bool readOnly = false, bool tailFile = false)
+        protected void traverseDirectory(GameTime gameTime, bool readOnly = false, bool tailFile = false)
         {
             //string fileToOpen = m_fileSystemView.getHighlightedFile();
             if (m_fileSystemView.atDriveLevel())
@@ -1067,7 +1096,7 @@ namespace Xyglo
                         int fileIndex = m_fileSystemView.getHighlightIndex() - 1 - m_fileSystemView.getDirectoryInfo().GetDirectories().Length;
                         FileInfo fileInfo = m_fileSystemView.getDirectoryInfo().GetFiles()[fileIndex];
 
-                        Logger.logMsg("The file you selected is " + fileInfo.Name);
+                        Logger.logMsg("Friendler::traverseDirectory() - selected a file " + fileInfo.Name);
 
                         // Set these values and the status
                         //
@@ -1075,9 +1104,38 @@ namespace Xyglo
                         m_fileIsTailing = tailFile;
                         m_selectedFile = fileInfo.FullName;
 
-                        // Now we need to choose a position for the new file we're opening
-                        //
-                        m_state = FriendlierState.PositionScreen;
+                        if (m_state == FriendlierState.FileOpen)
+                        {
+                            // Now we need to choose a position for the new file we're opening
+                            //
+                            m_state = FriendlierState.PositionScreenOpen;
+                        }
+                        else if (m_state == FriendlierState.FileSaveAs)
+                        {
+                            // Set the FileBuffer path
+                            //
+                            m_project.getSelectedBufferView().getFileBuffer().setFilepath(m_selectedFile);
+                            m_project.getSelectedBufferView().getFileBuffer().save();
+
+                            // Check if we need to remove this FileBuffer from the todo list - it's not important if we can't
+                            // remove it here but we should try to anyway.
+                            //
+                            if (m_filesToWrite.Remove(m_project.getSelectedBufferView().getFileBuffer()))
+                            {
+                                Logger.logMsg("Friendlier::Update() - could not find FileBuffer to remove from m_filesToWrite");
+                            }
+                            else
+                            {
+                                Logger.logMsg("Friendlier::Update() - total files left to write is now " + m_filesToWrite.Count);
+                            }
+
+                            // If we have finished saving all of our files then we can exit (although we check once again)
+                            //
+                            if (m_filesToWrite.Count == 0)
+                            {
+                                checkExit(gameTime);
+                            }
+                        }
                     }
                 }
                 catch (Exception /* e */)
@@ -1085,7 +1143,6 @@ namespace Xyglo
                     setTemporaryMessage("Cannot access \"" + subDirectory + "\"", gameTime, 2);
                 }
             }
-
         }
 
         /// <summary>
@@ -1094,10 +1151,18 @@ namespace Xyglo
         /// <param name="gameTime"></param>
         protected void completeSaveFile(GameTime gameTime)
         {
-
             try
             {
                 m_project.getSelectedBufferView().getFileBuffer().save();
+
+                if (m_filesToWrite != null && m_filesToWrite.Count > 0)
+                {
+                    if (m_filesToWrite.Remove(m_project.getSelectedBufferView().getFileBuffer()))
+                    {
+                        Logger.logMsg("Friendlier::completeSaveFile() - files remaining to be written " + m_filesToWrite.Count);
+                    }
+                }
+
                 Vector3 newPosition = m_eye;
                 newPosition.Z = 500.0f;
 
@@ -1116,7 +1181,7 @@ namespace Xyglo
         /// <summary>
         /// Exit but ensuring that buffers are saved
         /// </summary>
-        protected void checkExit(GameTime gameTime)
+        protected void checkExit(GameTime gameTime, bool forceExit = false)
         {
             // Save our project
             //
@@ -1134,14 +1199,29 @@ namespace Xyglo
                 }
             }
 
-            if (unsaved)
+            // If we're forcing the exit then don't bother saving
+            //
+            if (unsaved && !forceExit)
             {
-                setTemporaryMessage("[Unsaved Buffers.  Save?  Y/N/C]", gameTime, 0);
-                m_confirmState = ConfirmState.FileSaveCancel;
-                m_state = FriendlierState.FileSaveAs;
+                if (m_confirmState == ConfirmState.FileSaveCancel)
+                {
+                    setTemporaryMessage("", gameTime, 1);
+                    m_confirmState = ConfirmState.None;
+                    return;
+                }
+                else
+                {
+                    setTemporaryMessage("[Unsaved Buffers.  Save?  Y/N/C]", gameTime, 0);
+                    m_confirmState = ConfirmState.FileSaveCancel;
+                    //m_state = FriendlierState.FileSaveAs;
+                }
             }
             else
             {
+                // Clear the worker thread and exit
+                //
+                m_counterWorker.requestStop();
+                m_counterWorkerThread.Join();
                 this.Exit();
             }
         }
@@ -1168,16 +1248,25 @@ namespace Xyglo
                                 checkExit(gameTime);
                                 break;
 
-                    case FriendlierState.FileOpen:
+                    
                     case FriendlierState.FileSaveAs:
+                        setTemporaryMessage("[Cancelled Quit]", gameTime, 0.5);
+                        m_confirmState = ConfirmState.None;
+                        m_state = FriendlierState.TextEditing;
+                        m_filesToWrite = null;
+                        break;
+
+                    case FriendlierState.FileOpen:
                     case FriendlierState.Information:
                     case FriendlierState.Configuration:
-                    case FriendlierState.PositionScreen:
+                    case FriendlierState.PositionScreenOpen:
+                    case FriendlierState.PositionScreenNew:
                     default:
+                        m_state = FriendlierState.TextEditing;
                                 break;
                 }
 
-                m_state = FriendlierState.TextEditing;
+                
 
                 // Fly back to correct position
                 //
@@ -1193,49 +1282,91 @@ namespace Xyglo
                 return;
             }
 
+            // This helps us count through our lists of file to save if we're trying to exit
+            //
+            if (m_filesToWrite != null && m_filesToWrite.Count > 0)
+            {
+                m_project.setSelectedBufferView(m_filesToWrite[0]);
+                m_eye = m_project.getSelectedBufferView().getEyePosition();
+                selectSaveFile();
+            }
+
             // For PositionScreen state we want not handle events here other than direction keys
             //
-            if (m_state == FriendlierState.PositionScreen)
+            if (m_state == FriendlierState.PositionScreenOpen || m_state == FriendlierState.PositionScreenNew)
             {
                 if (checkKeyState(Keys.Left, gameTime))
                 {
                     Logger.logMsg("Friendler::Update() - position screen left");
                     m_newPosition = BufferView.BufferPosition.Left;
 
-                    // Open the file 
-                    //
-                    BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
-                    setActiveBuffer(newBV);
+                    
+                    if (m_state == FriendlierState.PositionScreenOpen)
+                    {
+                        // Open the file 
+                        //
+                        BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
+                        setActiveBuffer(newBV);
+                    }
+                    else
+                    {
+                        BufferView newBV = addNewFileBuffer();
+                        setActiveBuffer(newBV);
+                    }
                 }
                 else if (checkKeyState(Keys.Right, gameTime))
                 {
                     Logger.logMsg("Friendler::Update() - position screen right");
                     m_newPosition = BufferView.BufferPosition.Right;
 
-                    // Open the file 
-                    //
-                    BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
-                    setActiveBuffer(newBV);
+                    if (m_state == FriendlierState.PositionScreenOpen)
+                    {
+                        // Open the file 
+                        //
+                        BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
+                        setActiveBuffer(newBV);
+                    }
+                    else
+                    {
+                        BufferView newBV = addNewFileBuffer();
+                        setActiveBuffer(newBV);
+                    }
                 }
                 else if (checkKeyState(Keys.Up, gameTime))
                 {
                     Logger.logMsg("Friendler::Update() - position screen up");
                     m_newPosition = BufferView.BufferPosition.Above;
 
-                    // Open the file 
-                    //
-                    BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
-                    setActiveBuffer(newBV);
+                    if (m_state == FriendlierState.PositionScreenOpen)
+                    {
+                        // Open the file 
+                        //
+                        BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
+                        setActiveBuffer(newBV);
+                    }
+                    else
+                    {
+                        BufferView newBV = addNewFileBuffer();
+                        setActiveBuffer(newBV);
+                    }
                 }
                 else if (checkKeyState(Keys.Down, gameTime))
                 {
                     Logger.logMsg("Friendler::Update() - position screen down");
                     m_newPosition = BufferView.BufferPosition.Below;
 
-                    // Open the file 
-                    //
-                    BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
-                    setActiveBuffer(newBV);
+                    if (m_state == FriendlierState.PositionScreenOpen)
+                    {
+                        // Open the file 
+                        //
+                        BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
+                        setActiveBuffer(newBV);
+                    }
+                    else
+                    {
+                        BufferView newBV = addNewFileBuffer();
+                        setActiveBuffer(newBV);
+                    }
                 }
 
                 return;
@@ -1482,7 +1613,7 @@ namespace Xyglo
             {
                 if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen)
                 {
-                    openHighlightedFile(gameTime);
+                    traverseDirectory(gameTime);
                 }
                 else
                 {
@@ -1502,10 +1633,13 @@ namespace Xyglo
                         {
                             FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
 
-                            if (fp.X < m_project.getSelectedBufferView().getFileBuffer().getLine(fp.Y).Length - 1)
+                            if (m_project.getSelectedBufferView().getFileBuffer().getLineCount() > 0)
                             {
-                                fp.X++;
-                                m_project.getSelectedBufferView().setCursorPosition(fp);
+                                if (fp.X < m_project.getSelectedBufferView().getFileBuffer().getLine(fp.Y).Length)
+                                {
+                                    fp.X++;
+                                    m_project.getSelectedBufferView().setCursorPosition(fp);
+                                }
                             }
                         }
                         else
@@ -1567,6 +1701,10 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.F3, gameTime))
             {
+                doSearch(gameTime);
+            }
+            else if (checkKeyState(Keys.F7, gameTime))
+            {
                 if (m_shiftDown)
                 {
                     m_zoomLevel -= 1;
@@ -1586,7 +1724,7 @@ namespace Xyglo
                 }
                 setActiveBuffer();
             }
-            else if (checkKeyState(Keys.F4, gameTime))
+            else if (checkKeyState(Keys.F8, gameTime))
             {
                 if (m_shiftDown)
                 {
@@ -1652,10 +1790,12 @@ namespace Xyglo
                 {
                     m_project.getSelectedBufferView().extendHighlight(); // Extend
                 }
+                    /*
                 else
                 {
                     m_project.getSelectedBufferView().noHighlight(); // Disable
                 }
+                     * */
             }
             else if (checkKeyState(Keys.PageUp, gameTime))
             {
@@ -1665,10 +1805,11 @@ namespace Xyglo
                 {
                     m_project.getSelectedBufferView().extendHighlight(); // Extend
                 }
+                    /*
                 else
                 {
                     m_project.getSelectedBufferView().noHighlight(); // Disable
-                }
+                }*/
             }
             else if (checkKeyState(Keys.Scroll, gameTime))
             {
@@ -1691,6 +1832,15 @@ namespace Xyglo
                     if (m_saveFileName.Length > 0)
                     {
                         m_saveFileName = m_saveFileName.Substring(0, m_saveFileName.Length - 1);
+                    }
+                }
+                else if (m_state == FriendlierState.FindText && checkKeyState(Keys.Back, gameTime))
+                {
+                    // Delete charcters from the file name if we have one
+                    //
+                    if (m_searchText.Length > 0)
+                    {
+                        m_searchText = m_searchText.Substring(0, m_searchText.Length - 1);
                     }
                 }
                 else if (m_state == FriendlierState.Configuration && m_editConfigurationItem && checkKeyState(Keys.Back, gameTime))
@@ -1771,7 +1921,7 @@ namespace Xyglo
                             }
                             else if (m_confirmState == ConfirmState.FileSaveCancel)
                             {
-                                // First of all save all open buffer we can write and save
+                                // First of all save all open buffers we can write and save
                                 // a list of all those we can't
                                 //
                                 m_filesToWrite = new List<FileBuffer>();
@@ -1788,13 +1938,11 @@ namespace Xyglo
                                     }
                                 }
 
-                                // Go to the first file to write
+                                // All files saved then exit
                                 //
-                                if (m_filesToWrite.Count > 0)
+                                if (m_filesToWrite.Count == 0)
                                 {
-                                    m_project.setSelectedBufferView(m_filesToWrite[0]);
-                                    m_eye = m_project.getSelectedBufferView().getEyePosition();
-                                    selectSaveFile();
+                                    checkExit(gameTime);
                                 }
                             }
                         }
@@ -1816,7 +1964,9 @@ namespace Xyglo
                         }
                         else if (m_confirmState == ConfirmState.FileSaveCancel)
                         {
-                            this.Exit();
+                            // Exit nicely - but force the exit
+                            //
+                            checkExit(gameTime, true);
                         }
                     }
                     else if (checkKeyState(Keys.C, gameTime) && m_confirmState == ConfirmState.FileSaveCancel)
@@ -1830,7 +1980,13 @@ namespace Xyglo
                     if (checkKeyState(Keys.C, gameTime)) // Copy
                     {
                         Logger.logMsg("Friendler::update() - copying to clipboard");
-                        System.Windows.Forms.Clipboard.SetText(m_project.getSelectedBufferView().getSelection().getClipboardString());
+                        string text = m_project.getSelectedBufferView().getSelection().getClipboardString();
+
+                        // We can only set this is the text is not empty
+                        if (text != "")
+                        {
+                            System.Windows.Forms.Clipboard.SetText(text);
+                        }
                     }
                     else if (checkKeyState(Keys.X, gameTime)) // Cut
                     {
@@ -1908,6 +2064,10 @@ namespace Xyglo
                             setTemporaryMessage("[NOREDO]", gameTime, 2);
                         }
                     }
+                    else if (checkKeyState(Keys.A, gameTime))  // Select all
+                    {
+                        m_project.getSelectedBufferView().selectAll();
+                    }
                 }
                 else if (m_altDown) // ALT down action
                 {
@@ -1945,8 +2105,10 @@ namespace Xyglo
                     {
                         // Need to change this to use a direction too
                         //
-                        BufferView newBV = addNewFileBuffer();
-                        setActiveBuffer(newBV);
+                        //BufferView newBV = addNewFileBuffer();
+                        //setActiveBuffer(newBV);
+
+                        m_state = FriendlierState.PositionScreenNew;
                     }
                     else if (checkKeyState(Keys.O, gameTime))
                     {
@@ -1977,6 +2139,12 @@ namespace Xyglo
                     {
                         m_gotoBufferView += getNumberKey();
                     }
+                    else if (checkKeyState(Keys.F, gameTime)) // Find text
+                    {
+                        Logger.logMsg("Friendler::update() - find");
+                        m_state = FriendlierState.FindText;
+                    }
+
                 }
                 else
                     if (//Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftShift) ||
@@ -2028,7 +2196,7 @@ namespace Xyglo
                                             //
                                             if (m_filesToWrite != null)
                                             {
-                                                m_filesToWrite.Remove(m_project.getSelectedBufferView().getFileBuffer());
+                                                //m_filesToWrite.Remove(m_project.getSelectedBufferView().getFileBuffer());
 
                                                 // If we have remaining files to edit then set the active BufferView to one that
                                                 // looks over this file - then fly to it and choose and file location.
@@ -2043,14 +2211,23 @@ namespace Xyglo
                                                 {
                                                     m_filesToWrite = null;
                                                     Logger.logMsg("Friendlier::Update() - saved some files.  Quitting.");
-                                                    this.Exit();
+
+                                                    // Exit nicely and ensure we serialise
+                                                    //
+                                                    checkExit(gameTime);
                                                 }
+                                            }
+                                            else
+                                            {
+                                                // Exit nicely and ensure we serialise
+                                                //
+                                                checkExit(gameTime);
                                             }
                                         }
                                     }
                                     else if (m_state == FriendlierState.FileOpen)
                                     {
-                                        openHighlightedFile(gameTime);
+                                        traverseDirectory(gameTime);
                                     }
                                     else if (m_state == FriendlierState.Configuration)
                                     {
@@ -2069,6 +2246,10 @@ namespace Xyglo
                                             m_editConfigurationItem = false;
                                             m_project.updateConfigurationItem(m_project.getConfigurationItem(m_configPosition).Name, m_editConfigurationItemValue);
                                         }
+                                    }
+                                    else if (m_state == FriendlierState.FindText)
+                                    {
+                                        doSearch(gameTime);
                                     }
                                     else
                                     {
@@ -2385,7 +2566,7 @@ namespace Xyglo
                                             {
                                                 // Open a file as read only and tail it
                                                 //
-                                                openHighlightedFile(gameTime, true, true);
+                                                traverseDirectory(gameTime, true, true);
                                             }
                                             else
                                             {
@@ -2405,7 +2586,7 @@ namespace Xyglo
                                         //
                                         default:
                                             key = "";
-                                            Logger.logMsg("Got key = " + keyDown.ToString());
+                                            Logger.logMsg("Friendlier::update() - got key = " + keyDown.ToString());
                                             break;
                                     }
 
@@ -2419,6 +2600,10 @@ namespace Xyglo
                                         else if (m_state == FriendlierState.Configuration && m_editConfigurationItem) // Configuration item
                                         {
                                             m_editConfigurationItemValue += key;
+                                        }
+                                        else if (m_state == FriendlierState.FindText)
+                                        {
+                                            m_searchText += key;
                                         }
                                         else if (m_state == FriendlierState.TextEditing)
                                         {
@@ -2456,6 +2641,34 @@ namespace Xyglo
 
         }
 
+
+        /// <summary>
+        /// Run a search on the current BufferView
+        /// </summary>
+        /// <returns></returns>
+        protected void doSearch(GameTime gameTime)
+        {
+            if (m_project.currentGotLines())
+            {
+                if (!m_project.getSelectedBufferView().find(m_searchText))
+                {
+                    setTemporaryMessage("[NOT FOUND]", gameTime, 1);
+                }
+            }
+            else
+            {
+                setTemporaryMessage("[NOTHING TO SEARCH]", gameTime, 1);
+            }
+
+
+            m_state = FriendlierState.TextEditing;
+        }
+
+
+        /// <summary>
+        /// Are we pressing on a number key?
+        /// </summary>
+        /// <returns></returns>
         protected string getNumberKey()
         {
             string key = "";
@@ -2861,7 +3074,7 @@ namespace Xyglo
 
             // If we're choosing a file then
             //
-            if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen || m_state == FriendlierState.PositionScreen)
+            if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen || m_state == FriendlierState.PositionScreenOpen || m_state == FriendlierState.PositionScreenNew)
             {
                 drawDirectoryChooser(gameTime);
                 m_spriteBatch.End();
@@ -2913,71 +3126,81 @@ namespace Xyglo
             // Set our colour according to the state of Friendlier
             //
             Color overlayColour = Color.White;
-            if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen ||
-                m_state == FriendlierState.Information || m_state == FriendlierState.PositionScreen ||
-                m_state == FriendlierState.Configuration)
+            if (m_state != FriendlierState.TextEditing && m_state != FriendlierState.FindText)
             {
                 overlayColour = m_greyedColour; 
             }
 
+            // Filename is where we put the filename plus other assorted gubbins or we put a
+            // search string in there depending on the mode.
+            //
             string fileName = "";
-            if (m_project.getSelectedBufferView() != null && m_project.getSelectedBufferView().getFileBuffer() != null)
+
+            if (m_state == FriendlierState.FindText)
             {
-                // Set the filename
-                if (m_project.getSelectedBufferView().getFileBuffer().getShortFileName() != "")
+                // Draw the search string down there
+                fileName = "Search: " + m_searchText;
+            }
+            else
+            {
+                if (m_project.getSelectedBufferView() != null && m_project.getSelectedBufferView().getFileBuffer() != null)
                 {
-                    fileName = "\"" + m_project.getSelectedBufferView().getFileBuffer().getShortFileName() + "\"";
+                    // Set the filename
+                    if (m_project.getSelectedBufferView().getFileBuffer().getShortFileName() != "")
+                    {
+                        fileName = "\"" + m_project.getSelectedBufferView().getFileBuffer().getShortFileName() + "\"";
+                    }
+                    else
+                    {
+                        fileName = "<New Buffer>";
+                    }
+
+                    if (m_project.getSelectedBufferView().getFileBuffer().isModified())
+                    {
+                        fileName += " [Modified]";
+                    }
+
+                    fileName += " " + m_project.getSelectedBufferView().getFileBuffer().getLineCount() + " lines";
                 }
                 else
                 {
                     fileName = "<New Buffer>";
                 }
 
-                if (m_project.getSelectedBufferView().getFileBuffer().isModified())
+                // Add some other useful states to our status line
+                //
+                if (m_project.getSelectedBufferView().isReadOnly())
                 {
-                    fileName += " [Modified]";
+                    fileName += " [RDONLY]";
                 }
 
-                fileName += " " + m_project.getSelectedBufferView().getFileBuffer().getLineCount() + " lines";
-            }
-            else
-            {
-                fileName = "<New Buffer>";
-            }
+                if (m_project.getSelectedBufferView().isTailing())
+                {
+                    fileName += " [TAIL]";
+                }
 
-            // Add some other useful states to our status line
-            //
-            if (m_project.getSelectedBufferView().isReadOnly())
-            {
-                fileName += " [RDONLY]";
-            }
+                if (m_shiftDown)
+                {
+                    fileName += " [SHFT]";
+                }
 
-            if (m_project.getSelectedBufferView().isTailing())
-            {
-                fileName += " [TAIL]";
-            }
+                if (m_ctrlDown)
+                {
+                    fileName += " [CTRL]";
+                }
 
-            if (m_shiftDown)
-            {
-                fileName += " [SHFT]";
-            }
+                if (m_altDown)
+                {
+                    fileName += " [ALT]";
+                }
 
-            if (m_ctrlDown)
-            {
-                fileName += " [CTRL]";
-            }
-
-            if (m_altDown)
-            {
-                fileName += " [ALT]";
-            }
-
-            double dTS = gameTime.TotalGameTime.TotalSeconds;
-            if (dTS < m_temporaryMessageEndTime && m_temporaryMessage != "")
-            {
-                // Add any temporary message on to the end of the message
-                //
-                fileName += " " + m_temporaryMessage;
+                double dTS = gameTime.TotalGameTime.TotalSeconds;
+                if (dTS < m_temporaryMessageEndTime && m_temporaryMessage != "")
+                {
+                    // Add any temporary message on to the end of the message
+                    //
+                    fileName += " " + m_temporaryMessage;
+                }
             }
 
             // Convert lineHeight back to normal size by dividing by m_textSize modifier
@@ -3065,25 +3288,28 @@ namespace Xyglo
             // Only fetch some new samples when this timespan has elapsed
             //
             TimeSpan mySpan = gameTime.TotalGameTime;
+
             //Logger.logMsg("MYSPAN = " + mySpan.ToString());
             //Logger.logMsg("LAST FETCH = " + m_lastSystemFetch.ToString());
-
             //Logger.logMsg("DIFFERENCE = " + (mySpan - m_lastSystemFetch).ToString());
 
             if (mySpan - m_lastSystemFetch > m_systemFetchSpan)
             {
-                CounterSample newCS = m_cpuCounter.NextSample();
-                CounterSample newMem = m_memCounter.NextSample();
+                if (m_counterWorker.m_cpuCounter != null && m_counterWorker.m_memCounter != null)
+                {
+                    CounterSample newCS = m_counterWorker.getCpuSample();
+                    CounterSample newMem = m_counterWorker.getMemorySample();
 
-                // Calculate the percentages
-                //
-                m_systemLoad = CounterSample.Calculate(m_lastCPUSample, newCS);
-                m_memoryAvailable = CounterSample.Calculate(m_lastMemSample, newMem);
+                    // Calculate the percentages
+                    //
+                    m_systemLoad = CounterSample.Calculate(m_lastCPUSample, newCS);
+                    m_memoryAvailable = CounterSample.Calculate(m_lastMemSample, newMem);
 
-                // Store the last samples
-                //
-                m_lastCPUSample = newCS;
-                m_lastMemSample = newMem;
+                    // Store the last samples
+                    //
+                    m_lastCPUSample = newCS;
+                    m_lastMemSample = newMem;
+                }
 
                 m_lastSystemFetch = mySpan;
 
@@ -3109,7 +3335,6 @@ namespace Xyglo
             //
             p1 = startPosition;
             p2 = startPosition;
-            m_cpuCounter.NextValue();
 
             p1.Y += height;
             p2.Y += height - (m_systemLoad * height / 100.0f);
@@ -3132,7 +3357,6 @@ namespace Xyglo
             //
             p1 = startPosition;
             p2 = startPosition;
-            m_cpuCounter.NextValue();
 
             p1.Y += height;
             p2.Y += height - (height * m_memoryAvailable / m_physicalMemory);
@@ -3148,9 +3372,10 @@ namespace Xyglo
         /// <param name="v"></param>
         protected void drawCursor(GameTime gameTime)
         {
-            // Don't draw the cursor if we're not the active window
+            // Don't draw the cursor if we're not the active window or if we're confirming 
+            // something on the screen.
             //
-            if (!this.IsActive)
+            if (!this.IsActive || m_confirmState != ConfirmState.None || m_state == FriendlierState.FindText)
             {
                 return;
             }
@@ -3203,7 +3428,7 @@ namespace Xyglo
             {
                 line = "Save as...";
             }
-            else if (m_state == FriendlierState.PositionScreen)
+            else if (m_state == FriendlierState.PositionScreenNew || m_state == FriendlierState.PositionScreenOpen)
             {
                 line = "Choose a position...";
             } else
@@ -3213,7 +3438,14 @@ namespace Xyglo
 
             // Draw header line
             //
-            m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(startPosition.X, startPosition.Y - 100.0f), Color.White, 0, lineOrigin, m_fontManager.getTextScale() * 2.0f, 0, 0);
+            m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(startPosition.X, startPosition.Y - m_project.getSelectedBufferView().getLineHeight() * 3), Color.White, 0, lineOrigin, m_fontManager.getTextScale() * 2.0f, 0, 0);
+
+            // If we're using this method to position a new window only then don't show the directory chooser part..
+            //
+            if (m_state == FriendlierState.PositionScreenNew)
+            {
+                return;
+            }
 
             Color dirColour = Color.White;
             
@@ -3379,9 +3611,7 @@ namespace Xyglo
         {
             Color bufferColour = view.getTextColour();
 
-            if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen ||
-                m_state == FriendlierState.Information || m_state == FriendlierState.PositionScreen ||
-                m_state == FriendlierState.Configuration)
+            if (m_state != FriendlierState.TextEditing && m_state != FriendlierState.FindText)
             {
                 bufferColour = m_greyedColour;
             }
@@ -3579,9 +3809,10 @@ namespace Xyglo
 
             m_userHelp += "F1  - Cycle down through BufferViews\n";
             m_userHelp += "F2  - Cycle up through BufferViews\n";
-            m_userHelp += "F3  - Zoom Out\n";
-            m_userHelp += "F4  - Zoom In\n";
+            m_userHelp += "F3  - Search again\n";
             m_userHelp += "F6  - Perform Build\n";
+            m_userHelp += "F7  - Zoom Out\n";
+            m_userHelp += "F8  - Zoom In\n";
             m_userHelp += "F9  - Rotate anticlockwise around group of 4\n";
             m_userHelp += "F10 - Rotate clockwise around group of 4\n";
             m_userHelp += "F11 - Full Screen Mode\n";
@@ -3597,6 +3828,9 @@ namespace Xyglo
             
             m_userHelp += "Alt + Z - Undo\n";
             m_userHelp += "Alt + Y - Redo\n";
+            m_userHelp += "Alt + A - Select All\n";
+            m_userHelp += "Alt + F - Find\n";
+            m_userHelp += "Alt + [number keys] - Jump to numbered BufferView\n";
         }
 
 

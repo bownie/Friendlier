@@ -629,15 +629,16 @@ namespace Xyglo
         /// <param name="fp"></param>
         public void setCursorPosition(FilePosition fp)
         {
-            Logger.logMsg("BufferView::setCursorPosition() - fp.X = " + fp.X + ", fp.Y = " + fp.Y);
-            if (m_fileBuffer.getLineCount() == 0)
-            {
-                return;
-            }
-
-            if (fp.Y + m_bufferShowStartY < m_fileBuffer.getLineCount())
+            if (fp.Y >= 0 && fp.Y < m_fileBuffer.getLineCount() || m_fileBuffer.getLineCount() == 0)
             {
                 m_cursorPosition = fp;
+                keepVisible();
+
+                Logger.logMsg("BufferView::setCursorPosition() - fp.X = " + fp.X + ", fp.Y = " + fp.Y);
+            }
+            else
+            {
+                throw new Exception("BufferView::setCursorPosition() - can't set the cursor position");
             }
         }
 
@@ -651,6 +652,10 @@ namespace Xyglo
             int y = Convert.ToInt16(vfp.Y);
             m_cursorPosition.X = x;
             m_cursorPosition.Y = y;
+
+            // Keep the cursor visible
+            //
+            keepVisible();
         }
 
         /// <summary>
@@ -1169,12 +1174,28 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Ensure that the cursor is on the screen
+        /// </summary>
+        protected void keepVisible()
+        {
+            if (m_cursorPosition.Y < m_bufferShowStartY)
+            {
+                m_bufferShowStartY = m_cursorPosition.Y;
+            }
+            else if (m_cursorPosition.Y > (m_bufferShowStartY + m_bufferShowLength - 1))
+            {
+                m_bufferShowStartY = m_cursorPosition.Y - ( m_bufferShowLength - 1 );
+            }
+        }
+
+        /// <summary>
         /// Insert some text into the BufferView
         /// </summary>
         /// <param name="text"></param>
         public void insertText(string text)
         {
             m_cursorPosition = m_fileBuffer.insertText(m_cursorPosition, text);
+            keepVisible();
         }
 
         /// <summary>
@@ -1183,6 +1204,7 @@ namespace Xyglo
         public void insertNewLine()
         {
             m_cursorPosition = m_fileBuffer.insertNewLine(m_cursorPosition);
+            keepVisible();
         }
 
         /// <summary>
@@ -1211,8 +1233,15 @@ namespace Xyglo
             //
             if (shiftStart.Y == shiftEnd.Y)
             {
-                line = m_fileBuffer.getLine(shiftStart.Y).Substring(shiftStart.X, shiftEnd.X - shiftStart.X);
-                rS.setSnippetSingle(line);
+                if (m_fileBuffer.getLineCount() > 0)
+                {
+                    line = m_fileBuffer.getLine(shiftStart.Y).Substring(shiftStart.X, shiftEnd.X - shiftStart.X);
+                    rS.setSnippetSingle(line);
+                }
+                else
+                {
+                    rS.setSnippetSingle("");
+                }
             }
             else  // Multi-line text
             {
@@ -1350,6 +1379,15 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Do we have a FileBuffer and some lines in it?
+        /// </summary>
+        /// <returns></returns>
+        public bool gotLines()
+        {
+            return (m_fileBuffer != null && m_fileBuffer.getLineCount() > 0);
+        }
+
+        /// <summary>
         /// From the current cursor position jump a word to the right
         /// </summary>
         public void wordJumpCursorRight()
@@ -1390,6 +1428,94 @@ namespace Xyglo
                 fp.X++;
             }
             m_cursorPosition = fp;
+        }
+
+        /// <summary>
+        /// Highlight everything in the FileBuffer
+        /// </summary>
+        public void selectAll()
+        {
+            m_highlightStart.X = 0;
+            m_highlightStart.Y = 0;
+
+            if (m_fileBuffer != null && m_fileBuffer.getLineCount() > 0)
+            {
+                string line = m_fileBuffer.getLine(m_fileBuffer.getLineCount() - 1);
+                m_highlightEnd.X = line.Length;
+                m_highlightEnd.Y = m_fileBuffer.getLineCount() - 1;
+            }
+            else
+            {
+                m_highlightEnd.X = 0;
+                m_highlightEnd.Y = 0;
+            }
+        }
+
+        /// <summary>
+        /// Find the text and move the cursor and highlight it
+        /// </summary>
+        /// <param name="text"></param>
+        public bool find(string text)
+        {
+            FilePosition searchPos = m_cursorPosition;
+            bool searching = true;
+
+            while (searching)
+            {
+                string line = m_fileBuffer.getLine(searchPos.Y);
+
+                if (searchPos.X > 0)
+                {
+                    line = line.Substring(searchPos.X, line.Length - searchPos.X);
+                }
+
+                // Ensure that 
+                int findPos = line.IndexOf(text);
+
+                if (findPos != -1) // found something
+                {
+                    // Adjust to real position
+                    //
+                    findPos += searchPos.X;
+
+                    // If we're searching from the start of the phrase we're looking for then
+                    // carry on - ignore an immediate match.
+                    //
+                    if (!(searchPos.Y == m_cursorPosition.Y && findPos == m_cursorPosition.X))
+                    {
+                        // Then jump there
+                        //
+                        searchPos.X = findPos;
+                        m_cursorPosition = searchPos;
+                        keepVisible();
+
+                        // Set the highlight
+                        //
+                        m_highlightStart = searchPos;
+                        m_highlightEnd = searchPos;
+                        m_highlightEnd.X += text.Length;
+
+                        return true;
+                    }
+                }
+
+                // Increment the line
+                //
+                searchPos.Y++;
+
+                // If we search a second line (or more) we always start at the beginning
+                if (searchPos.X > 0)
+                {
+                    searchPos.X = 0;
+                }
+
+                if (searchPos.Y > m_fileBuffer.getLineCount() - 1)
+                {
+                    searching = false;
+                }
+            }
+
+            return false;
         }
     }
 }

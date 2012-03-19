@@ -287,6 +287,15 @@ namespace Xyglo
             }
         }
 
+        /// <summary>
+        /// Has the current BufferView got lines?
+        /// </summary>
+        /// <returns></returns>
+        public bool currentGotLines()
+        {
+            return m_bufferViews[m_selectedViewId].gotLines();
+
+        }
 
         /// <summary>
         /// Return the selected BufferView id
@@ -430,6 +439,18 @@ namespace Xyglo
             m_bufferViews.Add(newBV);
 
             return newBV;
+        }
+
+        /// <summary>
+        /// Add a new FileBuffer without an index
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
+        public FileBuffer addFileBuffer(string filePath)
+        {
+            FileBuffer newFB = new FileBuffer(filePath);
+            m_fileBuffers.Add(newFB);
+            return newFB;
         }
 
         /// <summary>
