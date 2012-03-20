@@ -170,6 +170,7 @@ namespace Xyglo
                 addConfigurationItem("BUILDCOMMAND", @"C:\QtSDK\mingw\bin\mingw32-make.exe -f D:\garderobe-build-desktop\Makefile");
                 addConfigurationItem("BUILDDIRECTORY", @"D:\garderobe-build-desktop");
                 addConfigurationItem("BUILDLOG", @"C:\temp\output.log");
+                addConfigurationItem("AUTOINDENT", "TRUE");
             }
         }
 
@@ -287,15 +288,6 @@ namespace Xyglo
             }
         }
 
-        /// <summary>
-        /// Has the current BufferView got lines?
-        /// </summary>
-        /// <returns></returns>
-        public bool currentGotLines()
-        {
-            return m_bufferViews[m_selectedViewId].gotLines();
-
-        }
 
         /// <summary>
         /// Return the selected BufferView id

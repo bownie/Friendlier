@@ -1181,7 +1181,7 @@ namespace Xyglo
         /// <summary>
         /// Exit but ensuring that buffers are saved
         /// </summary>
-        protected void checkExit(GameTime gameTime, bool forceExit = false)
+        protected void checkExit(GameTime gameTime, bool force = false)
         {
             // Save our project
             //
@@ -1190,18 +1190,24 @@ namespace Xyglo
             // Firstly check for any unsaved buffers and warn
             //
             bool unsaved = false;
-            foreach (FileBuffer fb in m_project.getFileBuffers())
+
+            // Only check BufferViews status if we're not forcing an exit
+            //
+            if (!force)
             {
-                if (fb.isModified())
+                foreach (FileBuffer fb in m_project.getFileBuffers())
                 {
-                    unsaved = true;
-                    break;
+                    if (fb.isModified())
+                    {
+                        unsaved = true;
+                        break;
+                    }
                 }
             }
 
-            // If we're forcing the exit then don't bother saving
+            // Likewise only save if we want to
             //
-            if (unsaved && !forceExit)
+            if (unsaved && !force)
             {
                 if (m_confirmState == ConfirmState.FileSaveCancel)
                 {
@@ -1473,9 +1479,9 @@ namespace Xyglo
                 {
                     if (m_altDown)
                     {
-                        // Add a new BufferView above current position
+                        // Attempt to move right if there's a BufferView there
                         //
-                        //addBufferView(BufferView.BufferPosition.Above);
+                        detectMove(BufferView.BufferPosition.Above, gameTime);
                     }
                     else
                     {
@@ -1522,9 +1528,9 @@ namespace Xyglo
                 {
                     if (m_altDown)
                     {
-                        // Add a new BufferView below current position
+                        // Attempt to move right if there's a BufferView there
                         //
-                        //addBufferView(BufferView.BufferPosition.Below);
+                        detectMove(BufferView.BufferPosition.Below, gameTime);
                     }
                     else
                     {
@@ -1581,9 +1587,9 @@ namespace Xyglo
                     }
                     else if (m_altDown)
                     {
-                        // Add a new BufferView to the left of current position
+                        // Attempt to move right if there's a BufferView there
                         //
-                        //addBufferView(BufferView.BufferPosition.Left);
+                        detectMove(BufferView.BufferPosition.Left, gameTime);
                     }
                     else
                     {
@@ -1623,12 +1629,14 @@ namespace Xyglo
                     }
                     else if (m_altDown)
                     {
-                        // Add a new BufferView to the right of current position
+                        // Attempt to move right if there's a BufferView there
                         //
-                        //addBufferView(BufferView.BufferPosition.Right);
+                        detectMove(BufferView.BufferPosition.Right, gameTime);
                     }
                     else
                     {
+                        m_project.getSelectedBufferView().moveCursorRight();
+                        /*
                         if (m_project.getSelectedBufferView().getCursorPosition().X < m_project.getSelectedBufferView().getBufferShowWidth())
                         {
                             FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
@@ -1645,7 +1653,7 @@ namespace Xyglo
                         else
                         {
                             m_project.getSelectedBufferView().moveCursorDown(true);
-                        }
+                        }*/
                     }
 
                     if (m_shiftDown)
@@ -1664,6 +1672,14 @@ namespace Xyglo
                 fp.X = m_project.getSelectedBufferView().getFileBuffer().getLine(fp.Y).Length;
                 m_project.getSelectedBufferView().setCursorPosition(fp);
 
+                // Change the X offset if the row is longer than the visible width
+                //
+                if (fp.X > m_project.getSelectedBufferView().getBufferShowWidth())
+                {
+                    int bufferX = fp.X - m_project.getSelectedBufferView().getBufferShowWidth();
+                    m_project.getSelectedBufferView().setBufferShowStartX(bufferX);
+                }
+
                 if (m_shiftDown)
                 {
                     m_project.getSelectedBufferView().extendHighlight(); // Extend
@@ -1676,9 +1692,15 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.Home, gameTime))
             {
+                // Reset the cursor to zero
+                //
                 FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
                 fp.X = 0;
                 m_project.getSelectedBufferView().setCursorPosition(fp);
+
+                // Reset any X offset to zero
+                //
+                m_project.getSelectedBufferView().setBufferShowStartX(0);
 
                 if (m_shiftDown)
                 {
@@ -1790,12 +1812,10 @@ namespace Xyglo
                 {
                     m_project.getSelectedBufferView().extendHighlight(); // Extend
                 }
-                    /*
                 else
                 {
                     m_project.getSelectedBufferView().noHighlight(); // Disable
                 }
-                     * */
             }
             else if (checkKeyState(Keys.PageUp, gameTime))
             {
@@ -1805,11 +1825,10 @@ namespace Xyglo
                 {
                     m_project.getSelectedBufferView().extendHighlight(); // Extend
                 }
-                    /*
                 else
                 {
                     m_project.getSelectedBufferView().noHighlight(); // Disable
-                }*/
+                }
             }
             else if (checkKeyState(Keys.Scroll, gameTime))
             {
@@ -1821,6 +1840,10 @@ namespace Xyglo
                 {
                     m_project.getSelectedBufferView().setLock(true, m_project.getSelectedBufferView().getCursorPosition().Y);
                 }
+            }
+            else if (checkKeyState(Keys.Tab, gameTime)) // Insert a tab space
+            {
+                m_project.getSelectedBufferView().insertText("  ");
             }
             else if (checkKeyState(Keys.Delete, gameTime) || checkKeyState(Keys.Back, gameTime))
             {
@@ -1964,7 +1987,7 @@ namespace Xyglo
                         }
                         else if (m_confirmState == ConfirmState.FileSaveCancel)
                         {
-                            // Exit nicely - but force the exit
+                            // Exit nicely
                             //
                             checkExit(gameTime, true);
                         }
@@ -2023,7 +2046,8 @@ namespace Xyglo
                             //
                             if (m_project.getSelectedBufferView().getFileBuffer().getUndoPosition() > 0)
                             {
-                                m_project.getSelectedBufferView().setCursorPosition(m_project.getSelectedBufferView().getFileBuffer().undo(1));
+                                //m_project.getSelectedBufferView().setCursorPosition(m_project.getSelectedBufferView().getFileBuffer().undo(1));
+                                m_project.getSelectedBufferView().undo(1);
                             }
                             else
                             {
@@ -2255,7 +2279,7 @@ namespace Xyglo
                                     {
                                         // Insert a line into the editor
                                         //
-                                        m_project.getSelectedBufferView().insertNewLine();
+                                        m_project.getSelectedBufferView().insertNewLine(m_project.getConfigurationValue("AUTOINDENT"));
 
                                         //fp = m_activeBufferView.getFileBuffer().insertNewLine(m_activeBufferView.getCursorPosition());
 
@@ -2648,18 +2672,10 @@ namespace Xyglo
         /// <returns></returns>
         protected void doSearch(GameTime gameTime)
         {
-            if (m_project.currentGotLines())
+            if (!m_project.getSelectedBufferView().find(m_searchText))
             {
-                if (!m_project.getSelectedBufferView().find(m_searchText))
-                {
-                    setTemporaryMessage("[NOT FOUND]", gameTime, 1);
-                }
+                setTemporaryMessage("[ \"" + m_searchText + "\" NOT FOUND]", gameTime, 1);
             }
-            else
-            {
-                setTemporaryMessage("[NOTHING TO SEARCH]", gameTime, 1);
-            }
-
 
             m_state = FriendlierState.TextEditing;
         }
@@ -2833,6 +2849,46 @@ namespace Xyglo
             m_project.addBufferView(newBufferView);
             setActiveBuffer(newBufferView);
         }
+
+
+        /// <summary>
+        /// Locate a BufferView located in a specified direction - if we find one then
+        /// we set that as the active buffer view.
+        /// </summary>
+        /// <param name="position"></param>
+        protected void detectMove(BufferView.BufferPosition position, GameTime gameTime)
+        {
+            // First get the position of a potential BufferView
+            //
+            Vector3 searchPosition = m_project.getSelectedBufferView().calculateRelativePosition(position);
+
+            // Store the id of the current view
+            //
+            int fromView = m_project.getSelectedBufferViewId();
+
+            // Search by index
+            //
+            for (int i = 0; i < m_project.getBufferViews().Count; i++)
+            {
+                if (m_project.getBufferViews()[i].getPosition() == searchPosition)
+                {
+                    m_project.setSelectedBufferViewId(i);
+                    break;
+                }
+            }
+
+            // Now set the active buffer if we need to - if not give a warning
+            //
+            if (fromView != m_project.getSelectedBufferViewId())
+            {
+                setActiveBuffer();
+            }
+            else
+            {
+                setTemporaryMessage("[NO BUFFERVIEW]", gameTime, 0.5);
+            }
+        }
+
 
         /// <summary>
         /// Move the eye to a new position
@@ -3624,7 +3680,7 @@ namespace Xyglo
             // Draw all the text lines to the height of the buffer
             //
             // This is default empty line character
-            string line;
+            string line, fetchLine;
             int bufPos = view.getBufferShowStartY();
 
             // If we are tailing a file then let's look at the last X lines of it only
@@ -3655,11 +3711,27 @@ namespace Xyglo
                     if (i + bufPos < view.getFileBuffer().getLineCount() &&
                         view.getFileBuffer().getLineCount() != 0)
                     {
-                        line = view.getFileBuffer().getLine(i + bufPos);
+                        // Fetch the line
+                        //
+                        fetchLine = view.getFileBuffer().getLine(i + bufPos);
 
-                        if (line.Length > view.getBufferShowWidth())
+                        // Now ensure that we're only seeing the segment of the line that the cursor is in
+                        // as it could be beyond the length of the window.
+                        //
+                        if (fetchLine.Length > view.getBufferShowStartX())
                         {
-                            line = line.Substring(0, view.getBufferShowWidth()) + "  [>]";
+                            line = fetchLine.Substring(view.getBufferShowStartX(), Math.Min(fetchLine.Length - view.getBufferShowStartX(), view.getBufferShowWidth()));
+
+                            // Append this indicator on any longer lines
+                            //
+                            if (fetchLine.Length - view.getBufferShowStartX() > view.getBufferShowWidth())
+                            {
+                                line += "  [>]";
+                            }
+                        }
+                        else
+                        {
+                            line = "";
                         }
                     }
                 }

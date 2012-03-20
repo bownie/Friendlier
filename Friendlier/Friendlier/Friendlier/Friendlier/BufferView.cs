@@ -494,8 +494,8 @@ namespace Xyglo
         {
             // Return the cursor coordinates taking into account paging using m_bufferShowStartY
             //
-            m_cursorCoordinates.X = m_position.X + m_cursorPosition.X * m_charWidth;
-            m_cursorCoordinates.Y = m_position.Y + ( m_cursorPosition.Y - m_bufferShowStartY ) * m_lineHeight;
+            m_cursorCoordinates.X = m_position.X + (m_cursorPosition.X - m_bufferShowStartX) * m_charWidth;
+            m_cursorCoordinates.Y = m_position.Y + (m_cursorPosition.Y - m_bufferShowStartY) * m_lineHeight;
 
             return m_cursorCoordinates;
         }
@@ -556,7 +556,8 @@ namespace Xyglo
             if (bss < 0)
             {
                 m_bufferShowStartY = 0;
-            } else if (bss < m_fileBuffer.getLineCount())
+            }
+            else if (bss < m_fileBuffer.getLineCount())
             {
                 m_bufferShowStartY = bss;
             }
@@ -595,7 +596,7 @@ namespace Xyglo
             m_viewLocked = locked;
             m_viewLockPosition = lockedPosition;
         }
-        
+
         /// <summary>
         /// Get the current cursor position relative to the page value (m_bufferShowStartY)
         /// </summary>
@@ -938,7 +939,10 @@ namespace Xyglo
                     fullLineAtStart = true;
                 }
 
-                for (int i = minStart; i < m_highlightEnd.Y + 1; i++)
+                // Bear in mind we only need to calculate the visible highlight here - so only
+                // the stuff on the screen hence the Math.Min:
+                //
+                for (int i = minStart; i < Math.Min(m_highlightEnd.Y + 1, m_bufferShowStartY + m_bufferShowLength); i++)
                 {
                     if (i == m_highlightStart.Y)
                     {
@@ -963,7 +967,7 @@ namespace Xyglo
                         endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_charWidth;
                     }
 
-                    startPos.Y = m_position.Y + (i  - m_bufferShowStartY) * m_lineHeight;
+                    startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_lineHeight;
                     endPos.Y = m_position.Y + (i + 1 - m_bufferShowStartY) * m_lineHeight;
 
                     // If we have nothing highlighted in the line then indicate this with a
@@ -1113,6 +1117,7 @@ namespace Xyglo
                 if (rightCursor)
                 {
                     m_cursorPosition.X = 0;
+                    m_bufferShowStartX = 0;
                 }
                 else if (m_cursorPosition.X > m_fileBuffer.getLine(m_cursorPosition.Y).Length)
                 {
@@ -1184,7 +1189,7 @@ namespace Xyglo
             }
             else if (m_cursorPosition.Y > (m_bufferShowStartY + m_bufferShowLength - 1))
             {
-                m_bufferShowStartY = m_cursorPosition.Y - ( m_bufferShowLength - 1 );
+                m_bufferShowStartY = m_cursorPosition.Y - (m_bufferShowLength - 1);
             }
         }
 
@@ -1201,9 +1206,32 @@ namespace Xyglo
         /// <summary>
         /// Insert a new line at the cursor
         /// </summary>
-        public void insertNewLine()
+        public void insertNewLine(string autoindent)
         {
-            m_cursorPosition = m_fileBuffer.insertNewLine(m_cursorPosition);
+            // Define an indent
+            //
+            string indent = "";
+
+            // Detect if we want to apply autoindent and calculate it as necessary
+            //
+            if (autoindent == "TRUE")
+            {
+                string testLine = m_fileBuffer.getLine(m_cursorPosition.Y);
+
+                for (int i = 0; i < testLine.Length; i++)
+                {
+                    if (testLine[i] == ' ')
+                    {
+                        indent += ' ';
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+
+            m_cursorPosition = m_fileBuffer.insertNewLine(m_cursorPosition, indent);
             keepVisible();
         }
 
@@ -1311,7 +1339,7 @@ namespace Xyglo
             {
                 return;
             }
-            
+
             // If cursor is less then zero or there are no rows in the file
             //
             if (m_cursorPosition.Y < 0 || m_fileBuffer.getLineCount() == 0)
@@ -1376,15 +1404,6 @@ namespace Xyglo
 
                 m_cursorPosition.X = breakPos;
             }
-        }
-
-        /// <summary>
-        /// Do we have a FileBuffer and some lines in it?
-        /// </summary>
-        /// <returns></returns>
-        public bool gotLines()
-        {
-            return (m_fileBuffer != null && m_fileBuffer.getLineCount() > 0);
         }
 
         /// <summary>
@@ -1516,6 +1535,51 @@ namespace Xyglo
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Provide a nice interface for undoing things
+        /// </summary>
+        /// <param name="steps"></param>
+        public void undo(int steps = 1)
+        {
+            m_cursorPosition = m_fileBuffer.undo(steps);
+
+            // Remove any highlight
+            //
+            m_highlightStart.X = 0;
+            m_highlightStart.Y = 0;
+            m_highlightEnd = m_highlightStart;
+        }
+
+
+        /// <summary>
+        /// Move the cursor right - taking into account end of lines, not fitting on screen, wrapping
+        /// etc. etc.
+        /// </summary>
+        /// <param name="steps"></param>
+        public void moveCursorRight(int steps = 1)
+        {
+            string line = m_fileBuffer.getLine(m_cursorPosition.Y);
+
+            if (m_cursorPosition.X + steps < line.Length)
+            {
+                // Incremement the buffer show start position if we're going over the visible end
+                // of the line.
+                //
+                if (m_cursorPosition.X == m_bufferShowWidth)
+                {
+                    m_bufferShowStartX++;
+                }
+                else  // we're within the normal boundaries still so increment the cursor position
+                {
+                    m_cursorPosition.X++;
+                }
+            }
+            else
+            {
+                moveCursorDown(true); // use the built-in method for this
+            }
         }
     }
 }

@@ -510,9 +510,9 @@ namespace Xyglo
         /// Insert a new line
         /// </summary>
         /// <param name="insertPosition"></param>
-        public FilePosition insertNewLine(FilePosition insertPosition)
+        public FilePosition insertNewLine(FilePosition insertPosition, string indent)
         {
-            InsertTextCommand command = new InsertTextCommand("Insert new line", this, insertPosition);
+            InsertTextCommand command = new InsertTextCommand("Insert new line", this, insertPosition, true, indent);
             FilePosition fp = command.doCommand();
 
             // Ensure we are neat and tidy

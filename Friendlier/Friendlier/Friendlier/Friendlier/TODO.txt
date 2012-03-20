@@ -1,14 +1,11 @@
-- auto indent
-- highlight extends off bottom of screen (also top?)
-- return auto repeat doesn't work
-- cursor end of line (X)
+- Long lines handling [IN PROGRESS]
+- cursor end of line X with highlight bug
 - some way of seeing/modifying/deleting files in project
 - some way of seeing/modifying/deleting bufferviews (and their indexes) in project
 - Saving/opening/browsing - ensure status is correct
 - project information screen (files, buffers, lines etc)
 - work update status (sessions - time developing etc)
 - Temporary file save messages to move somewhere
-- Long lines handling [CAN VIEW BUT NOT SCROLL TO]
 - Logging (timestamps and makes sense)
 
 
@@ -20,12 +17,14 @@ OTHER
 
 TO TEST/BUGS
 ------------
+- auto indent [DONE TO SOME EXTENT]
 - Undo/redo testing and fixing [DONE for INSERT]
 - Pasting multiple lines for Replace [HALF COMPLETE]
 
 DONE
 ----
-- search forwards [DONE]
+- moving to bufferviews with the alt + direction buttons [DONE]
+- search [DONE]
 - select all [DONE]
 - file saving/saving all [DONE]
 - Rearrange windows manually - create manual direction [DONE]

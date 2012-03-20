@@ -47,12 +47,13 @@ namespace Xyglo
         /// <param name="buffer"></param>
         /// <param name="insertPosition"></param>
         /// <param name="newLine"></param>
-        public InsertTextCommand(string name, FileBuffer buffer, FilePosition insertPosition, bool newLine = true)
+        public InsertTextCommand(string name, FileBuffer buffer, FilePosition insertPosition, bool newLine = true, string indent = "")
         {
             m_name = name;
             m_fileBuffer = buffer;
             m_startPos = insertPosition;
             m_newLine = newLine;
+            m_indent = indent;
         }
 
         /// <summary>
@@ -75,7 +76,6 @@ namespace Xyglo
             {
                 fetchLine = m_fileBuffer.getLine(m_startPos.Y);
             }
-
             
             string firstLine = fetchLine.Substring(0, m_startPos.X);
             string secondLine = "";
@@ -117,6 +117,7 @@ namespace Xyglo
                     {
                         m_fileBuffer.insertLine(0, "");
                         m_fileBuffer.insertLine(1, "");
+
                         fp.Y = 1;
                     }
                     else
@@ -139,10 +140,29 @@ namespace Xyglo
                 }
                 else
                 {
-                    // In this case we only ever want to insert one line
+                    // In this case we only ever want to insert one line - return has been hit
                     //
+
+                    // Ensure we add any indent
+                    //
+                    if (m_indent != "")
+                    {
+                        secondLine = m_indent + secondLine;
+                    }
+
                     m_fileBuffer.insertLine(m_startPos.Y + 1, secondLine);
-                    fp.X = 0; // Reset to zero on X
+
+                    // Adjust the new X cursor position according to if we're auto indenting or not
+                    //
+                    if (m_indent == "")
+                    {
+                        fp.X = 0; // Reset to zero on X
+                    }
+                    else
+                    {
+                        fp.X = m_indent.Length;
+                    }
+
                     fp.Y++; // Increment Y
                 }
             }
@@ -156,7 +176,6 @@ namespace Xyglo
                 }
 
                 
-
                 if (m_snippet.m_lines.Count() == 1)
                 {
                     m_fileBuffer.setLine(m_startPos.Y, firstLine + m_snippet.m_lines[0] + secondLine);
@@ -277,5 +296,10 @@ namespace Xyglo
         /// The FileBuffer we're working on
         /// </summary>
         FileBuffer m_fileBuffer;
+
+        /// <summary>
+        /// An indent for a new line
+        /// </summary>
+        protected string m_indent = "";
     }
 }
