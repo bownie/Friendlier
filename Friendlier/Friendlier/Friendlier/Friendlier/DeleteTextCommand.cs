@@ -195,7 +195,7 @@ namespace Xyglo
             //SnippetFactory.returnSnippet(m_snippet);
         }
 
-        [DataMember()]
+        [DataMember]
         TextSnippet m_snippet = SnippetFactory.getSnippet();
 
         FileBuffer m_fileBuffer;

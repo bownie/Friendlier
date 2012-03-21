@@ -58,38 +58,45 @@ namespace Xyglo
         /// <summary>
         /// List of the FileBuffers attached to this project
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected List<FileBuffer> m_fileBuffers = new List<FileBuffer>();
 
         /// <summary>
         /// List of the BufferViews attached to this project
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected List<BufferView> m_bufferViews = new List<BufferView>();
 
         /// <summary>
         /// Length of the visible BufferView for this project
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected int m_bufferViewLength = 20;
 
         // Which view is currently selected in the project
         //
-        [DataMember()]
+        [DataMember]
         protected int m_selectedViewId = 0;
 
         /// <summary>
         /// When this project was initially created - when we persist this it should
         /// only ever take the initial value here.
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected DateTime m_creationTime = DateTime.Now;
 
         /// <summary>
         /// When this project is reconstructed this value with be updated on default construction
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected DateTime m_lastAccessTime;
+
+        /// <summary>
+        /// How long has this project been active for
+        /// </summary>
+        [DataMember]
+        public TimeSpan m_activeTime
+        { get; set; }
 
         /// <summary>
         /// Our local configuration
@@ -117,6 +124,10 @@ namespace Xyglo
             m_projectName = "<unnamed>";
             m_lastAccessTime = DateTime.Now;
 
+            // Initialise
+            //
+            m_activeTime = TimeSpan.Zero;
+
             // Build some configuation if we need to
             //
             buildInitialConfiguration();
@@ -133,12 +144,25 @@ namespace Xyglo
             m_lastAccessTime = DateTime.Now;
             m_projectFile = projectFile;
 
+            // Initialise
+            //
+            m_activeTime = TimeSpan.Zero;
+
             // Build some configuation if we need to
             //
             buildInitialConfiguration();
         }
 
         ////////////// METHODS ////////////////
+
+        /// <summary>
+        /// Creation time of this project
+        /// </summary>
+        /// <returns></returns>
+        public DateTime getCreationTime()
+        {
+            return m_creationTime;
+        }
 
         /// <summary>
         /// Return the configuration 
@@ -512,6 +536,10 @@ namespace Xyglo
         /// </summary>
         public void dataContractSerialise()
         {
+            // Before serialisation we store how long we've been active for
+            //
+            m_activeTime += DateTime.Now - m_lastAccessTime;
+
             FileStream writer = new FileStream(m_projectFile, FileMode.Create);
 
             System.Runtime.Serialization.DataContractSerializer x =
@@ -719,6 +747,22 @@ namespace Xyglo
             }
 
             return retArgs;
+        }
+
+        /// <summary>
+        /// Return total lines of FileBuffers
+        /// </summary>
+        /// <returns></returns>
+        public int getFilesTotalLines()
+        {
+            int total = 0;
+
+            foreach (FileBuffer fb in m_fileBuffers)
+            {
+                total += fb.getLineCount();
+            }
+
+            return total;
         }
     }
 }

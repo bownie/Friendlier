@@ -27,10 +27,14 @@ namespace Xyglo
         FileOpen,           // opening a file
         FileSaveAs,         // saving a file as
         Information,        // show an information pane
+        Help,               // show a help pane
         Configuration,      // configuration mode
         PositionScreenOpen, // where to position a screen when opening a file
         PositionScreenNew,  // where to position a new screen
-        FindText            // Enter some text to find
+        PositionScreenCopy, // where to position a copied FileBuffer/BufferView
+        FindText,           // Enter some text to find
+        ManageProject,      // View and edit the files in our project
+        SplashScreen        // What we see when we're arriving in the application
     };
 
 
@@ -905,7 +909,7 @@ namespace Xyglo
 
             // Set the state of the application to TextEditing
             //
-            m_state = FriendlierState.TextEditing;
+//            m_state = FriendlierState.TextEditing;
 
 #if ACTIVE_BUFFER_DEBUG
             Logger.logMsg("Friendlier:setActiveBuffer() - buffer position = " + m_activeBufferView.getPosition());
@@ -995,24 +999,6 @@ namespace Xyglo
             // Fly there
             //
             flyToPosition(newPosition);
-        }
-
-        /// <summary>
-        /// Show an overlaying information screen on top of the existing FileBuffer
-        /// </summary>
-        protected void showInformationScreen()
-        {
-            m_state = FriendlierState.Information;
-            m_temporaryMessage = "";
-
-            // Set temporary bird's eye view
-            //
-            //Vector3 newPosition = m_eye;
-            //newPosition.Z = 600.0f;
-
-            // Fly there
-            //
-            //flyToPosition(newPosition);
         }
 
         /// <summary>
@@ -1267,12 +1253,13 @@ namespace Xyglo
                     case FriendlierState.Configuration:
                     case FriendlierState.PositionScreenOpen:
                     case FriendlierState.PositionScreenNew:
+                    case FriendlierState.PositionScreenCopy:
+                    case FriendlierState.ManageProject:
+                    case FriendlierState.SplashScreen:
                     default:
                         m_state = FriendlierState.TextEditing;
                                 break;
                 }
-
-                
 
                 // Fly back to correct position
                 //
@@ -1283,7 +1270,7 @@ namespace Xyglo
             // of this mode.  Note that we also have to mind any animations so we
             // also want to ensure that m_changingEyePosition is not true.
             //
-            if (m_state == FriendlierState.Information && m_changingEyePosition == false)
+            if ((m_state == FriendlierState.Information || m_state == FriendlierState.Help) && m_changingEyePosition == false)
             {
                 return;
             }
@@ -1297,84 +1284,70 @@ namespace Xyglo
                 selectSaveFile();
             }
 
-            // For PositionScreen state we want not handle events here other than direction keys
+            // For PositionScreen state we want not handle events here other than direction keys - this section
+            // decides where to place a new, opened or copied BufferView.
             //
-            if (m_state == FriendlierState.PositionScreenOpen || m_state == FriendlierState.PositionScreenNew)
+            if (m_state == FriendlierState.PositionScreenOpen || m_state == FriendlierState.PositionScreenNew || m_state == FriendlierState.PositionScreenCopy)
             {
+                bool gotSelection = false;
+
                 if (checkKeyState(Keys.Left, gameTime))
                 {
                     Logger.logMsg("Friendler::Update() - position screen left");
                     m_newPosition = BufferView.BufferPosition.Left;
-
-                    
-                    if (m_state == FriendlierState.PositionScreenOpen)
-                    {
-                        // Open the file 
-                        //
-                        BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
-                        setActiveBuffer(newBV);
-                    }
-                    else
-                    {
-                        BufferView newBV = addNewFileBuffer();
-                        setActiveBuffer(newBV);
-                    }
+                    gotSelection = true;
                 }
                 else if (checkKeyState(Keys.Right, gameTime))
                 {
-                    Logger.logMsg("Friendler::Update() - position screen right");
                     m_newPosition = BufferView.BufferPosition.Right;
-
-                    if (m_state == FriendlierState.PositionScreenOpen)
-                    {
-                        // Open the file 
-                        //
-                        BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
-                        setActiveBuffer(newBV);
-                    }
-                    else
-                    {
-                        BufferView newBV = addNewFileBuffer();
-                        setActiveBuffer(newBV);
-                    }
+                    gotSelection = true;
+                    Logger.logMsg("Friendler::Update() - position screen right");
                 }
                 else if (checkKeyState(Keys.Up, gameTime))
                 {
-                    Logger.logMsg("Friendler::Update() - position screen up");
                     m_newPosition = BufferView.BufferPosition.Above;
-
-                    if (m_state == FriendlierState.PositionScreenOpen)
-                    {
-                        // Open the file 
-                        //
-                        BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
-                        setActiveBuffer(newBV);
-                    }
-                    else
-                    {
-                        BufferView newBV = addNewFileBuffer();
-                        setActiveBuffer(newBV);
-                    }
+                    gotSelection = true;
+                    Logger.logMsg("Friendler::Update() - position screen up");
                 }
                 else if (checkKeyState(Keys.Down, gameTime))
                 {
-                    Logger.logMsg("Friendler::Update() - position screen down");
                     m_newPosition = BufferView.BufferPosition.Below;
+                    gotSelection = true;
+                    Logger.logMsg("Friendler::Update() - position screen down");
+                }
 
+                // If we have discovered a position for our pending new window
+                //
+                if (gotSelection)
+                {
                     if (m_state == FriendlierState.PositionScreenOpen)
                     {
                         // Open the file 
                         //
                         BufferView newBV = addNewFileBuffer(m_selectedFile, m_fileIsReadOnly, m_fileIsTailing);
                         setActiveBuffer(newBV);
+                        m_state = FriendlierState.TextEditing;
                     }
-                    else
+                    else if (m_state == FriendlierState.PositionScreenNew)
                     {
+                        // Use the convenience function
+                        //
                         BufferView newBV = addNewFileBuffer();
                         setActiveBuffer(newBV);
+                        m_state = FriendlierState.TextEditing;
+                    }
+                    else if (m_state == FriendlierState.PositionScreenCopy)
+                    {
+                        // Use the copy constructor
+                        //
+                        BufferView newBV = new BufferView(m_project.getSelectedBufferView(), m_newPosition);
+                        m_project.addBufferView(newBV);
+                        setActiveBuffer(newBV);
+                        m_state = FriendlierState.TextEditing;
                     }
                 }
 
+                
                 return;
             }
 
@@ -1435,7 +1408,7 @@ namespace Xyglo
                 //
                 if (m_gotoBufferView != "")
                 {
-                    Logger.logMsg("Firendlier - got a number " + m_gotoBufferView);
+                    Logger.logMsg("Friendlier - got a number " + m_gotoBufferView);
 
                     setActiveBuffer(Convert.ToInt16(m_gotoBufferView));
                     m_gotoBufferView = "";
@@ -1593,6 +1566,8 @@ namespace Xyglo
                     }
                     else
                     {
+                        m_project.getSelectedBufferView().moveCursorLeft();
+                        /*
                         if (m_project.getSelectedBufferView().getCursorPosition().X > 0)
                         {
                             FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
@@ -1603,6 +1578,7 @@ namespace Xyglo
                         {
                             m_project.getSelectedBufferView().moveCursorUp(true);
                         }
+                        */
                     }
 
                     if (m_shiftDown)
@@ -2125,30 +2101,40 @@ namespace Xyglo
                             }
                         }
                     }
-                    else if (checkKeyState(Keys.N, gameTime))
+                    else if (checkKeyState(Keys.N, gameTime)) // New BufferView on new FileBuffer
                     {
-                        // Need to change this to use a direction too
-                        //
-                        //BufferView newBV = addNewFileBuffer();
-                        //setActiveBuffer(newBV);
-
                         m_state = FriendlierState.PositionScreenNew;
                     }
-                    else if (checkKeyState(Keys.O, gameTime))
+                    else if (checkKeyState(Keys.B, gameTime)) // New BufferView on same FileBuffer (copy the existing BufferView)
+                    {
+                        m_state = FriendlierState.PositionScreenCopy;
+                    }
+                    else if (checkKeyState(Keys.O, gameTime)) // Open a file
                     {
                         selectOpenFile();
                     }
-                    else if (checkKeyState(Keys.I, gameTime))
+                    else if (checkKeyState(Keys.H, gameTime)) // Show the help screen
                     {
-                        showInformationScreen();
+                        m_state = FriendlierState.Help;
                     }
-                    else if (checkKeyState(Keys.G, gameTime))
+                    else if (checkKeyState(Keys.I, gameTime)) // Show the information screen
+                    {
+                        m_state = FriendlierState.Information;
+                    }
+                    else if (checkKeyState(Keys.G, gameTime)) // Show the config screen
                     {
                         showConfigurationScreen();
                     }
-                    else if (checkKeyState(Keys.C, gameTime))
+                    else if (checkKeyState(Keys.C, gameTime)) // Close current BufferView
                     {
                         closeActiveBuffer(gameTime);
+                    }
+                    else if (checkKeyState(Keys.M, gameTime))
+                    {
+                        m_state = FriendlierState.ManageProject; // Manage the files in the project
+                        Vector3 newPos = m_eye;
+                        newPos.Z = 800.0f;
+                        flyToPosition(newPos);
                     }
                     else if (checkKeyState(Keys.D0, gameTime) ||
                              checkKeyState(Keys.D1, gameTime) ||
@@ -2279,7 +2265,18 @@ namespace Xyglo
                                     {
                                         // Insert a line into the editor
                                         //
-                                        m_project.getSelectedBufferView().insertNewLine(m_project.getConfigurationValue("AUTOINDENT"));
+                                        string indent = "";
+
+                                        try
+                                        {
+                                            indent = m_project.getConfigurationValue("AUTOINDENT");
+                                        }
+                                        catch (Exception e)
+                                        {
+                                            Logger.logMsg("Friendlier::Update() - couldn't get AUTOINDENT from config - " + e.Message);
+                                        }
+
+                                        m_project.getSelectedBufferView().insertNewLine(indent);
 
                                         //fp = m_activeBufferView.getFileBuffer().insertNewLine(m_activeBufferView.getCursorPosition());
 
@@ -2762,7 +2759,6 @@ namespace Xyglo
             m_temporaryMessageEndTime = seconds;
         }
 
-
         /// <summary>
         /// Add a new FileBuffer and a new BufferView and set this as active
         /// </summary>
@@ -3121,56 +3117,79 @@ namespace Xyglo
                 m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
             }
 
-            // Draw all the BufferViews
+            // In the manage project mode we zoom off into the distance
             //
-            for (int i = 0; i < m_project.getBufferViews().Count; i++)
+            if (m_state == FriendlierState.ManageProject)
             {
-                drawFileBuffer(m_project.getBufferViews()[i], gameTime);
-            }
-
-            // If we're choosing a file then
-            //
-            if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen || m_state == FriendlierState.PositionScreenOpen || m_state == FriendlierState.PositionScreenNew)
-            {
-                drawDirectoryChooser(gameTime);
+                drawManageProject(gameTime);
                 m_spriteBatch.End();
-            }
-            else if (m_state == FriendlierState.Information)
-            {
-                m_spriteBatch.End();
-
-                drawInformationScreen(gameTime, m_userHelp);
-            }
-            else if (m_state == FriendlierState.Configuration)
-            {
-                m_spriteBatch.End();
-
-                drawConfigurationScreen(gameTime);
             }
             else
             {
-
-                // We only draw the scrollbar on the active view
+                // Draw all the BufferViews for most modes
                 //
-                drawScrollbar(m_project.getSelectedBufferView());
-
-                m_spriteBatch.End();
-
-                // Draw the Overlay HUD
-                //
-                drawOverlay(gameTime);
-
-                // Cursor and cursor highlight - none for tailed bufferviews
-                //
-                if (!m_project.getSelectedBufferView().isTailing())
+                for (int i = 0; i < m_project.getBufferViews().Count; i++)
                 {
-                    drawCursor(gameTime);
-                    drawHighlight(gameTime);
+                    drawFileBuffer(m_project.getBufferViews()[i], gameTime);
                 }
-                
+
+                // If we're choosing a file then
+                //
+                if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen || m_state == FriendlierState.PositionScreenOpen || m_state == FriendlierState.PositionScreenNew || m_state == FriendlierState.PositionScreenCopy)
+                {
+                    drawDirectoryChooser(gameTime);
+                    m_spriteBatch.End();
+                }
+                else if (m_state == FriendlierState.Help)
+                {
+                    m_spriteBatch.End();
+
+                    drawTextScreen(gameTime, m_userHelp);
+                }
+                else if (m_state == FriendlierState.Information)
+                {
+                    m_spriteBatch.End();
+
+                    drawInformationScreen(gameTime);
+                }
+                else if (m_state == FriendlierState.Configuration)
+                {
+                    m_spriteBatch.End();
+
+                    drawConfigurationScreen(gameTime);
+                }
+                else
+                {
+
+                    // We only draw the scrollbar on the active view
+                    //
+                    drawScrollbar(m_project.getSelectedBufferView());
+
+                    m_spriteBatch.End();
+
+                    // Draw the Overlay HUD
+                    //
+                    drawOverlay(gameTime);
+
+                    // Cursor and cursor highlight - none for tailed bufferviews
+                    //
+                    if (!m_project.getSelectedBufferView().isTailing())
+                    {
+                        drawCursor(gameTime);
+                        drawHighlight(gameTime);
+                    }
+                }
             }
 
             base.Draw(gameTime);
+        }
+
+        /// <summary>
+        /// Manage project
+        /// </summary>
+        protected void drawManageProject(GameTime gameTime)
+        {
+
         }
 
         /// <summary>
@@ -3298,8 +3317,8 @@ namespace Xyglo
 
             if (m_project.getSelectedBufferView().getFileBuffer() != null && m_project.getSelectedBufferView().getFileBuffer().getLineCount() > 0)
             {
-                filePercent = (float)(m_project.getSelectedBufferView().getCursorPosition().Y + m_project.getSelectedBufferView().getBufferShowStartY()) /
-                              (float)(m_project.getSelectedBufferView().getFileBuffer().getLineCount());
+                filePercent = (float)(m_project.getSelectedBufferView().getCursorPosition().Y) /
+                              (float)(Math.Max(1, m_project.getSelectedBufferView().getFileBuffer().getLineCount() - 1));
             }
 
 
@@ -3484,7 +3503,7 @@ namespace Xyglo
             {
                 line = "Save as...";
             }
-            else if (m_state == FriendlierState.PositionScreenNew || m_state == FriendlierState.PositionScreenOpen)
+            else if (m_state == FriendlierState.PositionScreenNew || m_state == FriendlierState.PositionScreenOpen || m_state == FriendlierState.PositionScreenCopy)
             {
                 line = "Choose a position...";
             } else
@@ -3498,7 +3517,7 @@ namespace Xyglo
 
             // If we're using this method to position a new window only then don't show the directory chooser part..
             //
-            if (m_state == FriendlierState.PositionScreenNew)
+            if (m_state == FriendlierState.PositionScreenNew || m_state == FriendlierState.PositionScreenCopy)
             {
                 return;
             }
@@ -3879,8 +3898,8 @@ namespace Xyglo
         {
             m_userHelp += "User Help\n\n";
 
-            m_userHelp += "F1  - Cycle down through BufferViews\n";
-            m_userHelp += "F2  - Cycle up through BufferViews\n";
+            m_userHelp += "F1  - Cycle down through buffer views\n";
+            m_userHelp += "F2  - Cycle up through buffer views\n";
             m_userHelp += "F3  - Search again\n";
             m_userHelp += "F6  - Perform Build\n";
             m_userHelp += "F7  - Zoom Out\n";
@@ -3890,27 +3909,103 @@ namespace Xyglo
             m_userHelp += "F11 - Full Screen Mode\n";
             m_userHelp += "F12 - Windowed Mode\n";
 
-            m_userHelp += "Alt + N - New buffer view on existing file\n";
+            m_userHelp += "Alt + N - New buffer view on new buffer\n";
+            m_userHelp += "Alt + B - Copy existing buffer view on existing buffer\n";
             m_userHelp += "Alt + O - Open file\n";
             m_userHelp += "Alt + S - Save (as) file\n";
             m_userHelp += "Alt + C - Close buffer view\n";
 
-            m_userHelp += "Alt + I - Information screen\n";
+            m_userHelp += "Alt + H - Help screen\n";
             m_userHelp += "Alt + G - Settings screen\n";
             
             m_userHelp += "Alt + Z - Undo\n";
             m_userHelp += "Alt + Y - Redo\n";
             m_userHelp += "Alt + A - Select All\n";
             m_userHelp += "Alt + F - Find\n";
-            m_userHelp += "Alt + [number keys] - Jump to numbered BufferView\n";
+            m_userHelp += "Alt + [number keys] - Jump to numbered buffer view\n";
         }
 
+        
+        /// <summary>
+        /// Format a screen of information text - slightly different to a help screen as
+        /// the text can be dynamic (i.e. times)
+        /// </summary>
+        /// <param name="text"></param>
+        protected void drawInformationScreen(GameTime gameTime)
+        {
+            // Set up the string
+            //
+            string text = "";
+
+            TimeSpan nowDiff = (DateTime.Now - m_project.getCreationTime());
+
+            text += "Project name:   : " + m_project.m_projectName + "\n";
+            //text += "Project created : " + m_project.getCreationTime().ToString() + "\n";
+            text += "Project age     : " + nowDiff.Days + " days, " + nowDiff.Minutes + " minutes, " + nowDiff.Seconds + " seconds\n";
+            text += "Total files     : " + m_project.getFileBuffers().Count + "\n";
+            text += "Total lines     : " + m_project.getFilesTotalLines() + "\n";
+
+            text += "Total time active : " + m_project.m_activeTime.Days + " days, " + m_project.m_activeTime.Minutes + " minutes, " + m_project.m_activeTime.Seconds + " seconds\n";
+
+            drawTextScreen(gameTime, text);
+
+            /*
+            Vector3 fp = m_project.getSelectedBufferView().getPosition();
+
+            // Always start from 0 for offsets
+            float yPos = 0.0f;
+            float xPos = 0.0f;
+
+            // Split out the input line
+            //
+            string[] infoRows = text.Split('\n');
+
+            //  Position the information centrally
+            //
+            int lines = infoRows.Length;
+            int longestRow = 0;
+            for (int i = 0; i < lines; i++)
+            {
+                if (infoRows[i].Length > longestRow)
+                {
+                    longestRow = infoRows[i].Length;
+                }
+            }
+
+            // Limit the row length
+            //
+            if (longestRow > 80)
+            {
+                longestRow = 80;
+            }
+
+            // Modify by height of the screen to centralise
+            //
+            yPos += (m_graphics.GraphicsDevice.Viewport.Height / 2) - (m_fontManager.getLineHeight(FontManager.FontType.Overlay) * lines / 2);
+
+            // Adjust xPos
+            //
+            xPos = (m_graphics.GraphicsDevice.Viewport.Width / 2) - (longestRow * m_fontManager.getCharWidth(FontManager.FontType.Overlay) / 2);
+
+            m_overlaySpriteBatch.Begin();
+
+            // hardcode the font size to 1.0f so it looks nice
+            //
+            foreach (string line in text.Split('\n'))
+            {
+                m_overlaySpriteBatch.DrawString(m_fontManager.getOverlayFont(), line, new Vector2(xPos, yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+                yPos += m_fontManager.getLineHeight(FontManager.FontType.Overlay);
+            }
+
+            m_overlaySpriteBatch.End();
+            */
+        }
 
         /// <summary>
         /// Format a screen of information text
         /// </summary>
         /// <param name="text"></param>
-        protected void drawInformationScreen(GameTime gameTime, string text)
+        protected void drawTextScreen(GameTime gameTime, string text)
         {
             Vector3 fp = m_project.getSelectedBufferView().getPosition();
 

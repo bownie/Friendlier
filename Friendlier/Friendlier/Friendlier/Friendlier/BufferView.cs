@@ -78,37 +78,37 @@ namespace Xyglo
         /// <summary>
         /// Index of the FileBuffer associated with this BufferView so we can recontruct the link
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected int m_fileBufferIndex = 0;
 
         /// <summary>
         /// 3d position of the BufferView
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected Vector3 m_position;
 
         /// <summary>
         /// What line the buffer is showing from
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected int m_bufferShowStartY = 0;
 
         /// <summary>
         /// The BufferView remembers its own highlight positions
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected FilePosition m_highlightStart;
 
         /// <summary>
         /// Store the BufferViewPosition relative to another
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected BufferViewPosition m_bufferViewPosition;
 
         /// <summary>
         /// The BufferView remembers its own highlight positions
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected FilePosition m_highlightEnd;
 
         /// <summary>
@@ -183,31 +183,31 @@ namespace Xyglo
         /// <summary>
         /// Read only colour
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected Color m_readOnlyColour = Color.LightYellow;
 
         /// <summary>
         /// Width of a single character in the font that we're displaying in
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected float m_charWidth;
 
         /// <summary>
         /// Height of a line in the font we're displaying in
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected float m_lineHeight; // { get { return value;}  }
 
         /// <summary>
         /// Is this a non-editable BufferView?
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected bool m_readOnly = false;
 
         /// <summary>
         /// Are we tailing this File?
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected bool m_tailing = false;
 
         /////// CONSTRUCTORS /////////
@@ -302,6 +302,8 @@ namespace Xyglo
             m_bufferShowStartY = rootBV.m_bufferShowStartY;
             m_bufferShowLength = rootBV.m_bufferShowLength;
             m_bufferShowWidth = rootBV.m_bufferShowWidth;
+            m_bufferShowStartX = rootBV.m_bufferShowStartX;
+            m_bufferShowStartY = rootBV.m_bufferShowStartY;
             m_charWidth = rootBV.m_charWidth;
             m_lineHeight = rootBV.m_lineHeight;
 
@@ -310,6 +312,11 @@ namespace Xyglo
             m_bufferViewPosition.position = position;
             m_bufferViewPosition.rootBV = rootBV;
             m_readOnly = rootBV.m_readOnly;
+
+            m_highlightStart = rootBV.m_highlightStart;
+            m_highlightEnd = rootBV.m_highlightEnd;
+
+            m_cursorPosition = rootBV.m_cursorPosition;
 
             // Only calculate a position if we have the information necessary to do it
             //
@@ -420,7 +427,9 @@ namespace Xyglo
         {
             m_highlightStart = m_cursorPosition;
             m_highlightEnd = m_cursorPosition;
+#if DEBUG_HIGHLIGHT
             Logger.logMsg("BufferView::startHighlight() - starting at X = " + m_cursorPosition.X + ", Y = " + m_cursorPosition.Y);
+#endif
         }
 
         /// <summary>
@@ -430,7 +439,9 @@ namespace Xyglo
         {
             m_highlightStart = BufferView.NoHighlightPosition;
             m_highlightEnd = BufferView.NoHighlightPosition;
-            //Logger.logMsg("BufferView::noHighlight()");
+#if DEBUG_HIGHLIGHT
+            Logger.logMsg("BufferView::noHighlight()");
+#endif
         }
 
         /// <summary>
@@ -439,7 +450,9 @@ namespace Xyglo
         public void extendHighlight()
         {
             m_highlightEnd = m_cursorPosition;
+#if DEBUG_HIGHLIGHT
             Logger.logMsg("BufferView::extendHighlight() - extending at X = " + m_cursorPosition.X + ", Y = " + m_cursorPosition.Y);
+#endif
         }
 
         /// <summary>
@@ -488,7 +501,7 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Cursor coordinates in 3D
+        /// Cursor coordinates in 3D - adjust for offsetting with the buffershowStart values
         /// </summary>
         public Vector3 getCursorCoordinates()
         {
@@ -905,17 +918,35 @@ namespace Xyglo
             Vector3 startPos = new Vector3();
             Vector3 endPos = new Vector3();
 
+            // Maximum and minimum possible positions of our highlight blocks as we don't
+            // want to spill out over the end of the line.
+            //
+            float minPosX = m_position.X;
+            float maxPosX = m_position.X + m_bufferShowWidth * m_charWidth;
+
             if (m_highlightStart.Y == m_highlightEnd.Y)
             {
                 // Set start position
                 //
-                startPos.X = m_position.X + m_highlightStart.X * m_charWidth;
+                startPos.X = m_position.X + (m_highlightStart.X - m_bufferShowStartX) * m_charWidth;
                 startPos.Y = m_position.Y + (m_highlightStart.Y - m_bufferShowStartY) * m_lineHeight;
 
                 // Set end position
                 //
-                endPos.X = m_position.X + m_highlightEnd.X * m_charWidth;
+                endPos.X = m_position.X + (m_highlightEnd.X - m_bufferShowStartX) * m_charWidth;
                 endPos.Y = m_position.Y + (m_highlightEnd.Y + 1 - m_bufferShowStartY) * m_lineHeight;
+
+                // Adjust ends
+                //
+                if (startPos.X < minPosX)
+                {
+                    startPos.X = minPosX;
+                }
+                
+                if (endPos.X > maxPosX)
+                {
+                    endPos.X = maxPosX;
+                }
 
                 bb.Add(new BoundingBox(startPos, endPos));
                 return bb;
@@ -976,6 +1007,18 @@ namespace Xyglo
                     if (startPos.X == endPos.X && endPos.X == m_position.X)
                     {
                         startPos.X += m_charWidth / 2;
+                    }
+
+                    // Adjust ends
+                    //
+                    if (startPos.X < minPosX)
+                    {
+                        startPos.X = minPosX;
+                    }
+
+                    if (endPos.X > maxPosX)
+                    {
+                        endPos.X = maxPosX;
                     }
 
                     bb.Add(new BoundingBox(startPos, endPos));
@@ -1049,6 +1092,18 @@ namespace Xyglo
                         startPos.X += m_charWidth / 2;
                     }
 
+                    // Adjust ends
+                    //
+                    if (startPos.X < minPosX)
+                    {
+                        startPos.X = minPosX;
+                    }
+
+                    if (endPos.X > maxPosX)
+                    {
+                        endPos.X = maxPosX;
+                    }
+
                     bb.Add(new BoundingBox(startPos, endPos));
                 }
             }
@@ -1089,6 +1144,7 @@ namespace Xyglo
                     m_bufferShowStartY--;
                 }
             }
+            keepVisible();
         }
 
         /// <summary>
@@ -1183,6 +1239,8 @@ namespace Xyglo
         /// </summary>
         protected void keepVisible()
         {
+            // Ensure Y is visible
+            //
             if (m_cursorPosition.Y < m_bufferShowStartY)
             {
                 m_bufferShowStartY = m_cursorPosition.Y;
@@ -1190,6 +1248,17 @@ namespace Xyglo
             else if (m_cursorPosition.Y > (m_bufferShowStartY + m_bufferShowLength - 1))
             {
                 m_bufferShowStartY = m_cursorPosition.Y - (m_bufferShowLength - 1);
+            }
+
+            // Ensure X is visible
+            //
+            if (m_cursorPosition.X < m_bufferShowStartX)
+            {
+                m_bufferShowStartX = m_cursorPosition.X;
+            }
+            else if (m_cursorPosition.X > (m_bufferShowStartX + m_bufferShowWidth - 1))
+            {
+                m_bufferShowStartX = m_cursorPosition.X - (m_bufferShowWidth - 1);
             }
         }
 
@@ -1560,25 +1629,67 @@ namespace Xyglo
         /// <param name="steps"></param>
         public void moveCursorRight(int steps = 1)
         {
+            // Test for empty file firstly
+            //
+            if (m_fileBuffer == null || m_fileBuffer.getLineCount() == 0)
+            {
+                return;
+            }
+
             string line = m_fileBuffer.getLine(m_cursorPosition.Y);
 
             if (m_cursorPosition.X + steps < line.Length)
             {
+                m_cursorPosition.X += steps;
+
                 // Incremement the buffer show start position if we're going over the visible end
                 // of the line.
                 //
-                if (m_cursorPosition.X == m_bufferShowWidth)
+                if (m_cursorPosition.X - m_bufferShowStartX >= m_bufferShowWidth)
                 {
-                    m_bufferShowStartX++;
-                }
-                else  // we're within the normal boundaries still so increment the cursor position
-                {
-                    m_cursorPosition.X++;
+                    m_bufferShowStartX += steps;
                 }
             }
             else
             {
                 moveCursorDown(true); // use the built-in method for this
+            }
+        }
+
+        /// <summary>
+        /// Move the cursor left a number of steps
+        /// </summary>
+        /// <param name="steps"></param>
+        public void moveCursorLeft(int steps = 1)
+        {
+            // Test for empty file firstly
+            //
+            if (m_fileBuffer == null || m_fileBuffer.getLineCount() == 0)
+            {
+                return;
+            }
+
+            string line = m_fileBuffer.getLine(m_cursorPosition.Y);
+
+            if (m_cursorPosition.X > 0)
+            {
+                m_cursorPosition.X -= steps;
+            }
+            else
+            {
+                if (m_bufferShowStartX > 0) // reduce the buffer start X
+                {
+                    m_bufferShowStartX -= steps;
+                }
+                else
+                {
+                    if (m_cursorPosition.Y > 0) // reduce the line we're on if we can
+                    {
+                        moveCursorUp(true);
+                        //m_cursorPosition.Y--;
+                        //m_cursorPosition.X = m_fileBuffer.getLine(m_cursorPosition.Y).Length;
+                    }
+                }
             }
         }
     }

@@ -1,9 +1,11 @@
-- Long lines handling [IN PROGRESS]
-- cursor end of line X with highlight bug
+- undo remembers last highlight [PENDING]
+- overlapping BufferViews
+- file management
+- copy section into new BufferView [ALMOST DONE]
+- moving to bufferviews with the alt + direction buttons [DONE - but bug with positions when mode switches due to font sizing]
 - some way of seeing/modifying/deleting files in project
 - some way of seeing/modifying/deleting bufferviews (and their indexes) in project
 - Saving/opening/browsing - ensure status is correct
-- project information screen (files, buffers, lines etc)
 - work update status (sessions - time developing etc)
 - Temporary file save messages to move somewhere
 - Logging (timestamps and makes sense)
@@ -23,7 +25,9 @@ TO TEST/BUGS
 
 DONE
 ----
-- moving to bufferviews with the alt + direction buttons [DONE]
+- project information screen (files, buffers, lines etc) [DONE first version]
+- cursor end of line X with highlight bug [DONE]
+- Long lines handling [DONE]
 - search [DONE]
 - select all [DONE]
 - file saving/saving all [DONE]

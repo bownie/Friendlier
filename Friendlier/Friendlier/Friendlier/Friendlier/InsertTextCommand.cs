@@ -277,19 +277,19 @@ namespace Xyglo
         /// <summary>
         /// We use this only for undo as the original position will only be one line
         /// </summary>
-        [DataMember()]
+        [DataMember]
         string m_originalText;
 
         /// <summary>
         /// Do we need a new line?
         /// </summary>
-        [DataMember()]
+        [DataMember]
         bool m_newLine;
 
         /// <summary>
         /// Snippet for our text - the line can expand into a multi-line snipper
         /// </summary>
-        [DataMember()]
+        [DataMember]
         TextSnippet m_snippet = SnippetFactory.getSnippet();
 
         /// <summary>

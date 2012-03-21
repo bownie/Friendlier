@@ -31,25 +31,25 @@ namespace Xyglo
         /// <summary>
         /// Our list of commands for undo/redo - don't persist
         /// </summary>
-        //[DataMember()]
+        //[DataMember]
         List<Command> m_commands = new List<Command>();
 
         /// <summary>
         /// Position in the undo/redo stack - don't persist
         /// </summary>
-        //[DataMember()]
+        //[DataMember]
         protected int m_undoPosition = 0;
 
         /// <summary>
         /// Undo watermark is reset when we save a file - don't persist
         /// </summary>
-        //[DataMember()]
+        //[DataMember]
         int m_undoWatermark = 0;
 
         /// <summary>
         /// Number of lines we keep in memory
         /// </summary>
-        [DataMember()]
+        [DataMember]
         int m_lineLimit = 100000;
 
         /// <summary>

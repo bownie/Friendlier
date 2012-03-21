@@ -32,18 +32,36 @@ namespace Xyglo
         /// <summary>
         /// Name of this command
         /// </summary>
-        [DataMember()]
+        [DataMember]
         protected string m_name;
 
         // character we use to split lines
         //
         protected char m_splitCharacter = '\n';
 
-        [DataMember()]
+        /// <summary>
+        /// A start position for something
+        /// </summary>
+        [DataMember]
         protected FilePosition m_startPos;
 
-        [DataMember()]
+        /// <summary>
+        /// An end position for something
+        /// </summary>
+        [DataMember]
         protected FilePosition m_endPos;
+
+        /// <summary>
+        /// Store the start of the highlight for undo purposes
+        /// </summary>
+        [DataMember]
+        protected FilePosition m_highlightStart;
+
+        /// <summary>
+        /// Store the end of the highlight
+        /// </summary>
+        [DataMember]
+        protected FilePosition m_highlightEnd;
 
         /// <summary>
         /// Define an abstract command for (re)do that returns a modified cursor position

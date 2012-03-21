@@ -296,13 +296,13 @@ namespace Xyglo
         /// <summary>
         /// We have a Save Snippet for the lines we're deleting
         /// </summary>
-        [DataMember()]
+        [DataMember]
         TextSnippet m_saveSnippet = SnippetFactory.getSnippet();
 
         /// <summary>
         /// There is a Write Snippet for the lines we want to insert
         /// </summary>
-        [DataMember()]
+        [DataMember]
         TextSnippet m_writeSnippet = SnippetFactory.getSnippet();
 
         /// <summary>
@@ -313,13 +313,13 @@ namespace Xyglo
         /// <summary>
         /// Text we're inserting with this command - also used for undo purposes for new lines
         /// </summary>
-        [DataMember()]
+        [DataMember]
         string m_text;
 
         /// <summary>
         /// Do we need a new line?
         /// </summary>
-        [DataMember()]
+        [DataMember]
         bool m_newLine = false;
     }
 }
