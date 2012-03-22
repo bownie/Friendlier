@@ -352,6 +352,12 @@ namespace Xyglo
             }
         }
 
+        /// <summary>
+        /// Delete a range of lines in the FileBuffer
+        /// </summary>
+        /// <param name="startLine"></param>
+        /// <param name="number"></param>
+        /// <returns></returns>
         public bool deleteLines(int startLine, int number)
         {
             if (startLine > m_lines.Count || startLine + number > m_lines.Count)
@@ -372,6 +378,10 @@ namespace Xyglo
             return true;
         }
 
+        /// <summary>
+        /// Get the line count
+        /// </summary>
+        /// <returns></returns>
         public int getLineCount()
         {
             int lC = 0;

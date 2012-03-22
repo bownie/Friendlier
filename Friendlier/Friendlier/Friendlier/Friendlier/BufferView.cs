@@ -1619,6 +1619,10 @@ namespace Xyglo
             m_highlightStart.X = 0;
             m_highlightStart.Y = 0;
             m_highlightEnd = m_highlightStart;
+
+            // Ensure that the cursor is visible in the BufferView
+            //
+            keepVisible();
         }
 
 

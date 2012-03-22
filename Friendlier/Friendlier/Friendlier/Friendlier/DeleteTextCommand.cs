@@ -36,7 +36,6 @@ namespace Xyglo
 
                 // Add this line to snippet as we're only editing a single line
                 //
-                //m_snippet.m_lines.Add(line);
                 m_snippet.setSnippetSingle(line);
 
                 if (m_startPos.X == m_endPos.X) // deletion at cursor
@@ -89,6 +88,7 @@ namespace Xyglo
                 //
                 //
                 m_snippet.m_lines.Clear();
+                m_snippet.setLinesDeleted(0);
 
                 for (int i = m_startPos.Y; i < m_endPos.Y; i++)
                 {

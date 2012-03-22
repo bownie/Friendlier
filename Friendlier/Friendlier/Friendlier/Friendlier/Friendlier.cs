@@ -366,6 +366,13 @@ namespace Xyglo
         /// </summary>
         protected string m_searchText = "";
 
+        /// <summary>
+        /// When this is instantiated it makes a language specific syntax handler to
+        /// provide syntax highlighting, suggestions for autocompletes and also indent
+        /// levels.
+        /// </summary>
+        protected SyntaxManager m_syntaxManager;
+
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
         /// <summary>
@@ -383,14 +390,6 @@ namespace Xyglo
             // Set the editing state
             //
             m_state = FriendlierState.TextEditing;
-
-            // Initialise the m_cpuCounter
-            //
-            //m_cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-
-            // And likewise the Memory counter
-            //
-            //m_memCounter = new PerformanceCounter("Memory", "Available MBytes");
 
             // Set physical memory
             //
@@ -423,14 +422,6 @@ namespace Xyglo
             // Set the editing state
             //
             m_state = FriendlierState.TextEditing;
-
-            // Initialise the m_cpuCounter
-            //
-            //m_cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-
-            // And likewise the Memory counter
-            //
-            //m_memCounter = new PerformanceCounter("Memory", "Available MBytes");
 
             // Set physical memory
             //
@@ -539,8 +530,12 @@ namespace Xyglo
         /// <param name="project"></param>
         public void initialiseProject()
         {
+            // Build the syntax manager - for the moment we force it to Cpp
+            //
+            m_syntaxManager = new CppSyntaxManager(m_project);
+
             // Initialise the configuration item if it's null - this is in case we've persisted
-            // a version of the project without this item.
+            // a version of the project without a configuration item it will create it here.
             //
             m_project.buildInitialConfiguration();
 
@@ -906,10 +901,6 @@ namespace Xyglo
             Vector3 eyePos = m_project.getSelectedBufferView().getEyePosition(m_zoomLevel);
 
             flyToPosition(eyePos);
-
-            // Set the state of the application to TextEditing
-            //
-//            m_state = FriendlierState.TextEditing;
 
 #if ACTIVE_BUFFER_DEBUG
             Logger.logMsg("Friendlier:setActiveBuffer() - buffer position = " + m_activeBufferView.getPosition());
@@ -3721,14 +3712,21 @@ namespace Xyglo
                 }
             }
 
-            for (int i = 0; i < view.getBufferShowLength(); i++)
+            // i is a line counter for reading from the file - because we can wrap rows we
+            // need to keep it separate from yPosition
+            // 
+            int i = 0;
+
+            // Draw the lines in the visible buffer
+            //
+            //for (int i = 0; i < view.getBufferShowLength(); i++)
+            while (yPosition < m_fontManager.getLineHeight() * view.getBufferShowLength())
             {
                 line = "~";
 
                 if (view.getFileBuffer() != null)
                 {
-                    if (i + bufPos < view.getFileBuffer().getLineCount() &&
-                        view.getFileBuffer().getLineCount() != 0)
+                    if (i + bufPos < view.getFileBuffer().getLineCount() && view.getFileBuffer().getLineCount() != 0)
                     {
                         // Fetch the line
                         //
@@ -3739,24 +3737,61 @@ namespace Xyglo
                         //
                         if (fetchLine.Length > view.getBufferShowStartX())
                         {
-                            line = fetchLine.Substring(view.getBufferShowStartX(), Math.Min(fetchLine.Length - view.getBufferShowStartX(), view.getBufferShowWidth()));
-
-                            // Append this indicator on any longer lines
-                            //
-                            if (fetchLine.Length - view.getBufferShowStartX() > view.getBufferShowWidth())
+                            if (view.isReadOnly()) // wrap long lines
                             {
-                                line += "  [>]";
+                                if (fetchLine.Length < view.getBufferShowWidth())
+                                {
+                                    m_spriteBatch.DrawString(m_fontManager.getFont(), fetchLine, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), bufferColour, 0, lineOrigin, m_fontManager.getTextScale() * 1.0f, 0, 0);
+                                }
+                                else
+                                {
+                                    string splitLine = fetchLine;
+
+                                    while (splitLine.Length >= view.getBufferShowWidth())
+                                    {
+                                        // Split on window width and draw
+                                        //
+                                        line = splitLine.Substring(0, Math.Min(view.getBufferShowWidth(), splitLine.Length));
+                                        m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), bufferColour, 0, lineOrigin, m_fontManager.getTextScale() * 1.0f, 0, 0);
+
+                                        // If the line is still wrapping then cut off the piece we've just printed and go around again
+                                        //
+                                        if (splitLine.Length >= view.getBufferShowWidth())
+                                        {
+                                            // Remove the part of the line written and increment
+                                            //
+                                            splitLine = splitLine.Substring(view.getBufferShowWidth(), splitLine.Length - view.getBufferShowWidth());
+                                            yPosition += m_fontManager.getLineHeight();
+
+                                            // Reset line here as we'll quit out at the next loop and be written below
+                                            line = splitLine;
+                                        }
+                                    }
+                                }
+                            }
+                            else // only display a subset of the line if it's over the visible width
+                            {
+                                line = fetchLine.Substring(view.getBufferShowStartX(), Math.Min(fetchLine.Length - view.getBufferShowStartX(), view.getBufferShowWidth()));
+
+                                // Wrap if read only
+                                //
+                                if (fetchLine.Length - view.getBufferShowStartX() > view.getBufferShowWidth())
+                                {
+                                    line += "  [>]";
+                                }
                             }
                         }
                         else
                         {
                             line = "";
                         }
-                    }
-                }
 
-                m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), bufferColour, 0, lineOrigin, m_fontManager.getTextScale() * 1.0f, 0, 0);
+                        m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), bufferColour, 0, lineOrigin, m_fontManager.getTextScale() * 1.0f, 0, 0);
+                    }
+                    
+                }
                 yPosition += m_fontManager.getLineHeight();
+                i++;
             }
 
             // Draw overlaid ID on this window if we're far enough away to use it
@@ -3937,17 +3972,21 @@ namespace Xyglo
             //
             string text = "";
 
+            text += "Project name:      : " + m_project.m_projectName + "\n";
+            text += "Project created    : " + m_project.getCreationTime().ToString() + "\n";
+            text += "Total files        : " + m_project.getFileBuffers().Count + "\n";
+            text += "Total lines        : " + m_project.getFilesTotalLines() + "\n";
+
+            // Some timings
+            //
             TimeSpan nowDiff = (DateTime.Now - m_project.getCreationTime());
-
-            text += "Project name:   : " + m_project.m_projectName + "\n";
-            //text += "Project created : " + m_project.getCreationTime().ToString() + "\n";
-            text += "Project age     : " + nowDiff.Days + " days, " + nowDiff.Minutes + " minutes, " + nowDiff.Seconds + " seconds\n";
-            text += "Total files     : " + m_project.getFileBuffers().Count + "\n";
-            text += "Total lines     : " + m_project.getFilesTotalLines() + "\n";
-
-            text += "Total time active : " + m_project.m_activeTime.Days + " days, " + m_project.m_activeTime.Minutes + " minutes, " + m_project.m_activeTime.Seconds + " seconds\n";
-
-            drawTextScreen(gameTime, text);
+            TimeSpan activeTime = m_project.m_activeTime + (DateTime.Now - m_project.m_lastAccessTime);
+            text += "Project age        : " + nowDiff.Days + " days, " + nowDiff.Hours + " hours, " + nowDiff.Minutes + " minutes\n"; //, " + nowDiff.Seconds + " seconds\n";
+            text += "Total editing time : " + activeTime.Days + " days, " + activeTime.Hours + " hours, " + activeTime.Minutes + " minutes, " + activeTime.Seconds + " seconds\n";
+            
+            // Draw screen of a fixed width
+            //
+            drawTextScreen(gameTime, text, 60);
 
             /*
             Vector3 fp = m_project.getSelectedBufferView().getPosition();
@@ -4005,7 +4044,7 @@ namespace Xyglo
         /// Format a screen of information text
         /// </summary>
         /// <param name="text"></param>
-        protected void drawTextScreen(GameTime gameTime, string text)
+        protected void drawTextScreen(GameTime gameTime, string text, int fixedWidth = 0)
         {
             Vector3 fp = m_project.getSelectedBufferView().getPosition();
 
@@ -4029,11 +4068,18 @@ namespace Xyglo
                 }
             }
 
-            // Limit the row length
+            // Limit the row length when centring
             //
-            if (longestRow > 80)
+            if (fixedWidth == 0)
             {
-                longestRow = 80;
+                if (longestRow > m_project.getSelectedBufferView().getBufferShowWidth())
+                {
+                    longestRow = m_project.getSelectedBufferView().getBufferShowWidth();
+                }
+            }
+            else
+            {
+                longestRow = fixedWidth;
             }
 
             // Modify by height of the screen to centralise
@@ -4176,6 +4222,8 @@ namespace Xyglo
                         Process process = new Process();
                         process.StartInfo = info;
                         process.OutputDataReceived += new DataReceivedEventHandler(logBuildStdOut);
+                        process.ErrorDataReceived += new DataReceivedEventHandler(logBuildStdErr);
+
                         process.EnableRaisingEvents = true;
 
                         Logger.logMsg("Friendlier::doBuildCommand() - working directory = " + info.WorkingDirectory);
@@ -4186,13 +4234,23 @@ namespace Xyglo
                         //
                         process.Start();
                         process.BeginOutputReadLine();
+                        process.BeginErrorReadLine();
 
                         //Process.Start(m_project.getBuildCommand());
                         setTemporaryMessage("Starting build..", gameTime, 4);
 
                         //string stdout = proc.StandardOutput.ReadToEnd();
                         //string stderr = proc.StandardError.ReadToEnd();
-                        //proc.WaitForExit();//
+                        process.WaitForExit();//
+
+                        if (process.ExitCode != 0)
+                        {
+                            Logger.logMsg("BUILD DIDN'T WORK");
+                        }
+
+                        // Need to get some error data
+                        //
+                        //process.er
                     }
                 }
             }
@@ -4206,6 +4264,11 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Lock the log file for writing
+        /// </summary>
+        protected Mutex m_logFileMutex = new Mutex();
+
+        /// <summary>
         /// Write the stdout from the build process to a log file
         /// </summary>
         /// <param name="sender"></param>
@@ -4215,11 +4278,36 @@ namespace Xyglo
             string logBody = (string)e.Data;
             string time = string.Format("{0:yyyyMMdd HH:mm:ss}", DateTime.Now);
 
+            m_logFileMutex.WaitOne();
+
             System.IO.TextWriter logFile = new StreamWriter(m_project.getConfigurationValue("BUILDLOG"), true);
-            logFile.WriteLine(time + " - " + logBody);
+            logFile.WriteLine("INF:" + time + ":" + logBody);
             logFile.Flush();
             logFile.Close();
             logFile = null;
+
+            m_logFileMutex.ReleaseMutex();
+        }
+
+        /// <summary>
+        /// Write stderr
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        protected void logBuildStdErr(object sender, DataReceivedEventArgs e)
+        {
+            string logBody = (string)e.Data;
+            string time = string.Format("{0:yyyyMMdd HH:mm:ss}", DateTime.Now);
+
+            m_logFileMutex.WaitOne();
+
+            System.IO.TextWriter logFile = new StreamWriter(m_project.getConfigurationValue("BUILDLOG"), true);
+            logFile.WriteLine("ERR:" + time + ":" + logBody);
+            logFile.Flush();
+            logFile.Close();
+            logFile = null;
+
+            m_logFileMutex.ReleaseMutex();
         }
 
     }

@@ -123,6 +123,7 @@
   <ItemGroup>
     <Compile Include="BufferView.cs" />
     <Compile Include="Command.cs" />
+    <Compile Include="CppSyntaxManager.cs" />
     <Compile Include="DeleteTextCommand.cs" />
     <Compile Include="FileBuffer.cs" />
     <Compile Include="FilePosition.cs" />
@@ -144,6 +145,7 @@
     <Compile Include="ReplaceTextCommand.cs" />
     <Compile Include="Shapes.cs" />
     <Compile Include="SnippetFactory.cs" />
+    <Compile Include="SyntaxManager.cs" />
     <Compile Include="TextSnippet.cs" />
     <Compile Include="TreeBuilder.cs" />
     <Compile Include="Undoable.cs" />

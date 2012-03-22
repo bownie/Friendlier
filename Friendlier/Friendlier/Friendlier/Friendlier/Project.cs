@@ -86,13 +86,19 @@ namespace Xyglo
         protected DateTime m_creationTime = DateTime.Now;
 
         /// <summary>
-        /// When this project is reconstructed this value with be updated on default construction
+        /// When this project is reconstructed this value will be updated
         /// </summary>
         [DataMember]
-        protected DateTime m_lastAccessTime;
+        public DateTime m_lastAccessTime;
 
         /// <summary>
-        /// How long has this project been active for
+        /// Last time this project was persisted
+        /// </summary>
+        [DataMember]
+        protected DateTime m_lastWriteTime;
+
+        /// <summary>
+        /// How long has this project been active for (total in-app time)
         /// </summary>
         [DataMember]
         public TimeSpan m_activeTime
@@ -537,8 +543,11 @@ namespace Xyglo
         public void dataContractSerialise()
         {
             // Before serialisation we store how long we've been active for
+            // and reset the last access time
             //
-            m_activeTime += DateTime.Now - m_lastAccessTime;
+            DateTime snapshot = DateTime.Now;
+            m_activeTime += snapshot - m_lastAccessTime;
+            m_lastWriteTime = snapshot;
 
             FileStream writer = new FileStream(m_projectFile, FileMode.Create);
 
@@ -568,6 +577,10 @@ namespace Xyglo
             {
                 fb.loadFile();
             }
+
+            // Also reset our access timer
+            //
+            m_lastAccessTime = DateTime.Now;
         }
 
         /// <summary>
@@ -604,6 +617,19 @@ namespace Xyglo
         {
             string dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             dir = System.IO.Path.Combine(dir, @"Xyglo\Friendlier\");
+            if (!Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+            return dir;
+        }
+
+        /// <summary>
+        /// Return the log path
+        /// </summary>
+        /// <returns></returns>
+        static public string getLogPath()
+        {
+            string dir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            dir = System.IO.Path.Combine(dir, @"Xyglo\Friendlier\Log\");
             if (!Directory.Exists(dir))
                 Directory.CreateDirectory(dir);
             return dir;
@@ -702,7 +728,8 @@ namespace Xyglo
             {
                 foreach(BufferView bv in m_bufferViews)
                 {
-                    if (bv.getFileBuffer() == fb)
+                    FileBuffer bvFB = bv.getFileBuffer();
+                    if (bvFB.getFilepath() == fb.getFilepath())
                     {
                         return bv;
                     }

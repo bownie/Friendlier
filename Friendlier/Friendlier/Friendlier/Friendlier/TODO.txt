@@ -1,3 +1,5 @@
+- build error handling
+- change buffer show length interactively
 - undo remembers last highlight [PENDING]
 - overlapping BufferViews
 - file management
@@ -6,10 +8,13 @@
 - some way of seeing/modifying/deleting files in project
 - some way of seeing/modifying/deleting bufferviews (and their indexes) in project
 - Saving/opening/browsing - ensure status is correct
-- work update status (sessions - time developing etc)
 - Temporary file save messages to move somewhere
-- Logging (timestamps and makes sense)
+- Logging (timestamps and makes sense) 
 
+NOTES
+-----
+- Friendlier should encourage you to develop in it and reward you for doing so
+- badges and unlocks can occur
 
 OTHER
 -----
@@ -19,6 +24,7 @@ OTHER
 
 TO TEST/BUGS
 ------------
+- work update status (sessions - time developing etc) [DONE]
 - auto indent [DONE TO SOME EXTENT]
 - Undo/redo testing and fixing [DONE for INSERT]
 - Pasting multiple lines for Replace [HALF COMPLETE]
