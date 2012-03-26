@@ -175,6 +175,11 @@ namespace Xyglo
         string m_temporaryMessage = "";
 
         /// <summary>
+        /// Start time for the temporary message
+        /// </summary>
+        double m_temporaryMessageStartTime;
+
+        /// <summary>
         /// End time for the temporary message
         /// </summary>
         double m_temporaryMessageEndTime;
@@ -2743,11 +2748,11 @@ namespace Xyglo
                 seconds = 604800; // a week should be long enough to signal infinity
             }
 
-            // Add on the current gameTime position
+            // Store the start and end time for this message - start time is used for
+            // scrolling.
             //
-            seconds += gameTime.TotalGameTime.TotalSeconds;
-
-            m_temporaryMessageEndTime = seconds;
+            m_temporaryMessageStartTime = gameTime.TotalGameTime.TotalSeconds;
+            m_temporaryMessageEndTime = m_temporaryMessageStartTime + seconds;
         }
 
         /// <summary>
@@ -3265,7 +3270,16 @@ namespace Xyglo
                 {
                     // Add any temporary message on to the end of the message
                     //
-                    fileName += " " + m_temporaryMessage;
+
+                    // If the temporary message is going to be too long for the space we have then
+                    // we need to scroll it in that space.
+                    //
+
+                    //if (m_temporaryMessage.Length > 10) // hard code length for the moment
+                    //{
+                        fileName += " " + m_temporaryMessage;
+                    //}
+                    
                 }
             }
 
@@ -3712,6 +3726,10 @@ namespace Xyglo
                 }
             }
 
+            // Pre-render any wrapped code so we know how many lines we need to show.
+            //
+
+#if WRAP_ATTEMPT
             // i is a line counter for reading from the file - because we can wrap rows we
             // need to keep it separate from yPosition
             // 
@@ -3731,6 +3749,8 @@ namespace Xyglo
                         // Fetch the line
                         //
                         fetchLine = view.getFileBuffer().getLine(i + bufPos);
+
+                        //Logger.logMsg("FETCHLINE = " + fetchLine);
 
                         // Now ensure that we're only seeing the segment of the line that the cursor is in
                         // as it could be beyond the length of the window.
@@ -3790,8 +3810,60 @@ namespace Xyglo
                     }
                     
                 }
+
                 yPosition += m_fontManager.getLineHeight();
                 i++;
+            }
+#endif
+
+            if (view.isTailing() && view.isReadOnly())
+            {
+                List<string> lines = view.getWrappedEndofBuffer();
+
+                for (int i = 0; i < lines.Count; i++)
+                {
+                    m_spriteBatch.DrawString(m_fontManager.getFont(), lines[i], new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), bufferColour, 0, lineOrigin, m_fontManager.getTextScale(), 0, 0);
+                    yPosition += m_fontManager.getLineHeight();
+                }
+            }
+            else
+            {
+                for (int i = 0; i < view.getBufferShowLength(); i++)
+                {
+                    line = "~";
+
+                    if (i + bufPos < view.getFileBuffer().getLineCount() && view.getFileBuffer().getLineCount() != 0)
+                    {
+                        // Fetch the line
+                        //
+                        fetchLine = view.getFileBuffer().getLine(i + bufPos);
+
+                        if (fetchLine.Length - view.getBufferShowStartX() > view.getBufferShowWidth())
+                        {
+                            // Get a valid section of it
+                            //
+                            line = fetchLine.Substring(view.getBufferShowStartX(), Math.Min(fetchLine.Length - view.getBufferShowStartX(), view.getBufferShowWidth()));
+
+                            if (view.getBufferShowStartX() + view.getBufferShowWidth() < fetchLine.Length)
+                            {
+                                line += " [>]";
+                            }
+                        }
+                        else
+                        {
+                            if (view.getBufferShowStartX() < fetchLine.Length)
+                            {
+                                line = fetchLine.Substring(view.getBufferShowStartX(), fetchLine.Length - view.getBufferShowStartX());
+                            }
+                            else
+                            {
+                                line = "";
+                            }
+                        }
+                    }
+                    m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), bufferColour, 0, lineOrigin, m_fontManager.getTextScale(), 0, 0);
+                    yPosition += m_fontManager.getLineHeight();
+                }
             }
 
             // Draw overlaid ID on this window if we're far enough away to use it
@@ -4278,6 +4350,8 @@ namespace Xyglo
             string logBody = (string)e.Data;
             string time = string.Format("{0:yyyyMMdd HH:mm:ss}", DateTime.Now);
 
+            // Lock log file for writing
+            //
             m_logFileMutex.WaitOne();
 
             System.IO.TextWriter logFile = new StreamWriter(m_project.getConfigurationValue("BUILDLOG"), true);
@@ -4286,6 +4360,8 @@ namespace Xyglo
             logFile.Close();
             logFile = null;
 
+            // Unlock
+            //
             m_logFileMutex.ReleaseMutex();
         }
 
@@ -4299,6 +4375,8 @@ namespace Xyglo
             string logBody = (string)e.Data;
             string time = string.Format("{0:yyyyMMdd HH:mm:ss}", DateTime.Now);
 
+            // Lock log file for writing
+            //
             m_logFileMutex.WaitOne();
 
             System.IO.TextWriter logFile = new StreamWriter(m_project.getConfigurationValue("BUILDLOG"), true);
@@ -4307,6 +4385,8 @@ namespace Xyglo
             logFile.Close();
             logFile = null;
 
+            // Unlock
+            //
             m_logFileMutex.ReleaseMutex();
         }
 

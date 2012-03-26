@@ -1696,5 +1696,62 @@ namespace Xyglo
                 }
             }
         }
+
+        /// <summary>
+        /// When we're autowrapping a BufferView we'll need to work out in advance how many rows
+        /// we need to use to return a given position.  We do this for the end of the file by working
+        /// backwards from the last rows upwards
+        /// </summary>
+        /// <returns></returns>
+        public List<string> getWrappedEndofBuffer()
+        {
+            // Our return list
+            //
+            List<string> rS = new List<string>();
+
+            // We need a file buffer for this
+            //
+            if (m_fileBuffer == null)
+            {
+                return rS;
+            }
+
+            // We keep on going until we've filled the buffer or we're at the first line
+            //
+
+            int lineNumber = m_fileBuffer.getLineCount() - 1;
+            while (rS.Count < m_bufferShowLength && lineNumber >= 0)
+            {
+                string fetchLine = m_fileBuffer.getLine(lineNumber);
+
+                if (fetchLine.Length < m_bufferShowWidth)
+                {
+                    rS.Add(fetchLine);
+                }
+                else
+                {
+                    string splitLine = fetchLine;
+                    string addLine;
+
+                    while (splitLine.Length >= m_bufferShowWidth)
+                    {
+                        addLine = splitLine.Substring(0, Math.Min(m_bufferShowWidth, splitLine.Length));
+                        rS.Add(addLine);
+
+                        // Reset split line and decrement line number
+                        //
+                        splitLine = splitLine.Substring(m_bufferShowWidth, splitLine.Length - m_bufferShowWidth);
+                    }
+
+                    rS.Add(splitLine);
+                }
+
+                // Decrement line number
+                //
+                lineNumber--;
+            }
+
+            return rS;
+        }
     }
 }

@@ -120,6 +120,11 @@ namespace Xyglo
         /// </summary>
         protected string m_saveDirectory;
 
+        /// <summary>
+        /// Is this software licenced?
+        /// </summary>
+        protected bool m_licenced = false;
+
         ////////// CONSTRUCTORS ///////////
 
         /// <summary>
@@ -160,6 +165,23 @@ namespace Xyglo
         }
 
         ////////////// METHODS ////////////////
+
+        /// <summary>
+        /// Set the licenced status for this project
+        /// </summary>
+        /// <param name="value"></param>
+        public void setLicenced(bool value)
+        {
+            m_licenced = value;
+        }
+
+        /// <summary>
+        /// Is this licenced?
+        /// </summary>
+        public bool getLicenced()
+        {
+            return m_licenced;
+        }
 
         /// <summary>
         /// Creation time of this project

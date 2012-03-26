@@ -17,8 +17,9 @@
     <XnaProfile>HiDef</XnaProfile>
     <XnaCrossPlatformGroupID>8e10573d-40b5-4360-ab22-5406bdc08ec8</XnaCrossPlatformGroupID>
     <XnaOutputType>Game</XnaOutputType>
-    <ApplicationIcon>Game.ico</ApplicationIcon>
-    <Thumbnail>GameThumbnail.png</Thumbnail>
+    <ApplicationIcon>xyglo.ico</ApplicationIcon>
+    <Thumbnail>Xyglo.png</Thumbnail>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
     <PublishUrl>publish\</PublishUrl>
     <Install>true</Install>
     <InstallFrom>Disk</InstallFrom>
@@ -31,7 +32,6 @@
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
   </PropertyGroup>
@@ -59,6 +59,9 @@
     <UseVSHostingProcess>false</UseVSHostingProcess>
     <PlatformTarget>x86</PlatformTarget>
     <XnaCompressContent>true</XnaCompressContent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
@@ -142,6 +145,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Friendlier.cs" />
     <Compile Include="Quad.cs" />
+    <Compile Include="Registration.cs" />
     <Compile Include="ReplaceTextCommand.cs" />
     <Compile Include="Shapes.cs" />
     <Compile Include="SnippetFactory.cs" />
@@ -149,12 +153,12 @@
     <Compile Include="TextSnippet.cs" />
     <Compile Include="TreeBuilder.cs" />
     <Compile Include="Undoable.cs" />
+    <Compile Include="VersionInformation.cs" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Game.ico" />
-    <Content Include="GameThumbnail.png" />
     <Content Include="TODO.txt" />
     <Content Include="xyglo.ico" />
+    <Content Include="Xyglo.png" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FriendlierContent\FriendlierContent.contentproj">
@@ -191,9 +195,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
+    <None Include="app.manifest">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\Microsoft.Xna.GameStudio.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>
+    </PostBuildEvent>
+  </PropertyGroup>
   <!--
       To modify your build process, add your task inside one of the targets below and uncomment it. 
       Other similar extension points exist, see Microsoft.Common.targets.

@@ -1,4 +1,17 @@
-- build error handling
+OTHER
+-----
+- Packaging .NET and XNA integrate with NSIS
+- Licence file [STARTED]
+- Registry key and licence key [DONEish]
+- Icons [PROVED]
+
+
+BUG and TODO
+------------
+
+- scrolling temporary message
+- seperate ERR and LOG file streams?
+- fix error logs line wrapping
 - change buffer show length interactively
 - undo remembers last highlight [PENDING]
 - overlapping BufferViews
@@ -16,11 +29,7 @@ NOTES
 - Friendlier should encourage you to develop in it and reward you for doing so
 - badges and unlocks can occur
 
-OTHER
------
-- Packaging
-- Licensing
-- Icons etc
+
 
 TO TEST/BUGS
 ------------
@@ -31,6 +40,7 @@ TO TEST/BUGS
 
 DONE
 ----
+- build error handling [DONE]
 - project information screen (files, buffers, lines etc) [DONE first version]
 - cursor end of line X with highlight bug [DONE]
 - Long lines handling [DONE]
