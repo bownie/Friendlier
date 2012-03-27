@@ -68,7 +68,7 @@ namespace Xyglo
                         {
                             // Append next line to current
                             //
-                            m_fileBuffer.appendLine(m_startPos.Y, m_fileBuffer.getLine(m_startPos.Y + 1));
+                            m_fileBuffer.appendToLine(m_startPos.Y, m_fileBuffer.getLine(m_startPos.Y + 1));
 
                             // Remove next
                             m_fileBuffer.deleteLines(m_startPos.Y + 1, 1);
@@ -226,10 +226,10 @@ namespace Xyglo
                     ;// do something
                 }
 
-                m_fileBuffer.appendLine(m_startPos.Y, m_writeSnippet.m_lines[0]);
+                m_fileBuffer.appendToLine(m_startPos.Y, m_writeSnippet.m_lines[0]);
                 if (m_writeSnippet.m_lines.Count() == 1)
                 {
-                    m_fileBuffer.appendLine(m_startPos.Y, secondLine);
+                    m_fileBuffer.appendToLine(m_startPos.Y, secondLine);
                     fp.X += m_writeSnippet.m_lines[0].Length;
                 }
                 else
@@ -246,7 +246,7 @@ namespace Xyglo
                     fp.X = m_writeSnippet.m_lines.Last<string>().Length;
 
                     // Append the end
-                    m_fileBuffer.appendLine(m_startPos.Y + m_writeSnippet.m_lines.Count(), secondLine);
+                    m_fileBuffer.appendToLine(m_startPos.Y + m_writeSnippet.m_lines.Count(), secondLine);
                 }
             }
 

@@ -99,6 +99,11 @@ namespace Xyglo
             m_fetchWindow =  new TimeSpan(0, 0, 0, 1, 0);
         }
 
+        /// <summary>
+        /// Construct a FileBuffer
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <param name="readOnly"></param>
         public FileBuffer(string filename, bool readOnly = false)
         {
             m_filename = filename;
@@ -312,7 +317,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="line"></param>
         /// <param name="value"></param>
-        public void appendLine(int line, string value)
+        public void appendToLine(int line, string value)
         {
             if (m_readOnly)
             {
@@ -329,6 +334,16 @@ namespace Xyglo
                 m_lines[line] += value;
             }
         }
+
+        /// <summary>
+        /// Append a line to the end of the file - we can do this with readonly/tail files
+        /// </summary>
+        /// <param name="value"></param>
+        public void appendLine(string value)
+        {
+            m_lines.Add(value);
+        }
+
 
         /// <summary>
         /// Inserts a line at a given position in the list
@@ -656,6 +671,24 @@ namespace Xyglo
             //
             m_undoPosition = 0;
             m_undoWatermark = 0;
+        }
+
+        /// <summary>
+        /// Amend ReadOnly get
+        /// </summary>
+        /// <param name="state"></param>
+        public void setReadOnly(bool state)
+        {
+            m_readOnly = state;
+        }
+
+        /// <summary>
+        /// Return read only status
+        /// </summary>
+        /// <returns></returns>
+        public bool getReadOnly()
+        {
+            return m_readOnly;
         }
     }
 }

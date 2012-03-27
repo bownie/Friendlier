@@ -54,7 +54,7 @@ namespace Xyglo
                         {
                             // Append next line to current
                             //
-                            m_fileBuffer.appendLine(m_startPos.Y, m_fileBuffer.getLine(m_startPos.Y + 1));
+                            m_fileBuffer.appendToLine(m_startPos.Y, m_fileBuffer.getLine(m_startPos.Y + 1));
 
                             // Remove next
                             m_fileBuffer.deleteLines(m_startPos.Y + 1, 1);

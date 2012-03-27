@@ -185,7 +185,7 @@ namespace Xyglo
                 {
                     // Append the first line onto the current line firstly
                     //
-                    m_fileBuffer.appendLine(m_startPos.Y, m_snippet.m_lines[0]);
+                    m_fileBuffer.appendToLine(m_startPos.Y, m_snippet.m_lines[0]);
 
                     // Now insert additional lines in reverse snippet order so that they flow downwards
                     //
@@ -199,7 +199,7 @@ namespace Xyglo
                     fp.X = m_snippet.m_lines.Last<string>().Length;
 
                     // Append the end
-                    m_fileBuffer.appendLine(m_startPos.Y + m_snippet.m_lines.Count(), secondLine);
+                    m_fileBuffer.appendToLine(m_startPos.Y + m_snippet.m_lines.Count(), secondLine);
                 }
             }
 

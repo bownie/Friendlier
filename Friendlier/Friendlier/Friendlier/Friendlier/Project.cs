@@ -125,6 +125,18 @@ namespace Xyglo
         /// </summary>
         protected bool m_licenced = false;
 
+        /// <summary>
+        /// Eye position to be persistently stored
+        /// </summary>
+        [DataMember]
+        protected Vector3 m_eyeSavePosition = new Vector3();
+
+        /// <summary>
+        /// Target eye position to be persistently stored
+        /// </summary>
+        [DataMember]
+        protected Vector3 m_targetSavePosition = new Vector3();
+
         ////////// CONSTRUCTORS ///////////
 
         /// <summary>
@@ -221,7 +233,13 @@ namespace Xyglo
                 //
                 addConfigurationItem("BUILDCOMMAND", @"C:\QtSDK\mingw\bin\mingw32-make.exe -f D:\garderobe-build-desktop\Makefile");
                 addConfigurationItem("BUILDDIRECTORY", @"D:\garderobe-build-desktop");
-                addConfigurationItem("BUILDLOG", @"C:\temp\output.log");
+
+                string stdOutLog = getUserDataPath() + "stdout.log";
+                string stdErrLog = getUserDataPath() + "stderr.log";
+
+                addConfigurationItem("BUILDSTDOUTLOG", stdOutLog);
+                addConfigurationItem("BUILDSTDERRLOG", stdErrLog);
+
                 addConfigurationItem("AUTOINDENT", "TRUE");
             }
         }
@@ -813,5 +831,40 @@ namespace Xyglo
 
             return total;
         }
+
+        /// <summary>
+        /// Set the eye position prior to persistance
+        /// </summary>
+        /// <param name="eye"></param>
+        public void setEyePosition(Vector3 eye)
+        {
+            m_eyeSavePosition = eye;
+        }
+
+        /// <summary>
+        /// Return the eye position
+        /// </summary>
+        public Vector3 getEyePosition()
+        {
+            return m_eyeSavePosition;
+        }
+
+        /// <summary>
+        /// Set the target position prior to persistance
+        /// </summary>
+        /// <param name="eye"></param>
+        public void setTargetPosition(Vector3 target)
+        {
+            m_targetSavePosition = target;
+        }
+
+        /// <summary>
+        /// Return the target position
+        /// </summary>
+        public Vector3 getTargetPosition()
+        {
+            return m_targetSavePosition;
+        }
+
     }
 }

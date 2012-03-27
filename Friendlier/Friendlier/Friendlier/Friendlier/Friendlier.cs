@@ -155,9 +155,19 @@ namespace Xyglo
         ConfirmState m_confirmState = ConfirmState.None;
 
         /// <summary>
-        /// A flat texture
+        /// A flat texture we use for drawing coloured blobs like highlighting and cursors
         /// </summary>
         Texture2D m_flatTexture;
+
+        /// <summary>
+        /// A rendertarget for the text scroller
+        /// </summary>
+        RenderTarget2D m_textScroller;
+
+        /// <summary>
+        /// A texture we can render a text string to and scroll
+        /// </summary>
+        Texture2D m_textScrollTexture;
 
         /// <summary>
         /// Rotations are stored in this vector
@@ -198,16 +208,6 @@ namespace Xyglo
         /// Position in which we should open or create a new screen
         /// </summary>
         protected BufferView.BufferPosition m_newPosition;
-
-        /// <summary>
-        /// CPU performance meter
-        /// </summary>
-        //protected PerformanceCounter m_cpuCounter;
-
-        /// <summary>
-        /// RAM counter
-        /// </summary>
-        //protected PerformanceCounter m_memCounter;
 
         /// <summary>
         /// Store the last performance counter for CPU
@@ -355,7 +355,6 @@ namespace Xyglo
         /// </summary>
         protected string m_editConfigurationItemValue;
 
-
         /// <summary>
         /// Worker thread for the PerformanceCounters
         /// </summary>
@@ -377,6 +376,26 @@ namespace Xyglo
         /// levels.
         /// </summary>
         protected SyntaxManager m_syntaxManager;
+
+        /// <summary>
+        /// Lock the log file for writing
+        /// </summary>
+        protected Mutex m_logFileMutex = new Mutex();
+
+        /// <summary>
+        /// Store GameTime somewhere central
+        /// </summary>
+        protected GameTime m_gameTime;
+
+        /// <summary>
+        /// View for the Standard Output of a build command
+        /// </summary>
+        protected BufferView m_buildStdOutView;
+
+        /// <summary>
+        /// View for the Standard Error of a build command
+        /// </summary>
+        protected BufferView m_buildStdErrView;
 
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
@@ -623,10 +642,14 @@ namespace Xyglo
 
             // Ensure that we are in the correct position to view this buffer so there's no initial movement
             //
-            
+            /*
             m_eye = m_project.getSelectedBufferView().getEyePosition();
             m_target = m_project.getSelectedBufferView().getLookPosition();
             m_eye.Z = m_zoomLevel;
+             */
+            m_eye = m_project.getEyePosition();
+            m_target = m_project.getTargetPosition();
+            m_zoomLevel = m_eye.Z;
 
             // Set the active buffer view
             //
@@ -845,6 +868,10 @@ namespace Xyglo
             m_flatTexture = new Texture2D(m_graphics.GraphicsDevice, 1, 1, false, SurfaceFormat.Color);
             m_flatTexture.SetData(foregroundColors);
 
+            // Set up the text scrolling texture
+            //
+            m_textScroller = new RenderTarget2D(m_graphics.GraphicsDevice, Convert.ToInt16(m_fontManager.getCharWidth(FontManager.FontType.Overlay) * 32), Convert.ToInt16(m_fontManager.getLineHeight(FontManager.FontType.Overlay)));
+
             // Initialise the project
             //
             initialiseProject();
@@ -987,7 +1014,7 @@ namespace Xyglo
             m_state = FriendlierState.FileOpen;
             m_temporaryMessage = "";
 
-            // Set temporary bird's eye view
+            // Set temporary bird's eye view if we're in close
             //
             Vector3 newPosition = m_eye;
             newPosition.Z = 600.0f;
@@ -1165,6 +1192,11 @@ namespace Xyglo
         /// </summary>
         protected void checkExit(GameTime gameTime, bool force = false)
         {
+            // Store the eye and target positions to the project before serialising it
+            //
+            m_project.setEyePosition(m_eye);
+            m_project.setTargetPosition(m_target);
+
             // Save our project
             //
             m_project.dataContractSerialise();
@@ -1221,6 +1253,10 @@ namespace Xyglo
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            // Store gameTime
+            //
+            m_gameTime = gameTime;
+
             // Allow the game to exit
             //
             if (checkKeyState(Keys.Escape, gameTime))
@@ -2734,6 +2770,30 @@ namespace Xyglo
             return key;
 
         }
+
+        /// <summary>
+        /// Set the temporary message without a GameTime
+        /// </summary>
+        /// <param name="message"></param>
+        /// <param name="seconds"></param>
+        protected void setTemporaryMessage(string message, double seconds)
+        {
+            m_temporaryMessage = message;
+
+            if (seconds == 0)
+            {
+                seconds = 604800; // a week should be long enough to signal infinity
+            }
+
+            // Store the start and end time for this message - start time is used for
+            // scrolling.
+
+            //
+            m_temporaryMessageStartTime = m_gameTime.TotalGameTime.TotalSeconds;
+            m_temporaryMessageEndTime = m_temporaryMessageStartTime + seconds;
+        }
+
+
         /// <summary>
         /// Set a temporary message until a given end time (seconds into the future)
         /// </summary>
@@ -3061,10 +3121,15 @@ namespace Xyglo
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
+            // First off render the text scroller to a texture.  We actually render the texture
+            // somewhere further down.
+            //
+            renderTextScroller();
+
             // Set background colour
             //
             m_graphics.GraphicsDevice.Clear(Color.Black);
-
+            
             // If spinning then spin around current position based on time.
             //
             if (spinning)
@@ -3103,6 +3168,7 @@ namespace Xyglo
             //m_spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
             //m_spriteBatch.Begin(0, null, null, null, null, m_basicEffect);
             //m_spriteBatch.Begin(0, BlendState.Additive, SamplerState.LinearClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+
 
             if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
             {
@@ -3194,6 +3260,10 @@ namespace Xyglo
         /// </summary>
         protected void drawOverlay(GameTime gameTime)
         {
+            // Flag that we set during this method
+            //
+            bool drawScrollingText = false;
+
             // Set our colour according to the state of Friendlier
             //
             Color overlayColour = Color.White;
@@ -3275,11 +3345,15 @@ namespace Xyglo
                     // we need to scroll it in that space.
                     //
 
-                    //if (m_temporaryMessage.Length > 10) // hard code length for the moment
-                    //{
+                    if ((m_temporaryMessage.Length * m_fontManager.getCharWidth(FontManager.FontType.Overlay))
+                        < m_textScroller.Width) // hard code length for the moment
+                    {
                         fileName += " " + m_temporaryMessage;
-                    //}
-                    
+                    }
+                    else
+                    {
+                        drawScrollingText = true; // we render this later down this method
+                    }
                 }
             }
 
@@ -3290,7 +3364,7 @@ namespace Xyglo
             // Debug eye position
             //
             string eyePosition = "[EyePosition] X " + m_eye.X + ",Y " + m_eye.Y + ",Z " + m_eye.Z;
-            float xPos = m_graphics.GraphicsDevice.Viewport.Width - eyePosition.Length * m_fontManager.getCharWidth();
+            float xPos = m_graphics.GraphicsDevice.Viewport.Width - eyePosition.Length * m_fontManager.getCharWidth(FontManager.FontType.Overlay);
 
             string modeString = "none";
 
@@ -3313,10 +3387,10 @@ namespace Xyglo
                     break;
             }
 
-            float modeStringXPos = m_graphics.GraphicsDevice.Viewport.Width - modeString.Length * m_fontManager.getCharWidth() - (m_fontManager.getCharWidth() * 10);
+            float modeStringXPos = m_graphics.GraphicsDevice.Viewport.Width - modeString.Length * m_fontManager.getCharWidth(FontManager.FontType.Overlay) - (m_fontManager.getCharWidth(FontManager.FontType.Overlay) * 8);
 
             string positionString = m_project.getSelectedBufferView().getCursorPosition().Y + m_project.getSelectedBufferView().getBufferShowStartY() + "," + m_project.getSelectedBufferView().getCursorPosition().X;
-            float positionStringXPos = m_graphics.GraphicsDevice.Viewport.Width - positionString.Length * m_fontManager.getCharWidth() - (m_fontManager.getCharWidth() * 18);
+            float positionStringXPos = m_graphics.GraphicsDevice.Viewport.Width - positionString.Length * m_fontManager.getCharWidth(FontManager.FontType.Overlay) - (m_fontManager.getCharWidth(FontManager.FontType.Overlay) * 14);
 
             float filePercent = 0.0f;
 
@@ -3326,9 +3400,8 @@ namespace Xyglo
                               (float)(Math.Max(1, m_project.getSelectedBufferView().getFileBuffer().getLineCount() - 1));
             }
 
-
             string filePercentString = ((int)(filePercent * 100.0f)) + "%";
-            float filePercentStringXPos = m_graphics.GraphicsDevice.Viewport.Width - filePercentString.Length * m_fontManager.getCharWidth() - (m_fontManager.getCharWidth() * 5);
+            float filePercentStringXPos = m_graphics.GraphicsDevice.Viewport.Width - filePercentString.Length * m_fontManager.getCharWidth(FontManager.FontType.Overlay) - (m_fontManager.getCharWidth(FontManager.FontType.Overlay) * 3);
 
 
             // http://forums.create.msdn.com/forums/p/61995/381650.aspx
@@ -3346,6 +3419,17 @@ namespace Xyglo
             m_overlaySpriteBatch.DrawString(m_fontManager.getOverlayFont(), filePercentString, new Vector2(filePercentStringXPos, yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
             m_overlaySpriteBatch.End();
 
+            // Draw the scrolling text
+            //
+            if (m_textScrollTexture != null && drawScrollingText)
+            {
+                m_spriteBatch.Begin();
+                m_spriteBatch.Draw(m_textScrollTexture, new Rectangle((int)((fileName.Length + 1) * m_fontManager.getCharWidth(FontManager.FontType.Overlay)), (int)yPos, m_textScrollTexture.Width, m_textScrollTexture.Height), Color.White);
+                m_spriteBatch.End();
+            }
+
+            // Draw system load
+            //
             drawSystemLoad(gameTime);
 
         }
@@ -3872,11 +3956,60 @@ namespace Xyglo
             {
                 int viewId = m_project.getBufferViews().IndexOf(view);
                 string bufferId = viewId.ToString();
+
+                if (view.isTailing())
+                {
+                    bufferId += "(T)";
+                }
+                else if (view.isReadOnly())
+                {
+                    bufferId += "(RO)";
+                }
+
                 Color seeThroughColour = bufferColour;
                 seeThroughColour.A = 70;
-                m_spriteBatch.DrawString(m_fontManager.getFont(), bufferId, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y), seeThroughColour, 0, lineOrigin, m_fontManager.getTextScale() * 19.0f, 0, 0);
+                m_spriteBatch.DrawString(m_fontManager.getFont(), bufferId, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y), seeThroughColour, 0, lineOrigin, m_fontManager.getTextScale() * 16.0f, 0, 0);
             }
         }
+
+        /// <summary>
+        /// Render some scrolling text to a texture
+        /// </summary>
+        protected void renderTextScroller()
+        {
+            if (m_temporaryMessage == "")
+            {
+                return;
+            }
+
+            // Set the render target and clear the buffer
+            //
+            m_graphics.GraphicsDevice.SetRenderTarget(m_textScroller);
+            m_graphics.GraphicsDevice.Clear(Color.Black);
+
+            int xPosition = (int)((m_gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime) * - 50.0f);
+
+            // Draw to the render target
+            //
+            m_spriteBatch.Begin();
+            m_spriteBatch.DrawString(m_fontManager.getOverlayFont(), m_temporaryMessage, new Vector2(xPosition, 0), Color.Pink, 0, new Vector2(0, 0), 1.0f, 0, 0);
+
+            // If we leave a gap and there is still room for the message again then render it again!
+            //
+            int nextPosition = xPosition + ((m_temporaryMessage.Length + 10) * (int)m_fontManager.getCharWidth(FontManager.FontType.Overlay));
+            if (nextPosition < m_textScroller.Width)
+            {
+                m_spriteBatch.DrawString(m_fontManager.getOverlayFont(), m_temporaryMessage, new Vector2(nextPosition, 0), Color.Pink, 0, new Vector2(0, 0), 1.0f, 0, 0);
+            }
+            //m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(startPosition.X, startPosition.Y - m_project.getSelectedBufferView().getLineHeight() * 3), Color.White, 0, lineOrigin, m_fontManager.getTextScale() * 2.0f, 0, 0);
+            m_spriteBatch.End();
+
+            // Now reset the render target to the back buffer
+            //
+            m_graphics.GraphicsDevice.SetRenderTarget(null);
+            m_textScrollTexture = (Texture2D)m_textScroller;
+        }
+
 
         /// <summary>
         /// Draw a scroll bar for a BufferView
@@ -4228,12 +4361,25 @@ namespace Xyglo
             m_overlaySpriteBatch.End();
         }
 
+        /// <summary>
+        /// Process for running builds
+        /// </summary>
+        Process m_buildProcess = null;
 
         /// <summary>
         /// Perform an external build
         /// </summary>
         protected void doBuildCommand(GameTime gameTime)
         {
+
+            if (m_buildProcess != null)
+            {
+                Logger.logMsg("Friendlier::doBuildCommand() - build in progress");
+                setActiveBuffer(m_buildStdOutView);
+                setTemporaryMessage("Checking build status", 3);
+                return;
+            }
+
             Logger.logMsg("Friendlier::doBuildCommand() - attempting to run build command");
 
             // Check that we can find the build command
@@ -4258,45 +4404,74 @@ namespace Xyglo
                     else
                     {
                         string buildDir = m_project.getConfigurationValue("BUILDDIRECTORY");
-                        string buildLog = m_project.getConfigurationValue("BUILDLOG");
+                        string buildStdOutLog = m_project.getConfigurationValue("BUILDSTDOUTLOG");
+                        string buildStdErrLog = m_project.getConfigurationValue("BUILDSTDERRLOG");
 
+                        // Check the build directory
                         if (!Directory.Exists(buildDir))
                         {
                             setTemporaryMessage("Build directory doesn't exist : \"" + buildDir + "\"", gameTime, 2);
                             return;
                         }
 
+                        // Add a standard error view
+                        //
+                        if (!File.Exists(buildStdErrLog))
+                        {
+                            File.CreateText(buildStdErrLog);
+                        }
+
+                        m_buildStdErrView = m_project.findBufferView(buildStdErrLog);
+
+                        if (m_buildStdErrView == null)
+                        {
+                            m_buildStdErrView = addNewFileBuffer(buildStdErrLog, true, true);
+                        }
+                        m_buildStdErrView.setTailColour(Color.Orange);
+                        //m_buildStdErrView.setReadOnlyColour(Color.DarkRed);
+
+                        // If the build log doesn't exist then create it
+                        //
+                        if (!File.Exists(buildStdOutLog))
+                        {
+                            File.CreateText(buildStdOutLog);
+                        }
+
                         // Now ensure that the build log is visible on the screen somewhere
                         //
-                        BufferView bv = m_project.findBufferView(buildLog);
+                        m_buildStdOutView = m_project.findBufferView(buildStdOutLog);
 
-                        if (bv == null)
+                        if (m_buildStdOutView == null)
                         {
-                            bv = addNewFileBuffer(buildLog, true, true);
+                            m_buildStdOutView = addNewFileBuffer(buildStdOutLog, true, true);
                         }
 
                         // Move to that BufferView
                         //
-                        setActiveBuffer(bv);
+                        setActiveBuffer(m_buildStdOutView);
 
                         // Build the argument list
                         //
                         ProcessStartInfo info = new ProcessStartInfo();
                         info.WorkingDirectory = buildDir;
+                        //info.WorkingDirectory = "C:\\Q\\mingw\\bin";
+                        //info.EnvironmentVariables.Add("PATH", "C:\\Q\\mingw\\bin");
+                        //info.EnvironmentVariables.Add("TempPath", "C:\\Temp");
                         info.UseShellExecute = false;
                         info.FileName = m_project.getCommand();
                         info.WindowStyle = ProcessWindowStyle.Hidden;
                         info.CreateNoWindow = true;
-                        info.Arguments = m_project.getArguments(); // +" >> " + m_project.getBuildLog();
+                        info.Arguments = m_project.getArguments();
                         info.RedirectStandardOutput = true;
                         info.RedirectStandardError = true;
 
-                        Process process = new Process();
-                        process.StartInfo = info;
-                        process.OutputDataReceived += new DataReceivedEventHandler(logBuildStdOut);
-                        process.ErrorDataReceived += new DataReceivedEventHandler(logBuildStdErr);
+                        m_buildProcess = new Process();
+                        m_buildProcess.StartInfo = info;
+                        m_buildProcess.OutputDataReceived += new DataReceivedEventHandler(logBuildStdOut);
+                        m_buildProcess.ErrorDataReceived += new DataReceivedEventHandler(logBuildStdErr);
+                        m_buildProcess.Exited += new EventHandler(buildCompleted);
 
-                        process.EnableRaisingEvents = true;
+                        m_buildProcess.EnableRaisingEvents = true;
 
                         Logger.logMsg("Friendlier::doBuildCommand() - working directory = " + info.WorkingDirectory);
                         Logger.logMsg("Friendlier::doBuildCommand() - filename = " + info.FileName);
@@ -4304,25 +4479,25 @@ namespace Xyglo
 
                         // Start the external build command and check the logs
                         //
-                        process.Start();
-                        process.BeginOutputReadLine();
-                        process.BeginErrorReadLine();
+                        m_buildProcess.Start();
+                        m_buildProcess.BeginOutputReadLine();
+                        m_buildProcess.BeginErrorReadLine();
 
                         //Process.Start(m_project.getBuildCommand());
                         setTemporaryMessage("Starting build..", gameTime, 4);
 
                         //string stdout = proc.StandardOutput.ReadToEnd();
                         //string stderr = proc.StandardError.ReadToEnd();
-                        process.WaitForExit();//
+                        //process.WaitForExit();//
 
-                        if (process.ExitCode != 0)
+                        if (m_buildProcess.ExitCode != 0)
                         {
-                            Logger.logMsg("BUILD DIDN'T WORK");
+                            Logger.logMsg("Friendlier::doBuildCommand() - build process failed with code " + m_buildProcess.ExitCode);
                         }
-
-                        // Need to get some error data
-                        //
-                        //process.er
+                        else
+                        {
+                            Logger.logMsg("Friendlier::doBuildCommand() - started build command succesfully");
+                        }
                     }
                 }
             }
@@ -4330,15 +4505,7 @@ namespace Xyglo
             {
                 Logger.logMsg("Can't run command " + e.Message);
             }
-
-            Logger.logMsg("Friendlier::doBuildCommand() - completed build command (?)");
-
         }
-
-        /// <summary>
-        /// Lock the log file for writing
-        /// </summary>
-        protected Mutex m_logFileMutex = new Mutex();
 
         /// <summary>
         /// Write the stdout from the build process to a log file
@@ -4347,18 +4514,34 @@ namespace Xyglo
         /// <param name="e"></param>
         protected void logBuildStdOut(object sender, DataReceivedEventArgs e)
         {
-            string logBody = (string)e.Data;
+            if (e.Data == null)
+            {
+                Logger.logMsg("Friendlier::logBuildStdOut() - got null data");
+                return;
+            }
+
             string time = string.Format("{0:yyyyMMdd HH:mm:ss}", DateTime.Now);
+            string logBody = "INF:" + time + ":" + (string)e.Data;
 
             // Lock log file for writing
             //
             m_logFileMutex.WaitOne();
+
+            m_buildStdOutView.getFileBuffer().appendLine(logBody);
+
+            // Save the log file
+            //
+            m_buildStdOutView.getFileBuffer().setReadOnly(false);
+            m_buildStdOutView.getFileBuffer().save();
+            m_buildStdOutView.getFileBuffer().setReadOnly(true);
+#if WRITE_LOG_FILE
 
             System.IO.TextWriter logFile = new StreamWriter(m_project.getConfigurationValue("BUILDLOG"), true);
             logFile.WriteLine("INF:" + time + ":" + logBody);
             logFile.Flush();
             logFile.Close();
             logFile = null;
+#endif
 
             // Unlock
             //
@@ -4372,23 +4555,67 @@ namespace Xyglo
         /// <param name="e"></param>
         protected void logBuildStdErr(object sender, DataReceivedEventArgs e)
         {
-            string logBody = (string)e.Data;
+            if (e.Data == null)
+            {
+                Logger.logMsg("Friendlier::logBuildStdErr() - got null data");
+                return;
+            }
+
             string time = string.Format("{0:yyyyMMdd HH:mm:ss}", DateTime.Now);
+            string logBody = "ERR:" + time + ":" + (string)e.Data;
 
             // Lock log file for writing
             //
             m_logFileMutex.WaitOne();
+            m_buildStdErrView.getFileBuffer().appendLine(logBody);
 
+            // Save the log file
+            //
+            m_buildStdErrView.getFileBuffer().setReadOnly(false);
+            m_buildStdErrView.getFileBuffer().save();
+            m_buildStdErrView.getFileBuffer().setReadOnly(true);
+
+#if WRITE_LOG_FILE
             System.IO.TextWriter logFile = new StreamWriter(m_project.getConfigurationValue("BUILDLOG"), true);
             logFile.WriteLine("ERR:" + time + ":" + logBody);
             logFile.Flush();
             logFile.Close();
             logFile = null;
+#endif
 
             // Unlock
             //
             m_logFileMutex.ReleaseMutex();
         }
 
+        /// <summary>
+        /// Build completed callback
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void buildCompleted(object sender, System.EventArgs e)
+        {
+
+            // If there was an issue with the build then move to the active buffer that holds the error logs
+            //
+            if (m_buildProcess.ExitCode != 0)
+            {
+                setActiveBuffer(m_buildStdErrView);
+                setTemporaryMessage("Build failed with exit code " + m_buildProcess.ExitCode, 30);
+                m_buildStdErrView.setTailColour(Color.Red);
+            }
+            else
+            {
+                setTemporaryMessage("Build completed successfully.", 3);
+
+                // Also colour the error log green
+                //
+                m_buildStdErrView.setTailColour(Color.Green);
+            }
+
+            // Invalidate the build process
+            //
+            m_buildProcess = null;
+        }
     }
 }

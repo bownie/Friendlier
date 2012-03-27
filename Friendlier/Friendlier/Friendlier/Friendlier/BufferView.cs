@@ -350,6 +350,33 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Set the TextColour
+        /// </summary>
+        /// <param name="colour"></param>
+        public void setTextColour(Color colour)
+        {
+            m_textColour = colour;
+        }
+
+        /// <summary>
+        /// Set the tailing colour
+        /// </summary>
+        /// <param name="colour"></param>
+        public void setTailColour(Color colour)
+        {
+            m_tailColour = colour;
+        }
+
+        /// <summary>
+        /// Set the read only colour
+        /// </summary>
+        /// <param name="colour"></param>
+        public void setReadOnlyColour(Color colour)
+        {
+            m_readOnlyColour = colour;
+        }
+
+        /// <summary>
         /// Return the highlight colour
         /// </summary>
         /// <returns></returns>
@@ -518,6 +545,13 @@ namespace Xyglo
         /// </summary>
         public void pageUp()
         {
+            // Do nothing if tailing
+            //
+            if (m_tailing)
+            {
+                return;
+            }
+
             // Page up the BufferView position
             //
             m_bufferShowStartY -= m_bufferShowLength;
@@ -541,6 +575,13 @@ namespace Xyglo
         /// </summary>
         public void pageDown()
         {
+            // Do nothing if tailing
+            //
+            if (m_tailing)
+            {
+                return;
+            }
+
             // Page down the buffer view position
             m_bufferShowStartY += m_bufferShowLength;
 
@@ -643,6 +684,13 @@ namespace Xyglo
         /// <param name="fp"></param>
         public void setCursorPosition(FilePosition fp)
         {
+            // Do nothing if tailing
+            //
+            if (m_tailing)
+            {
+                return;
+            }
+
             if (fp.Y >= 0 && fp.Y < m_fileBuffer.getLineCount() || m_fileBuffer.getLineCount() == 0)
             {
                 m_cursorPosition = fp;
@@ -662,6 +710,13 @@ namespace Xyglo
         /// <param name="vfp"></param>
         public void setCursorPosition(Vector2 vfp)
         {
+            // Do nothing if tailing
+            //
+            if (m_tailing)
+            {
+                return;
+            }
+
             int x = Convert.ToInt16(vfp.X);
             int y = Convert.ToInt16(vfp.Y);
             m_cursorPosition.X = x;
@@ -1117,6 +1172,13 @@ namespace Xyglo
         /// <param name="leftCursor"></param>
         public void moveCursorUp(bool leftCursor)
         {
+            // Do nothing if tailing
+            //
+            if (m_tailing)
+            {
+                return;
+            }
+
             if (m_cursorPosition.Y > 0)
             {
                 m_cursorPosition.Y--;
@@ -1154,6 +1216,13 @@ namespace Xyglo
         /// <param name="rightCursor"></param>
         public void moveCursorDown(bool rightCursor)
         {
+            // Do nothing if tailing
+            //
+            if (m_tailing)
+            {
+                return;
+            }
+
             if (m_cursorPosition.Y + 1 < m_fileBuffer.getLineCount())
             {
                 // Always increment cursor position
@@ -1718,13 +1787,13 @@ namespace Xyglo
 
             // We keep on going until we've filled the buffer or we're at the first line
             //
+            int lineNumber = Math.Max(0, m_fileBuffer.getLineCount() - m_bufferShowLength);
 
-            int lineNumber = m_fileBuffer.getLineCount() - 1;
-            while (rS.Count < m_bufferShowLength && lineNumber >= 0)
+            while (lineNumber < m_fileBuffer.getLineCount())
             {
                 string fetchLine = m_fileBuffer.getLine(lineNumber);
 
-                if (fetchLine.Length < m_bufferShowWidth)
+                if (fetchLine.Length <= m_bufferShowWidth)
                 {
                     rS.Add(fetchLine);
                 }
@@ -1733,7 +1802,7 @@ namespace Xyglo
                     string splitLine = fetchLine;
                     string addLine;
 
-                    while (splitLine.Length >= m_bufferShowWidth)
+                    while (splitLine.Length > m_bufferShowWidth)
                     {
                         addLine = splitLine.Substring(0, Math.Min(m_bufferShowWidth, splitLine.Length));
                         rS.Add(addLine);
@@ -1748,7 +1817,16 @@ namespace Xyglo
 
                 // Decrement line number
                 //
-                lineNumber--;
+                lineNumber++;
+            }
+
+            // Trim off any rows at the beginning that are overflowing the length of the
+            // visible buffer - this can occur of course because we don't know the length
+            // of the lines before we split it (we're doing this dumbly rather than smartly).
+            //
+            if (rS.Count > m_bufferShowLength)
+            {
+                rS.RemoveRange(0, rS.Count - m_bufferShowLength);
             }
 
             return rS;

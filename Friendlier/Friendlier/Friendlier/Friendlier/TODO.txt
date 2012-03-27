@@ -2,16 +2,19 @@ OTHER
 -----
 - Packaging .NET and XNA integrate with NSIS
 - Licence file [STARTED]
-- Registry key and licence key [DONEish]
+- Registry key and licence key [Need to make sure that this is run at installation time as administrator - not through the program itself]
+
 - Icons [PROVED]
+
+
+http://gamedev.stackexchange.com/questions/24697/how-to-clip-cut-off-text-in-a-textbox
+http://social.msdn.microsoft.com/forums/en-US/xnaframework/thread/71263016-b26a-44bd-80f3-8cd620b119ff
 
 
 BUG and TODO
 ------------
-
-- scrolling temporary message
-- seperate ERR and LOG file streams?
-- fix error logs line wrapping
+- file browser remembers last directory positions
+- 
 - change buffer show length interactively
 - undo remembers last highlight [PENDING]
 - overlapping BufferViews
@@ -21,7 +24,6 @@ BUG and TODO
 - some way of seeing/modifying/deleting files in project
 - some way of seeing/modifying/deleting bufferviews (and their indexes) in project
 - Saving/opening/browsing - ensure status is correct
-- Temporary file save messages to move somewhere
 - Logging (timestamps and makes sense) 
 
 NOTES
@@ -40,6 +42,10 @@ TO TEST/BUGS
 
 DONE
 ----
+- Temporary file save messages to move somewhere [FIXED with SCROLLING MESSAGES]
+- fix error logs line wrapping [DONE]
+- seperate ERR and LOG file streams? [DONE]
+- scrolling temporary message [DONE]
 - build error handling [DONE]
 - project information screen (files, buffers, lines etc) [DONE first version]
 - cursor end of line X with highlight bug [DONE]
