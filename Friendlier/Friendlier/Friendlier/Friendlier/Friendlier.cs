@@ -169,6 +169,18 @@ namespace Xyglo
         /// </summary>
         Texture2D m_textScrollTexture;
 
+        /*
+        /// <summary>
+        /// A rendertarget for a moveable text scroller
+        /// </summary>
+        RenderTarget2D m_freeTextScroller;
+
+        /// <summary>
+        /// A texture we can render a text string to and scroll
+        /// </summary>
+        Texture2D m_freeTextScrollTexture;
+        */
+
         /// <summary>
         /// Rotations are stored in this vector
         /// </summary>
@@ -596,6 +608,10 @@ namespace Xyglo
                 //
                 bv.verifyBoundaries();
 
+                // Set any defaults that we haven't persisted - this is a version upgrade
+                // catch all method.
+                //
+                bv.setDefaults();
 #if FILESYSTEMWATCHER
                 string name = bv.getFileBuffer().getFilepath();
                 DateTime lastModTime = File.GetLastWriteTime(bv.getFileBuffer().getFilepath());
@@ -934,6 +950,10 @@ namespace Xyglo
 
             flyToPosition(eyePos);
 
+            // Set the search text per buffer
+            //
+            m_searchText = m_project.getSelectedBufferView().getSearchText();
+
 #if ACTIVE_BUFFER_DEBUG
             Logger.logMsg("Friendlier:setActiveBuffer() - buffer position = " + m_activeBufferView.getPosition());
             Logger.logMsg("Friendlier:setActiveBuffer() - look position = " + m_target);
@@ -1253,6 +1273,13 @@ namespace Xyglo
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            // Set the startup banner on the first pass through
+            //
+            if (m_gameTime == null)
+            {
+                startBanner(gameTime, "Friendlier\nv1.0", 5);
+            }
+
             // Store gameTime
             //
             m_gameTime = gameTime;
@@ -1732,6 +1759,10 @@ namespace Xyglo
             else if (checkKeyState(Keys.F3, gameTime))
             {
                 doSearch(gameTime);
+            }
+            else if (checkKeyState(Keys.F4, gameTime))
+            {
+                startBanner(gameTime, "Friendlier\nv1.0", 5);
             }
             else if (checkKeyState(Keys.F7, gameTime))
             {
@@ -2701,9 +2732,16 @@ namespace Xyglo
         /// <returns></returns>
         protected void doSearch(GameTime gameTime)
         {
+            // Don't search for nothing
+            //
+            if (m_searchText == "")
+            {
+                return;
+            }
+
             if (!m_project.getSelectedBufferView().find(m_searchText))
             {
-                setTemporaryMessage("[ \"" + m_searchText + "\" NOT FOUND]", gameTime, 1);
+                setTemporaryMessage("[\"" + m_searchText + "\" not found]", gameTime, 1);
             }
 
             m_state = FriendlierState.TextEditing;
@@ -3170,6 +3208,8 @@ namespace Xyglo
             //m_spriteBatch.Begin(0, BlendState.Additive, SamplerState.LinearClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
 
 
+            // These modes make quality differences so watch the options
+            //
             if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
             {
                 m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
@@ -3241,6 +3281,20 @@ namespace Xyglo
                         drawHighlight(gameTime);
                     }
                 }
+
+                // Draw a background square for all buffer views
+                //
+                for (int i = 0; i < m_project.getBufferViews().Count; i++)
+                {
+                    renderQuad(m_project.getBufferViews()[i].getTopLeft(), m_project.getBufferViews()[i].getBottomRight(), m_project.getBufferViews()[i].getBackgroundColour());
+                }
+            }
+
+            // Draw a welcome banner
+            //
+            if (m_bannerStartTime != -1)
+            {
+                drawBanner(gameTime);
             }
 
             base.Draw(gameTime);
@@ -4102,11 +4156,11 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Renders a quad at a given position
+        /// Renders a quad at a given position - we can wrap this within another spritebatch call
         /// </summary>
         /// <param name="topLeft"></param>
         /// <param name="bottomRight"></param>
-        protected void renderQuad(Vector3 topLeft, Vector3 bottomRight, Color quadColour)
+        protected void renderQuad(Vector3 topLeft, Vector3 bottomRight, Color quadColour, bool ownSpriteBatch = false)
         {
             Vector3 bottomLeft = new Vector3(topLeft.X, bottomRight.Y, topLeft.Z);
             Vector3 topRight = new Vector3(bottomRight.X, topLeft.Y, bottomRight.Z);
@@ -4121,14 +4175,21 @@ namespace Xyglo
             vpt[3] = new VertexPositionTexture(bottomLeft, tp);
 
             //m_spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-            m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.PointClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+            if (!ownSpriteBatch)
+            {
+                m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.PointClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+            }
 
             m_spriteBatch.Draw(m_flatTexture, new Rectangle(Convert.ToInt16(topLeft.X),
                                                  Convert.ToInt16(topLeft.Y),
                                                  Convert.ToInt16(bottomRight.X) - Convert.ToInt16(topLeft.X),
                                                  Convert.ToInt16(bottomRight.Y) - Convert.ToInt16(topLeft.Y)),
-                                                 quadColour);  
-            m_spriteBatch.End();
+                                                 quadColour);
+
+            if (!ownSpriteBatch)
+            {
+                m_spriteBatch.End();
+            }
         }
 
         /// <summary>
@@ -4616,6 +4677,157 @@ namespace Xyglo
             // Invalidate the build process
             //
             m_buildProcess = null;
+        }
+
+        /*
+        /// <summary>
+        /// Generate and set a free text scroller of a certain size, position and speed
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        /// <param name="text"></param>
+        /// <param name="scrollSpeed"></param>
+        protected void setFreeScroller(Vector2 position, int width, int height, string text, int scrollSpeed, int secondsToDisplay)
+        {
+            m_freeTextScroller = new RenderTarget2D(m_graphics.GraphicsDevice, width, height);
+
+
+             // If we leave a gap and there is still room for the message again then render it again!
+            //
+            int nextPosition = xPosition + ((m_temporaryMessage.Length + 10) * (int)m_fontManager.getCharWidth(FontManager.FontType.Overlay));
+            if (nextPosition < m_textScroller.Width)
+            {
+                m_spriteBatch.DrawString(m_fontManager.getOverlayFont(), m_temporaryMessage, new Vector2(nextPosition, 0), Color.Pink, 0, new Vector2(0, 0), 1.0f, 0, 0);
+            }
+            //m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(startPosition.X, startPosition.Y - m_project.getSelectedBufferView().getLineHeight() * 3), Color.White, 0, lineOrigin, m_fontManager.getTextScale() * 2.0f, 0, 0);
+            m_spriteBatch.End();
+
+            // Now reset the render target to the back buffer
+            //
+            m_graphics.GraphicsDevice.SetRenderTarget(null);
+            m_textScrollTexture = (Texture2D)m_textScroller;
+
+        }
+        */
+
+        protected double m_bannerStartTime = -1;
+        protected string m_bannerString;
+        protected float m_bannerDuration;
+        protected List<string> m_bannerStringList;
+
+        protected void startBanner(GameTime gameTime, string bannerString, float seconds)
+        {
+            m_bannerStartTime = gameTime.TotalGameTime.TotalSeconds;
+            m_bannerString = bannerString;
+            m_bannerDuration = seconds;
+            m_bannerColour.R = 255;
+            m_bannerColour.B = 255;
+            m_bannerColour.G = 255;
+            m_bannerColour.A = 180;
+
+            m_bannerStringList = new List<string>();
+
+            foreach (string str in m_bannerString.Split('\n'))
+            {
+                m_bannerStringList.Add(str);
+            }
+        }
+
+        protected Color m_bannerColour = new Color(180, 180, 180, 180);
+
+        //protected float m_bannerAlpha = 180.0f;
+
+        protected void drawBanner(GameTime gameTime)
+        {
+            // Don't do anything if we don't have anything to draw
+            //
+            if (m_bannerStringList == null || m_bannerStringList.Count == 0)
+            {
+                return;
+            }
+
+            float scale = (float)(Math.Pow(gameTime.TotalGameTime.TotalSeconds - m_bannerStartTime + 0.4, 6));
+
+            // Stop display this at some point by resetting the m_bannerStartTime - we can also stop displaying if the scale is too big
+            //
+            if ((m_bannerStartTime + m_bannerDuration) < gameTime.TotalGameTime.TotalSeconds)
+            {
+                m_bannerStartTime = -1;
+                return;
+            }
+
+            if (scale > 100.0f)
+            {
+                m_bannerColour.A--; ;
+                m_bannerColour.R--;
+                m_bannerColour.B--;
+                m_bannerColour.G--;
+            }
+
+            //if (m_bannerAlpha < 0)
+            //{
+                //m_bannerStartTime = -1;
+                //return;
+            //}
+
+
+            Vector3 position = m_project.getSelectedBufferView().getPosition();
+
+            // Start with centering adjustments
+            //
+            int maxLength = 0;
+            foreach(string banner in m_bannerStringList)
+            {
+                if (banner.Length > maxLength)
+                {
+                    maxLength = banner.Length;
+                }
+            }
+            int xPosition = -(int)((scale * maxLength * m_fontManager.getCharWidth(FontManager.FontType.Overlay) / 2));
+            int yPosition = -(int)((m_bannerStringList.Count * scale * m_fontManager.getLineHeight(FontManager.FontType.Overlay) / 2));
+
+            // Add half the editing window width and height
+            //
+            xPosition += (int)(m_project.getSelectedBufferView().getVisibleWidth() / 2);
+            yPosition += (int)(m_project.getSelectedBufferView().getVisibleHeight() / 2);
+
+            // Add window position - so we're doing this a bit backwards but you get the idea
+            //
+            xPosition += (int)(position.X);
+            yPosition += (int)(position.Y);
+
+            if (m_bannerColour.R == m_bannerColour.G && m_bannerColour.G == m_bannerColour.B && m_bannerColour.B == 0)
+            {
+                m_bannerStartTime = -1;
+                return;
+            }
+
+            /*
+            int alpha = 180;
+            if (scale > 10)
+            {
+                alpha = (int)(Math.Max(0, 180 - Math.Pow(scale, -3) / 5));
+            }
+
+            m_bannerColour.A = (byte)alpha;
+            */
+
+            //float scale = diff.Ticks;
+            // Draw to the render target
+            //
+            Vector3 curPos = m_project.getSelectedBufferView().getPosition();
+
+            //m_overlaySpriteBatch.Begin();
+            //m_overlaySpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend);
+            //m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+            m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+
+            //foreach (string banner in m_bannerStringList)
+            //{
+                m_spriteBatch.DrawString(m_fontManager.getOverlayFont(), m_bannerString, new Vector2(xPosition, yPosition), m_bannerColour, 0, new Vector2(0, 0), scale, 0, 0);
+            //}
+            m_spriteBatch.End();
         }
     }
 }

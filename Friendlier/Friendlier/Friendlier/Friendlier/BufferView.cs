@@ -210,6 +210,18 @@ namespace Xyglo
         [DataMember]
         protected bool m_tailing = false;
 
+        /// <summary>
+        /// Background colour for this bufferview
+        /// </summary>
+        [DataMember]
+        protected Color m_backgroundColour = new Color(0, 191, 255, 190);//Color.DeepSkyBlue;
+
+        /// <summary>
+        /// Store the search text per BufferView
+        /// </summary>
+        [DataMember]
+        protected string m_searchText = "";
+        
         /////// CONSTRUCTORS /////////
 
         /// <summary>
@@ -217,6 +229,10 @@ namespace Xyglo
         /// </summary>
         public BufferView()
         {
+            if (m_searchText == null)
+            {
+                m_searchText = "";
+            }
         }
 
         /// <summary>
@@ -329,6 +345,26 @@ namespace Xyglo
 
 
         //////// METHODS ///////
+
+        /// <summary>
+        /// When we initialise the project (post deserialisation) we can use this method to reset
+        /// any defaults which we don't like any more.  Useful for backwards compatiability and
+        /// enforcing new features or colours etc.
+        /// </summary>
+        public void setDefaults()
+        {
+            if (m_backgroundColour == null || m_backgroundColour == Color.Black)
+            {
+                m_backgroundColour = new Color(0, 191, 255, 190);//Color.DeepSkyBlue;
+            }
+
+            m_backgroundColour = Color.Black;
+
+            if (m_searchText == null)
+            {
+                m_searchText = "";
+            }
+        }
 
         /// <summary>
         /// Get text colour dependent on mode
@@ -1616,6 +1652,12 @@ namespace Xyglo
         {
             FilePosition searchPos = m_cursorPosition;
             bool searching = true;
+            m_searchText = text;
+
+            if (m_fileBuffer.getLineCount() == 0)
+            {
+                return false;
+            }
 
             while (searching)
             {
@@ -1673,6 +1715,15 @@ namespace Xyglo
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Return the search text
+        /// </summary>
+        /// <returns></returns>
+        public string getSearchText()
+        {
+            return m_searchText;
         }
 
         /// <summary>
@@ -1830,6 +1881,45 @@ namespace Xyglo
             }
 
             return rS;
+        }
+
+        /// <summary>
+        /// Top left position - same as position
+        /// </summary>
+        /// <returns></returns>
+        public Vector3 getTopLeft()
+        {
+            return m_position;
+        }
+
+        /// <summary>
+        /// Bottom right screen position
+        /// </summary>
+        /// <returns></returns>
+        public Vector3 getBottomRight()
+        {
+            Vector3 rP = m_position;
+            rP.X += getVisibleWidth();
+            rP.Y += getVisibleHeight();
+            return rP;
+        }
+
+        /// <summary>
+        /// Background colour
+        /// </summary>
+        /// <returns></returns>
+        public Color getBackgroundColour()
+        {
+            return m_backgroundColour;
+        }
+
+        /// <summary>
+        /// Set the background colour
+        /// </summary>
+        /// <param name="colour"></param>
+        public void setBackgroundColour(Color colour)
+        {
+            m_backgroundColour = colour;
         }
     }
 }

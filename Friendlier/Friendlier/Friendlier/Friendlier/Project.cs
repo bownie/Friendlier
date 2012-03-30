@@ -866,5 +866,30 @@ namespace Xyglo
             return m_targetSavePosition;
         }
 
+        /// <summary>
+        /// Set the background colours either on or off
+        /// </summary>
+        public void setBackgroundColours(bool state)
+        {
+            Color bgColour = Color.DeepSkyBlue;
+            bgColour.A = 190;
+
+            foreach(BufferView bv in m_bufferViews)
+            {
+                if (state == false)
+                {
+                    bv.setBackgroundColour(Color.Black);
+                }
+                else
+                {
+                    if (!bv.isReadOnly())
+                    {
+                        bv.setBackgroundColour(bgColour);
+                    }
+                }
+
+            }
+        }
+
     }
 }
