@@ -113,16 +113,19 @@ namespace Xyglo
         /// <summary>
         /// Store where we last opened a file from
         /// </summary>
+        [DataMember]
         protected string m_openDirectory = "";
 
         /// <summary>
         /// Store where we last saved a file to
         /// </summary>
+        [DataMember]
         protected string m_saveDirectory;
 
         /// <summary>
         /// Is this software licenced?
         /// </summary>
+        [IgnoreDataMember]
         protected bool m_licenced = false;
 
         /// <summary>
@@ -842,10 +845,14 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Return the eye position
+        /// Return the eye position - allow for defaults
         /// </summary>
         public Vector3 getEyePosition()
         {
+            if (m_eyeSavePosition.Z == 0)
+            {
+                m_eyeSavePosition.Z = 500.0f;
+            }
             return m_eyeSavePosition;
         }
 
@@ -887,9 +894,7 @@ namespace Xyglo
                         bv.setBackgroundColour(bgColour);
                     }
                 }
-
             }
         }
-
     }
 }

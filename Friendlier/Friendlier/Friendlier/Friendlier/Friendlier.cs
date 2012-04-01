@@ -409,6 +409,11 @@ namespace Xyglo
         /// </summary>
         protected BufferView m_buildStdErrView;
 
+        /// <summary>
+        /// Process for running builds
+        /// </summary>
+        Process m_buildProcess = null;
+
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
         /// <summary>
@@ -884,13 +889,23 @@ namespace Xyglo
             m_flatTexture = new Texture2D(m_graphics.GraphicsDevice, 1, 1, false, SurfaceFormat.Color);
             m_flatTexture.SetData(foregroundColors);
 
-            // Set up the text scrolling texture
+            // Set up the text scroller width
             //
-            m_textScroller = new RenderTarget2D(m_graphics.GraphicsDevice, Convert.ToInt16(m_fontManager.getCharWidth(FontManager.FontType.Overlay) * 32), Convert.ToInt16(m_fontManager.getLineHeight(FontManager.FontType.Overlay)));
+            setTextScrollerWidth(Convert.ToInt16(m_fontManager.getCharWidth(FontManager.FontType.Overlay) * 32));
 
             // Initialise the project
             //
             initialiseProject();
+        }
+
+        /// <summary>
+        /// Creates a new text scroller of given width
+        /// </summary>
+        protected void setTextScrollerWidth(int width)
+        {
+            // Set up the text scrolling texture
+            //
+            m_textScroller = new RenderTarget2D(m_graphics.GraphicsDevice, width, Convert.ToInt16(m_fontManager.getLineHeight(FontManager.FontType.Overlay)));
         }
 
         /// <summary>
@@ -1144,25 +1159,27 @@ namespace Xyglo
                             // Set the FileBuffer path
                             //
                             m_project.getSelectedBufferView().getFileBuffer().setFilepath(m_selectedFile);
-                            m_project.getSelectedBufferView().getFileBuffer().save();
 
-                            // Check if we need to remove this FileBuffer from the todo list - it's not important if we can't
-                            // remove it here but we should try to anyway.
-                            //
-                            if (m_filesToWrite.Remove(m_project.getSelectedBufferView().getFileBuffer()))
+                            if (checkFileSave())
                             {
-                                Logger.logMsg("Friendlier::Update() - could not find FileBuffer to remove from m_filesToWrite");
-                            }
-                            else
-                            {
-                                Logger.logMsg("Friendlier::Update() - total files left to write is now " + m_filesToWrite.Count);
-                            }
+                                // Check if we need to remove this FileBuffer from the todo list - it's not important if we can't
+                                // remove it here but we should try to anyway.
+                                //
+                                if (m_filesToWrite.Remove(m_project.getSelectedBufferView().getFileBuffer()))
+                                {
+                                    Logger.logMsg("Friendlier::Update() - could not find FileBuffer to remove from m_filesToWrite");
+                                }
+                                else
+                                {
+                                    Logger.logMsg("Friendlier::Update() - total files left to write is now " + m_filesToWrite.Count);
+                                }
 
-                            // If we have finished saving all of our files then we can exit (although we check once again)
-                            //
-                            if (m_filesToWrite.Count == 0)
-                            {
-                                checkExit(gameTime);
+                                // If we have finished saving all of our files then we can exit (although we check once again)
+                                //
+                                if (m_filesToWrite.Count == 0)
+                                {
+                                    checkExit(gameTime);
+                                }
                             }
                         }
                     }
@@ -1175,6 +1192,24 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Checks to see if we are licenced before saving
+        /// </summary>
+        /// <returns></returns>
+        protected bool checkFileSave()
+        {
+            if (m_project.getLicenced())
+            {
+                m_project.getSelectedBufferView().getFileBuffer().save();
+                return true;
+            }
+
+            setTemporaryMessage("[Can't save due to licence issue]", 10);
+
+            return false;
+        }
+
+
+        /// <summary>
         /// Completing a File->Save operation
         /// </summary>
         /// <param name="gameTime"></param>
@@ -1182,7 +1217,7 @@ namespace Xyglo
         {
             try
             {
-                m_project.getSelectedBufferView().getFileBuffer().save();
+                checkFileSave();
 
                 if (m_filesToWrite != null && m_filesToWrite.Count > 0)
                 {
@@ -1277,7 +1312,7 @@ namespace Xyglo
             //
             if (m_gameTime == null)
             {
-                startBanner(gameTime, "Friendlier\nv1.0", 5);
+                startBanner(gameTime, "Friendlier\nv1.0 alpha 1", 5);
             }
 
             // Store gameTime
@@ -1973,11 +2008,13 @@ namespace Xyglo
                                 {
                                     // Attempt save
                                     //
-                                    m_project.getSelectedBufferView().getFileBuffer().save();
+                                    if (checkFileSave())
+                                    {
+                                        // Save has completed without error
+                                        //
+                                        setTemporaryMessage("[Saved]", gameTime, 2);
+                                    }
 
-                                    // Save has completed without error
-                                    //
-                                    setTemporaryMessage("[Saved]", gameTime, 2);
                                     m_state = FriendlierState.TextEditing;
                                 }
                             }
@@ -2155,11 +2192,13 @@ namespace Xyglo
                             {
                                 // Attempt save
                                 //
-                                m_project.getSelectedBufferView().getFileBuffer().save();
+                                if (checkFileSave())
+                                {
+                                    // Save has completed without error
+                                    //
+                                    setTemporaryMessage("[Saved]", gameTime, 2);
+                                }
 
-                                // Save has completed without error
-                                //
-                                setTemporaryMessage("[Saved]", gameTime, 2);
                                 m_state = FriendlierState.TextEditing;
                             }
                         }
@@ -3326,6 +3365,12 @@ namespace Xyglo
                 overlayColour = m_greyedColour; 
             }
 
+            // Set up some of these variables here
+            //
+            string positionString = m_project.getSelectedBufferView().getCursorPosition().Y + m_project.getSelectedBufferView().getBufferShowStartY() + "," + m_project.getSelectedBufferView().getCursorPosition().X;
+            float positionStringXPos = m_graphics.GraphicsDevice.Viewport.Width - positionString.Length * m_fontManager.getCharWidth(FontManager.FontType.Overlay) - (m_fontManager.getCharWidth(FontManager.FontType.Overlay) * 14);
+            float filePercent = 0.0f;
+
             // Filename is where we put the filename plus other assorted gubbins or we put a
             // search string in there depending on the mode.
             //
@@ -3396,9 +3441,17 @@ namespace Xyglo
                     //
 
                     // If the temporary message is going to be too long for the space we have then
-                    // we need to scroll it in that space.
+                    // we need to change the scroll space to for it.
                     //
+                    int availableWidth = (int)(positionStringXPos - ((fileName.Length + 1) * m_fontManager.getCharWidth(FontManager.FontType.Overlay)));
+                    if (availableWidth < m_textScroller.Width)
+                    {
+                        setTextScrollerWidth(availableWidth);
+                    }
 
+            
+                    // Now check if the temporary message is longer than the scroll space - scroll if it is
+                    //
                     if ((m_temporaryMessage.Length * m_fontManager.getCharWidth(FontManager.FontType.Overlay))
                         < m_textScroller.Width) // hard code length for the moment
                     {
@@ -3442,11 +3495,6 @@ namespace Xyglo
             }
 
             float modeStringXPos = m_graphics.GraphicsDevice.Viewport.Width - modeString.Length * m_fontManager.getCharWidth(FontManager.FontType.Overlay) - (m_fontManager.getCharWidth(FontManager.FontType.Overlay) * 8);
-
-            string positionString = m_project.getSelectedBufferView().getCursorPosition().Y + m_project.getSelectedBufferView().getBufferShowStartY() + "," + m_project.getSelectedBufferView().getCursorPosition().X;
-            float positionStringXPos = m_graphics.GraphicsDevice.Viewport.Width - positionString.Length * m_fontManager.getCharWidth(FontManager.FontType.Overlay) - (m_fontManager.getCharWidth(FontManager.FontType.Overlay) * 14);
-
-            float filePercent = 0.0f;
 
             if (m_project.getSelectedBufferView().getFileBuffer() != null && m_project.getSelectedBufferView().getFileBuffer().getLineCount() > 0)
             {
@@ -4238,6 +4286,7 @@ namespace Xyglo
             //
             string text = "";
 
+            text += "Current file path  : " + m_project.getSelectedBufferView().getFileBuffer().getFilepath() + "\n\n";
             text += "Project name:      : " + m_project.m_projectName + "\n";
             text += "Project created    : " + m_project.getCreationTime().ToString() + "\n";
             text += "Total files        : " + m_project.getFileBuffers().Count + "\n";
@@ -4414,6 +4463,14 @@ namespace Xyglo
                 for (int i = 0; i < m_project.getConfigurationListLength(); i++)
                 {
                     string item = m_project.getConfigurationItem(i).Name + "  =  " + m_project.getConfigurationItem(i).Value;
+
+                    /*
+                    if (item.Length > m_project.getSelectedBufferView().getBufferShowWidth())
+                    {
+                        item = item.Substring(m_configXOffset, m_project.getSelectedBufferView().getBufferShowWidth());
+                    }
+                    */
+
                     m_overlaySpriteBatch.DrawString(m_fontManager.getOverlayFont(), item, new Vector2(xPos, yPos), (i == m_configPosition ? m_highlightColour : m_itemColour), 0, Vector2.Zero, 1.0f, 0, 0);
                     yPos += m_fontManager.getLineHeight(FontManager.FontType.Overlay);
                 }
@@ -4423,9 +4480,9 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Process for running builds
+        /// Config screen x direction
         /// </summary>
-        Process m_buildProcess = null;
+        protected int m_configXOffset = 0;
 
         /// <summary>
         /// Perform an external build
@@ -4546,6 +4603,7 @@ namespace Xyglo
 
                         //Process.Start(m_project.getBuildCommand());
                         setTemporaryMessage("Starting build..", gameTime, 4);
+                        startBanner(m_gameTime, "Build started", 5);
 
                         //string stdout = proc.StandardOutput.ReadToEnd();
                         //string stderr = proc.StandardError.ReadToEnd();
@@ -4664,6 +4722,8 @@ namespace Xyglo
                 setActiveBuffer(m_buildStdErrView);
                 setTemporaryMessage("Build failed with exit code " + m_buildProcess.ExitCode, 30);
                 m_buildStdErrView.setTailColour(Color.Red);
+
+                startBanner(m_gameTime, "Build failed", 5);
             }
             else
             {
@@ -4672,6 +4732,8 @@ namespace Xyglo
                 // Also colour the error log green
                 //
                 m_buildStdErrView.setTailColour(Color.Green);
+
+                startBanner(m_gameTime, "Build completed", 5);
             }
 
             // Invalidate the build process
@@ -4831,3 +4893,5 @@ namespace Xyglo
         }
     }
 }
+
+

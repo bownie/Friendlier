@@ -42,19 +42,26 @@ namespace Xyglo
             {
                 Logger.logMsg("Friendlier - licence key passed validation");
             }
-            else
-            {
-                Logger.logMsg("Friendlier - licence key failed validation");
+//            else
+  //          {
+    //            Logger.logMsg("Friendlier - licence key failed validation");
 
                 // Test for drop dead and exit if it's passed
                 //
-                if (DateTime.Now > VersionInformation.getDropDead())
-                {
-                    Logger.logMsg("Registration::checkRegistry() - drop dead date has passed.  Please licence this software to continue using it.");
-                    return;
-                }
+            if (DateTime.Now > VersionInformation.getDropDead())
+            {
+                Logger.logMsg("Registration::checkRegistry() - drop dead date has passed.  Please licence this software to continue to save files.");
+                checkValidity = false;
             }
+            else
+            {
+                checkValidity = true; // just override for the moment
+            }
+      //      }
             //Logger.logMsg("SHHH = " + Registration.generate("me", "rich@xyglo.com", VersionInformation.getProductName(), VersionInformation.getProductVersion()));
+
+
+
 
             // Create a project or load one
             //
