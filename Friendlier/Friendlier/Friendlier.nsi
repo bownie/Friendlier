@@ -82,12 +82,17 @@ Section "-MS .NET Framework v${NETVersion}" NETFramework
   ;MessageBox MB_OK $R0
   ;IfErrors installNET NETFrameworkInstalled
 
-  ${if} $R0 == 0
+  ${if} $R0 != 1
 
     ;MessageBox MB_OK "Will install .NET 4.0"
-    File /oname=$TEMP\${NETInstaller} ${NETInstaller}
     DetailPrint "Starting Microsoft .NET 4.0 Framework v${NETVersion} installer."
-    ExecWait "$TEMP\${NETInstaller}"
+    ExecWait "msiexec /i $TEMP\${NETInstaller} /q" $0
+
+	; check for errors
+	${if} $0 != 0
+	  MessageBox MB_OK|MB_ICONSTOP "Failed to install .NET - please investigate"
+	  Abort
+	${endif}
  
   ${else}
 
@@ -107,14 +112,20 @@ Section "-XNA Framework v${XNAVersion}" XNAFramework
 
   ; Read the registry string where .NET should be
   ;
-  ReadRegStr $R0 HKLM "SOFTWARE\Microsoft\XNA\Framework\v4.0" "Install"
+  ReadRegStr $R0 HKLM "SOFTWARE\Microsoft\XNA\Framework\v4.0" "Installed"
 
-  ${if} $R0 == 0
+  ;MessageBox MB_OK $R0
+  ${if} $R0 != 1 
 
     ;MessageBox MB_OK "Will install XNA 4.0"
-    File /oname=$TEMP\${NETInstaller} ${NETInstaller}
-    DetailPrint "Starting Microsoft XNA Framework v${NETVersion} installer."
-    ExecWait "$TEMP\${XNAInstaller}"
+    DetailPrint "Starting Microsoft XNA Framework v${XNAVersion} installer."
+    ExecWait "msiexec /i $TEMP\${XNAInstaller}" $0
+
+    ; check for errors
+	${if} $0 != 0
+	  MessageBox MB_OK|MB_ICONSTOP "Failed to install XNA - please investigate"
+	  Abort
+	${endif}
  
   ${else}
 
@@ -142,8 +153,11 @@ Section "Friendlier"
 
 	; Include the third party installers
 	;
-	File ${NETINSTALLER}
-	File ${XNAINSTALLER}
+	;File ${NETINSTALLER}
+	;File ${XNAINSTALLER}
+
+	File /oname=$TEMP\${NETInstaller} ${NETInstaller}
+	File /oname=$TEMP\${XNAInstaller} ${XNAInstaller}
 
     File "Xyglo.ico"
 
@@ -208,8 +222,8 @@ Section "Uninstall"
 
 	; Delete bundled installers
 	;
-	Delete "$INSTDIR\${NETINSTALLER}"
-	Delete "$INSTDIR\${XNAINSTALLER}"
+	;Delete "$INSTDIR\${NETInstaller}"
+	;Delete "$INSTDIR\${XNAInstaller}"
 
 	; Remove the data directory and subdirs
 	;
