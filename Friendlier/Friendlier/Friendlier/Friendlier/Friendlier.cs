@@ -21,6 +21,9 @@ using Microsoft.VisualBasic;
 
 namespace Xyglo
 {
+    /// <summary>
+    /// The state of our Friendlier application
+    /// </summary>
     public enum FriendlierState
     {
         TextEditing,        // default mode
@@ -858,9 +861,9 @@ namespace Xyglo
             //
             m_dirNodeTexture = Shapes.CreateCircle(m_graphics.GraphicsDevice, 100);
 
-            // Make mouse visible
+            // Make mouse [in[visible
             //
-            IsMouseVisible = true;
+            IsMouseVisible = false;
 
             /* NEW METHOD for font projection */
             m_basicEffect = new BasicEffect(m_graphics.GraphicsDevice)
@@ -1352,6 +1355,7 @@ namespace Xyglo
                     case FriendlierState.SplashScreen:
                     default:
                         m_state = FriendlierState.TextEditing;
+                        m_editConfigurationItem = false;
                                 break;
                 }
 
@@ -2892,6 +2896,7 @@ namespace Xyglo
             m_temporaryMessageEndTime = m_temporaryMessageStartTime + seconds;
         }
 
+
         /// <summary>
         /// Add a new FileBuffer and a new BufferView and set this as active
         /// </summary>
@@ -2929,6 +2934,10 @@ namespace Xyglo
             BufferView newBV = new BufferView(newFB, newPos, 0, 20, m_fontManager.getCharWidth(), m_fontManager.getLineHeight(), fileIndex, readOnly);
             newBV.setTailing(tailFile);
             m_project.addBufferView(newBV);
+
+            // Set the background colour
+            //
+            newBV.setBackgroundColour(m_project.getNewFileBufferColour());
 
             return newBV;
         }
@@ -4536,7 +4545,10 @@ namespace Xyglo
                         //
                         if (!File.Exists(buildStdErrLog))
                         {
-                            File.CreateText(buildStdErrLog);
+                            m_logFileMutex.WaitOne();
+                            StreamWriter newStdErr = File.CreateText(buildStdErrLog);
+                            newStdErr.Close();
+                            m_logFileMutex.ReleaseMutex();
                         }
 
                         m_buildStdErrView = m_project.findBufferView(buildStdErrLog);
@@ -4552,7 +4564,10 @@ namespace Xyglo
                         //
                         if (!File.Exists(buildStdOutLog))
                         {
-                            File.CreateText(buildStdOutLog);
+                            m_logFileMutex.WaitOne();
+                            StreamWriter newStdOut = File.CreateText(buildStdOutLog);
+                            newStdOut.Close();
+                            m_logFileMutex.ReleaseMutex();
                         }
 
                         // Now ensure that the build log is visible on the screen somewhere
@@ -4661,7 +4676,6 @@ namespace Xyglo
             logFile.Close();
             logFile = null;
 #endif
-
             // Unlock
             //
             m_logFileMutex.ReleaseMutex();
@@ -4800,6 +4814,10 @@ namespace Xyglo
 
         //protected float m_bannerAlpha = 180.0f;
 
+        /// <summary>
+        /// Draw a flying banner - of course
+        /// </summary>
+        /// <param name="gameTime"></param>
         protected void drawBanner(GameTime gameTime)
         {
             // Don't do anything if we don't have anything to draw

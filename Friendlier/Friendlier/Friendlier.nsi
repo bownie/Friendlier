@@ -8,18 +8,36 @@
 ; ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Client" Install IntOp $8 $0 & 1
 ; http://stackoverflow.com/questions/3542496/nsis-installer-with-net-4-0
 
+; We're using the modern UI
+;
+!include "MUI.nsh"
 
-!include FontReg.nsh
-!include FontName.nsh
+; No fonts required.  Yet.
+;!include FontReg.nsh
+;!include FontName.nsh
+
 !include WinMessages.nsh
+!include LogicLib.nsh
+!include Sections.nsh
 
 ; The name of the installer
 Name "Friendlier-win32-alpha-1"
 Caption "Friendlier Windows32 Alpha Build 1"
 
-!define icon "icon.ico"
-!define COMPANY "Xylgo"
+!define ICON "Xyglo.ico"
+!define COMPANY "Xyglo"
 !define SOFTWARE "Friendlier"
+!define VERSION "1.0.0"
+
+!insertmacro MUI_PAGE_LICENSE "Licence.txt"
+!insertmacro MUI_LANGUAGE "English"
+
+; .NET installer
+;
+!define NETVersion "4.0"
+!define NETInstaller "dotNetFx40_Full_setup.exe"
+!define XNAVersion "4.0"
+!define XNAInstaller "xnafx40_redist.msi"
 
 ; The file to write
 OutFile "friendlier-win32-alpha-1.exe"
@@ -33,18 +51,16 @@ InstallDir $PROGRAMFILES\${COMPANY}\${SOFTWARE}
 ;
 InstallDirRegKey HKLM "Software\${COMPANY}\${SOFTWARE}" "Install_Dir"
 
-; Request application privileges for Windows Vista
+; Request application privileges for Windows Vista/7 etc
+;
 RequestExecutionLevel admin
 
 ; Application icon
 ;
-Icon "rg-rwb-rose3-128x128.ico"
-
+Icon ${ICON}
 
 ;--------------------------------
-
 ; Pages
-
 Page components
 Page directory
 Page instfiles
@@ -53,8 +69,65 @@ UninstPage uninstConfirm
 UninstPage instfiles
 
 ;--------------------------------
+; .NET 4.0 check and installer
+;
+; Non-optional section starts with a '-'
+;
+Section "-MS .NET Framework v${NETVersion}" NETFramework
 
-; The stuff to install
+  ; Read the registry string where .NET should be
+  ;
+  ReadRegStr $R0 HKLM "SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" "Install"
+
+  ;MessageBox MB_OK $R0
+  ;IfErrors installNET NETFrameworkInstalled
+
+  ${if} $R0 == 0
+
+    ;MessageBox MB_OK "Will install .NET 4.0"
+    File /oname=$TEMP\${NETInstaller} ${NETInstaller}
+    DetailPrint "Starting Microsoft .NET 4.0 Framework v${NETVersion} installer."
+    ExecWait "$TEMP\${NETInstaller}"
+ 
+  ${else}
+
+    ;MessageBox MB_OK "Microsoft .NET 4.0 Framework is already installed."
+    DetailPrint "Microsoft .NET 4.0 Framework is already installed."
+
+  ${endif}
+ 
+SectionEnd
+
+;--------------------------------
+; XNA 4.0 check and installer
+;
+; Non-optional section starts with a '-'
+;
+Section "-XNA Framework v${XNAVersion}" XNAFramework
+
+  ; Read the registry string where .NET should be
+  ;
+  ReadRegStr $R0 HKLM "SOFTWARE\Microsoft\XNA\Framework\v4.0" "Install"
+
+  ${if} $R0 == 0
+
+    ;MessageBox MB_OK "Will install XNA 4.0"
+    File /oname=$TEMP\${NETInstaller} ${NETInstaller}
+    DetailPrint "Starting Microsoft XNA Framework v${NETVersion} installer."
+    ExecWait "$TEMP\${XNAInstaller}"
+ 
+  ${else}
+
+    ;MessageBox MB_OK "XNA Framework is already installed."
+    DetailPrint "Microsoft XNA Framework is already installed."
+
+  ${endif}
+ 
+SectionEnd
+
+
+; The stuff we want to install
+;
 Section "Friendlier"
 
     SectionIn RO
@@ -64,14 +137,19 @@ Section "Friendlier"
 
     ; The files we are building into the package
     ;
-    File "Friendlier\Friendlier\bin\x86\Debug\Friendlier.exe"
-	File /r "Friendlier\Friendlier\bin\x86\Debug\Content"
+    File "Friendlier\Friendlier\bin\x86\Release\Friendlier.exe"
+	File /r "Friendlier\Friendlier\bin\x86\Release\Content"
 
-    File "rg-rwb-rose3-128x128.ico"
+	; Include the third party installers
+	;
+	File ${NETINSTALLER}
+	File ${XNAINSTALLER}
+
+    File "Xyglo.ico"
 
     ; Write the installation path into the registry
     WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}" "Install_Dir" "$INSTDIR"
-    WriteRegStr HKCR "${SOFTWARE}\DefaultIcon" "" "$INSTDIR\rg-rwb-rose3-128x128.ico"
+    WriteRegStr HKCR "${SOFTWARE}\DefaultIcon" "" "$INSTDIR\${ICON}"
 
     ; Write the uninstall keys for Windows
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${SOFTWARE}" "DisplayName" ${SOFTWARE}
@@ -81,48 +159,41 @@ Section "Friendlier"
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${SOFTWARE}" "NoRepair" 1
     WriteUninstaller "uninstall.exe"
 
+
+	; Now write a key for the software licencing
+	;
+	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "User Email" "none"
+	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "User Organisation" "none"
+	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Product Name" ${SOFTWARE}
+	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Product Version" ${VERSION}
+	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Licence Key" "nonel"
+
+
 SectionEnd
 
-Section "Fonts"
-    ; Using the FontName package this is very easy - works out the install path for us and
-    ; we just need to specify the file name of the fonts.
-    ;
+; Non-optional section starts with a '-'
+;
+Section "-Start Menu Shortcuts"
 
-    ; Copy the FONTS variable into FONT_DIR
-    ;
-    ;StrCpy $FONT_DIR $FONTS
+    ; Fix for Windows 7
+	;
+    SetShellVarContext all
 
-    ; Remove and then install fonts
-    ;
-    ;!insertmacro RemoveTTFFont "GNU-LilyPond-feta-design20.ttf"
-    ;!insertmacro RemoveTTFFont "GNU-LilyPond-feta-nummer-10.ttf"
-    ;!insertmacro RemoveTTFFont "GNU-LilyPond-parmesan-20.ttf"
-
-    ;!insertmacro InstallTTFFont "data\fonts\GNU-LilyPond-feta-design20.ttf"
-    ;!insertmacro InstallTTFFont "data\fonts\GNU-LilyPond-feta-nummer-10.ttf"
-    ;!insertmacro InstallTTFFont "data\fonts\GNU-LilyPond-parmesan-20.ttf"
-
-    ; Complete font registration without reboot
-    ;
-    SendMessage ${HWND_BROADCAST} ${WM_FONTCHANGE} 0 0 /TIMEOUT=5000
-SectionEnd
-
-
-; Optional section (can be disabled by the user)
-Section "Start Menu Shortcuts"
-
-    CreateDirectory "$SMPROGRAMS\${SOFTWARE}"
-    CreateShortCut "$SMPROGRAMS\${SOFTWARE}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
-    ;CreateShortCut "$SMPROGRAMS\${SOFTWARE}\${SOFTWARE}.lnk" "$INSTDIR\Friendlier.exe" "" "$INSTDIR\garderobe.nsi" 0
-    CreateShortCut "$SMPROGRAMS\${SOFTWARE}\${SOFTWARE}.lnk" "$INSTDIR\Friendlier.exe" "" "$INSTDIR\rg-rwb-rose3-128x128.ico"
+    CreateDirectory "$SMPROGRAMS\${COMPANY}\${SOFTWARE}"
+    CreateShortCut "$SMPROGRAMS\${COMPANY}\${SOFTWARE}\Uninstall.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
+    ;CreateShortCut "$SMPROGRAMS\${COMPANY}\${SOFTWARE}\${SOFTWARE}.lnk" "$INSTDIR\Friendlier.exe" "" "$INSTDIR\Friendlier.nsi" 0
+    CreateShortCut "$SMPROGRAMS\${COMPANY}\${SOFTWARE}\${SOFTWARE}.lnk" "$INSTDIR\Friendlier.exe" "" "$INSTDIR\${ICON}"
 
 SectionEnd
 
 ;--------------------------------
-
 ; Uninstaller
-
+;
 Section "Uninstall"
+
+    ; fix for Windows 7
+	;
+    SetShellVarContext all
 
     ; Remove registry keys
         ;
@@ -131,21 +202,27 @@ Section "Uninstall"
 
     ; Remove files and uninstaller
     ;
-    Delete $INSTDIR\uninstall.exe
+    Delete "$INSTDIR\uninstall.exe"
     Delete "$INSTDIR\Friendlier.exe"
-	Delete "$INSTDIR\rg-rwb-rose3-128x128.ico"
+	Delete "$INSTDIR\${ICON}"
+
+	; Delete bundled installers
+	;
+	Delete "$INSTDIR\${NETINSTALLER}"
+	Delete "$INSTDIR\${XNAINSTALLER}"
 
 	; Remove the data directory and subdirs
 	;
-	RMDir /r "$INSTDIR\data"
-	Delete "$INSTDIR\data"
+	RMDir /r "$INSTDIR\Content"
+	Delete "$INSTDIR\Content"
 
     ; Remove shortcuts, if any
-    Delete "$SMPROGRAMS\${SOFTWARE}\*.*"
+    Delete "$SMPROGRAMS\${COMPANY}\${SOFTWARE}\*.*"
     Delete "$INSTDIR\${SOFTWARE}\*.*"
 
     ; Remove directories used
-    RMDir "$SMPROGRAMS\${SOFTWARE}"
+	;
+    RMDir "$SMPROGRAMS\${COMPANY}\${SOFTWARE}"
     RMDir "$INSTDIR"
 
 SectionEnd

@@ -140,6 +140,19 @@ namespace Xyglo
         [DataMember]
         protected Vector3 m_targetSavePosition = new Vector3();
 
+        /// <summary>
+        /// Buffer view colour index
+        /// </summary>
+        [DataMember]
+        protected int m_bvColourIndex = 0;
+
+        /// <summary>
+        /// List of buffer view colours that we cycle through
+        /// </summary>
+        [DataMember]
+        protected Color[] m_bvColours = { Color.DeepSkyBlue, Color.IndianRed, Color.OrangeRed, Color.GreenYellow, Color.HotPink, Color.LavenderBlush };
+
+
         ////////// CONSTRUCTORS ///////////
 
         /// <summary>
@@ -180,6 +193,23 @@ namespace Xyglo
         }
 
         ////////////// METHODS ////////////////
+
+        /// <summary>
+        /// Return the next colour we should use for a BufferView
+        /// </summary>
+        /// <returns></returns>
+        public Color getNewFileBufferColour()
+        {
+            Color rC = m_bvColours[m_bvColourIndex];
+
+            m_bvColourIndex = (m_bvColourIndex + 1) % m_bvColours.Length;
+
+            // Set alpha
+            //
+            rC.A = 150;
+
+            return rC;
+        }
 
         /// <summary>
         /// Set the licenced status for this project

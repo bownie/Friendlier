@@ -214,7 +214,7 @@ namespace Xyglo
         /// Background colour for this bufferview
         /// </summary>
         [DataMember]
-        protected Color m_backgroundColour = new Color(0, 191, 255, 190);//Color.DeepSkyBlue;
+        protected Color m_backgroundColour = Color.Black;  //new Color(0, 191, 255, 10);//Color.DeepSkyBlue;
 
         /// <summary>
         /// Store the search text per BufferView
@@ -353,12 +353,15 @@ namespace Xyglo
         /// </summary>
         public void setDefaults()
         {
+            /*
             if (m_backgroundColour == null || m_backgroundColour == Color.Black)
             {
                 m_backgroundColour = new Color(0, 191, 255, 190);//Color.DeepSkyBlue;
             }
 
             m_backgroundColour = Color.Black;
+            */
+
 
             if (m_searchText == null)
             {
