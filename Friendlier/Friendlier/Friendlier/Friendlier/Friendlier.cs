@@ -420,6 +420,21 @@ namespace Xyglo
         /// </summary>
         protected bool m_saveAsExit = false;
 
+        /// <summary>
+        /// Generate a tree from a Friendlier structure
+        /// </summary>
+        protected TreeBuilder m_treeBuilder = new TreeBuilder();
+
+        /// <summary>
+        /// Model builder realises a model from a tree
+        /// </summary>
+        protected ModelBuilder m_modelBuilder;
+
+        /// <summary>
+        /// Kinect manager
+        /// </summary>
+        protected XygloKinectManager m_kinectManager;
+
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
         /// <summary>
@@ -692,7 +707,32 @@ namespace Xyglo
             // Set-up the single FileSystemView we have
             //
             m_fileSystemView = new FileSystemView(m_filePath, new Vector3(-800.0f, 0f, 0f), m_fontManager.getLineHeight(), m_fontManager.getCharWidth());
+
+            // Tree builder and model builder
+            //
+            generateTreeModel();
+
+            // Generate a kinect manager
+            //
+            m_kinectManager = new XygloKinectManager();
+            m_kinectManager.initialise();
         }
+
+        /// <summary>
+        /// Generate a model from the Project
+        /// </summary>
+        private void generateTreeModel()
+        {
+            // Firstly get a root directory for the FileBuffer tree
+            //
+            string fileRoot = m_project.getFileBufferRoot();
+
+            TreeBuilderGraph rG = m_treeBuilder.buildTree(fileRoot, m_project.getNonNullFileBuffers());
+
+            ModelBuilder mB = new ModelBuilder(rG);
+            //mB.build();
+        }
+
 
         /// <summary>
         /// A event handler for FileSystemWatcher
@@ -879,8 +919,8 @@ namespace Xyglo
             //
             this.Window.AllowUserResizing = true;
             this.Window.ClientSizeChanged += new EventHandler<EventArgs>(Window_ClientSizeChanged);
-
-
+            this.Window.Title = "Friendlier v" + VersionInformation.getProductVersion();
+            
             /* NEW METHOD for font projection */
             m_basicEffect = new BasicEffect(m_graphics.GraphicsDevice)
             {
@@ -912,10 +952,22 @@ namespace Xyglo
             //
             setTextScrollerWidth(Convert.ToInt16(m_fontManager.getCharWidth(FontManager.FontType.Overlay) * 32));
 
-            // Initialise the project
+            // Initialise the project - do this only once
             //
             initialiseProject();
+
+            
         }
+
+        /// <summary>
+        /// Are we resizing the main window?
+        /// </summary>
+        protected bool m_isResizing = false;
+
+        /// <summary>
+        /// Store the last window size in case we're resizing
+        /// </summary>
+        protected Vector2 m_lastWindowSize = Vector2.Zero;
 
         public void Window_ClientSizeChanged(object sender, EventArgs e)
         {
@@ -1188,23 +1240,38 @@ namespace Xyglo
 
                             if (checkFileSave())
                             {
-                                // Check if we need to remove this FileBuffer from the todo list - it's not important if we can't
-                                // remove it here but we should try to anyway.
-                                //
-                                if (m_filesToWrite.Remove(m_project.getSelectedBufferView().getFileBuffer()))
+                                if (m_filesToWrite != null)
                                 {
-                                    Logger.logMsg("Friendlier::Update() - could not find FileBuffer to remove from m_filesToWrite");
+                                    // Check if we need to remove this FileBuffer from the todo list - it's not important if we can't
+                                    // remove it here but we should try to anyway.
+                                    //
+                                    if (m_filesToWrite.Remove(m_project.getSelectedBufferView().getFileBuffer()))
+                                    {
+                                        Logger.logMsg("Friendlier::Update() - could not find FileBuffer to remove from m_filesToWrite");
+                                    }
+                                    else
+                                    {
+                                        Logger.logMsg("Friendlier::Update() - total files left to write is now " + m_filesToWrite.Count);
+                                    }
+
+                                    // If we have finished saving all of our files then we can exit (although we check once again)
+                                    //
+                                    if (m_filesToWrite.Count == 0)
+                                    {
+                                        if (m_saveAsExit == true)
+                                        {
+                                            checkExit(gameTime);
+                                        }
+                                        else
+                                        {
+                                            setActiveBuffer();
+                                        }
+                                    }
                                 }
                                 else
                                 {
-                                    Logger.logMsg("Friendlier::Update() - total files left to write is now " + m_filesToWrite.Count);
-                                }
-
-                                // If we have finished saving all of our files then we can exit (although we check once again)
-                                //
-                                if (m_filesToWrite.Count == 0 && m_saveAsExit == true)
-                                {
-                                    checkExit(gameTime);
+                                    m_state = FriendlierState.TextEditing;
+                                    setActiveBuffer();
                                 }
                             }
                         }
@@ -1324,6 +1391,11 @@ namespace Xyglo
                 //
                 m_counterWorker.requestStop();
                 m_counterWorkerThread.Join();
+
+                // Close any kinect
+                //
+                m_kinectManager.close();
+
                 this.Exit();
             }
         }
@@ -1345,6 +1417,27 @@ namespace Xyglo
             // Store gameTime
             //
             m_gameTime = gameTime;
+
+            // If mouse left button is down and window size is changing then we are
+            // resizing it.
+            //
+            /*
+            if (Mouse.GetState().LeftButton == ButtonState.Pressed // &&
+                //( m_lastWindowSize.X != m_graphics.GraphicsDevice.Viewport.Width ||
+                  //m_lastWindowSize.Y != m_graphics.GraphicsDevice.Viewport.Height)
+                )
+            {
+                m_isResizing = true;
+                return;
+            }*/
+           
+            // Check for the release of a sizing move
+            //
+            if (Mouse.GetState().LeftButton == ButtonState.Released && m_isResizing)
+            {
+                m_isResizing = false;
+            }
+
 
             // Allow the game to exit
             //
@@ -2823,6 +2916,10 @@ namespace Xyglo
 
             base.Update(gameTime);
 
+            // Store the last window size
+            //
+            m_lastWindowSize.X = m_graphics.GraphicsDevice.Viewport.Width;
+            m_lastWindowSize.Y = m_graphics.GraphicsDevice.Viewport.Height;
         }
 
 
@@ -3210,7 +3307,7 @@ namespace Xyglo
                 //
                 if (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime > repeatHold ||
                     (m_state != FriendlierState.TextEditing &&
-                    (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime  > repeatHold / 4)))
+                    (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime  > repeatHold / 2)))
                 {
                     return true;
                 }
@@ -3304,6 +3401,14 @@ namespace Xyglo
             // Set background colour
             //
             m_graphics.GraphicsDevice.Clear(Color.Black);
+
+            // If we are resizing then do nothing
+            //
+            if (m_isResizing)
+            {
+                base.Draw(gameTime);
+                return;
+            }
             
             // If spinning then spin around current position based on time.
             //
@@ -3399,7 +3504,6 @@ namespace Xyglo
                 }
                 else
                 {
-
                     // We only draw the scrollbar on the active view
                     //
                     drawScrollbar(m_project.getSelectedBufferView());
@@ -3441,11 +3545,16 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Manage project
+        /// Draw an overview of the project from a file perspective and allow modification
         /// </summary>
         protected void drawManageProject(GameTime gameTime)
         {
-
+            /*
+            foreach(FileBuffers fb in m_project.getFileBuffers())
+            {
+                
+            }
+             * */
         }
 
         /// <summary>
@@ -3748,7 +3857,7 @@ namespace Xyglo
             }
 
             double dTS = gameTime.TotalGameTime.TotalSeconds;
-            int blinkRate = 3;
+            int blinkRate = 4;
 
             // Test for when we're showing this
             //
@@ -4191,6 +4300,10 @@ namespace Xyglo
         /// </summary>
         protected void renderTextScroller()
         {
+            if (m_state != FriendlierState.TextEditing)
+            {
+                return;
+            }
             if (m_temporaryMessage == "")
             {
                 return;
@@ -4923,6 +5036,9 @@ namespace Xyglo
             }
         }
 
+        /// <summary>
+        /// The colour of our banner
+        /// </summary>
         protected Color m_bannerColour = new Color(180, 180, 180, 180);
 
         //protected float m_bannerAlpha = 180.0f;
@@ -5024,5 +5140,3 @@ namespace Xyglo
         }
     }
 }
-
-

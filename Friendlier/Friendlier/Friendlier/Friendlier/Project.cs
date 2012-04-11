@@ -462,6 +462,24 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Return non-null FileBuffers
+        /// </summary>
+        /// <returns></returns>
+        public List<FileBuffer> getNonNullFileBuffers()
+        {
+            List<FileBuffer> rL = new List<FileBuffer>();
+
+            foreach (FileBuffer fb in m_fileBuffers)
+            {
+                if (fb.getFilepath() != null && fb.getFilepath() != "")
+                {
+                    rL.Add(fb);
+                }
+            }
+            return rL;
+        }
+
+        /// <summary>
         /// Clear down this project
         /// </summary>
         public void clear()
@@ -1048,6 +1066,154 @@ namespace Xyglo
         public void setWindowPosition(Vector2 pos)
         {
             m_windowPosition = pos;
+        }
+
+        /// <summary>
+        /// Get the root directory of all the FileBuffers - does this in our own inimitable way.
+        /// If we supply a prefix it will look for all roots prefixed with this.
+        /// </summary>
+        /// <returns></returns>
+        public string getFileBufferRoot(string prefix = "")
+        {
+            string rS = "";
+            prefix = prefix.ToUpper(); // Always upper case in this method
+
+            // Firstly strip out any null paths which might exist for unsaved FileBuffers
+            //
+            List<FileBuffer> rL = new List<FileBuffer>();
+            int longLength = 0;
+            int longId = 0;
+            foreach (FileBuffer fb in getNonNullFileBuffers())
+            {
+                // Store the length of the longest string
+                if (fb.getFilepath().Length > longLength)
+                {
+                    longLength = fb.getFilepath().Length;
+                    longId = rL.Count();
+                }
+                rL.Add(fb);
+                Logger.logMsg("Project::getFileBufferRoot() - added FileBuffer " + fb.getFilepath());
+            }
+
+            // Check to see if the prefix has excluded everything
+            //
+            if (prefix.Length > longLength)
+            {
+                Logger.logMsg("Project::getFileBufferRoot() - prefix " + prefix + " has excluded all potential FileBuffers");
+                return rS;
+            }
+
+            // Prepend prefix to test return string
+            //
+            rS += prefix;
+
+            // Test 
+            bool foundDifference = false;
+            bool matchedAny = false;
+            int lastBackSlash = 0;
+            for (int i = prefix.Length; i < longLength; i++)
+            {
+                rS += rL[longId].getFilepath().ToUpper()[i];
+
+                // Store location of last backslash
+                //
+                if (rL[longId].getFilepath()[i] == '\\')
+                {
+                    lastBackSlash = i;
+                }
+
+                for (int j = 0; j < rL.Count; j++)
+                {
+                    if (j != longId)
+                    {
+                        if (rS != rL[j].getFilepath().ToUpper().Substring(0, rS.Length))
+                        {
+                            foundDifference = true;
+                            break;
+                        }
+                        else
+                        {
+                            matchedAny = true;
+                        }
+                    }
+                }
+
+                if (foundDifference)
+                {
+                    break;
+                }
+            }
+
+            // Test for failure to match any prefixes
+            //
+            if (!matchedAny)
+            {
+                Logger.logMsg("Project::getFileBufferRoot() - failed to match any prefixes");
+                return "";
+            }
+
+            // Truncate up to last backslash
+            //
+            if (lastBackSlash > 0)
+            {
+                rS = rS.Substring(0, lastBackSlash + 1);
+            }
+
+            return rS;
+        }
+    }
+
+    /// <summary>
+    /// http://www.extensionmethod.net/Details.aspx?ID=152
+    /// </summary>
+    public static class LinqExtensions
+    {
+        /*
+        public static IEnumerable<IEnumerable<T>> Transpose<T>(this IEnumerable<IEnumerable<T>> values)
+        {
+            if (values.Count() == 0)
+                return values;
+            if (values.First().Count() == 0)
+                return Transpose(values.Skip(1));
+
+            var x = values.First().First();
+            var xs = values.First().Skip(1);
+            var xss = values.Skip(1);
+         * 
+            return
+                new[] {new[] {x}
+        .Concat(xss.Select(ht => ht.First()))}
+                .Concat(new[] { xs }
+                .Concat(xss.Select(ht => ht.Skip(1)))
+                .Transpose());
+        }*/
+
+        /// <summary>
+        /// http://stackoverflow.com/questions/2070356/find-common-prefix-of-strings
+        /// 
+        /// Use:
+        /// 
+        /// string[] xs = new[] { "h:/a/b/c", "h:/a/b/d", "h:/a/b/e", "h:/a/c" };
+        /// string x = string.Join("\\", xs.Select(s => s.Split('\\').AsEnumerable()).Transpose().TakeWhile(s => s.All(d => d == s.First())).Select(s => s.First())); 
+        /// 
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="source"></param>
+        /// <returns></returns>
+        public static IEnumerable<IEnumerable<T>> Transpose<T>(this IEnumerable<IEnumerable<T>> source)
+        {
+            var enumerators = source.Select(e => e.GetEnumerator()).ToArray();
+            try
+            {
+                while (enumerators.All(e => e.MoveNext()))
+                {
+                    yield return enumerators.Select(e => e.Current).ToArray();
+                }
+            }
+            finally
+            {
+                Array.ForEach(enumerators, e => e.Dispose());
+            }
         }
     }
 }

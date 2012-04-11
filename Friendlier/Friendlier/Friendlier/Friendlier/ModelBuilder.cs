@@ -23,47 +23,13 @@ namespace Xyglo
     /// <summary>
     /// Builds a 3D ready model from an arbitrary acyclic directed or undirected graph
     /// </summary>
-    class ModelBuilder
+    public class ModelBuilder
     {
-        public ModelBuilder(TreeBuilder tb)
-        {
-            treeBuilder = tb;
-
-            // Start with some depth in the buffer
-            //
-            startZ = -2.0f;
-            incrementZ = -1.0f;
-            currentZ = startZ;
-
-        }
-
-        TreeBuilder treeBuilder;
-
         /// <summary>
-        /// Do the build
+        /// Graph created by a TreeBuilder
         /// </summary>
-        public void build()
-        {
-            Logger.logMsg("Got tree with " + treeBuilder.getTotalNodes());
+        protected TreeBuilderGraph m_treeBuilderGraph;
 
-
-            // For the moment we do a Topological sort only so we expect our graphic to
-            // be acyclic.  We fetch the top-most node with this search and then iterate
-            // each node placing it in a 3D space according to how much space we think we 
-            // have left on the current viewing plane.  This will probably mean we'll have
-            // to do multiple passes of the sort initially to work out best placement at each
-            // plane level.   As we reach a limit of complexity for each plane in the Z buffer
-            // we move further away from the origin.
-            //
-            foreach (string vertex in treeBuilder.m_graph.TopologicalSort<string, Edge<string>>())
-            {
-                if (bestPlace(vertex) == false)
-                {
-                    Logger.logMsg("Couldn't place " + vertex);
-                }
-            }
-           
-        }
 
         /// <summary>
         /// Position of the initial eye - the further away from the origin the flatter the image
@@ -105,6 +71,51 @@ namespace Xyglo
         /// </summary>
         protected float itemHeight = 0.8f;
 
+        // --------------------------------- CONSTRUCTORS -------------------------------
+
+        /// <summary>
+        /// Constructor accepts a TreeBuilderGraph
+        /// </summary>
+        /// <param name="tbg"></param>
+        public ModelBuilder(TreeBuilderGraph tbg)
+        {
+            m_treeBuilderGraph = tbg;
+
+            // Start with some depth in the buffer
+            //
+            startZ = -2.0f;
+            incrementZ = -1.0f;
+            currentZ = startZ;
+        }
+
+
+        // --------------------------------  METHODS -----------------------------
+
+        /// <summary>
+        /// Do the build
+        /// </summary>
+        public void build()
+        {
+            Logger.logMsg("Friendlier::ModelBuilder() - got tree with " + m_treeBuilderGraph.Vertices.Count<string>());
+
+            // For the moment we do a Topological sort only so we expect our graphic to
+            // be acyclic.  We fetch the top-most node with this search and then iterate
+            // each node placing it in a 3D space according to how much space we think we 
+            // have left on the current viewing plane.  This will probably mean we'll have
+            // to do multiple passes of the sort initially to work out best placement at each
+            // plane level.   As we reach a limit of complexity for each plane in the Z buffer
+            // we move further away from the origin.
+            //
+            foreach (string vertex in m_treeBuilderGraph.TopologicalSort<string, Edge<string>>())
+            {
+                if (bestPlace(vertex) == false)
+                {
+                    Logger.logMsg("Friendlier::ModelBuilder() - couldn't place " + vertex);
+                }
+            }
+        }
+
+
         // Don't define a FOV for Z for the moment
 
         /// <summary>
@@ -113,9 +124,9 @@ namespace Xyglo
         /// <param name="zLayer"></param>
         bool bestPlace(string vertex)
         {
-            Logger.logMsg("Placing vertex " + vertex);
+            Logger.logMsg("Friendlier::bestPlace() - placing vertex " + vertex);
 
-            int degree = treeBuilder.m_graph.Degree(vertex);
+            int degree = m_treeBuilderGraph.Degree(vertex);
 
             // Initial placePosition is in the middle of the current Z field
             //
@@ -182,8 +193,6 @@ namespace Xyglo
                     {
                         mcf.position.X += mcf.getBoundingBox().Max.X;
                     }
-
-                    
                 }
                 else
                 {
@@ -202,8 +211,6 @@ namespace Xyglo
             {
                 currentZ += incrementZ;
             }
-
-
             return true;
         }
 
@@ -212,14 +219,11 @@ namespace Xyglo
         /// </summary>
         Dictionary<string, ModelItem> itemList = new Dictionary<string, ModelItem>();
 
-
         /// <summary>
         /// Position on the previous Z of where we dropped the last item - we need to be able
         /// to make this relevant to the viewing position though so it's not a reliable thing
         /// to use.
         /// </summary>
         //BoundingBox lastDropped;
-
-
     }
 }

@@ -1,3 +1,13 @@
+TODO
+----
+- some way of seeing/modifying/deleting files in project / visualisation of project contents  [STARTED]
+- Kinect integration [STARTED]
+- file management
+- resizing window [IN PROGRESS]
+- zooming is not very good at the moment [IN PROGRESS]
+- f-keys for zooming etc is unnatural [FIXED to CURSOR plus ALT SHIFT] 
+- save as not working [IN PROGRESS]
+- scrolling and cut and paste on parameter editing and information screen
 - Fuzzy fonts - some tips:
 
   + http://gamedev.stackexchange.com/questions/15469/how-do-i-get-beautiful-small-text-in-xna-without-using-external-libraries
@@ -27,21 +37,9 @@ Build version:
 http://autobuildversion.codeplex.com/
 
 
-SUGGESTIONS
------------
-- Kinect integration
-- file management
-- resizing window [IN PROGRESS]
-- zooming is not very good at the moment [IN PROGRESS]
-- f-keys for zooming etc is unnatural [FIXED to CURSOR plus ALT SHIFT] 
-- save as not working [IN PROGRESS]
-- some way of seeing/modifying/deleting files in project
-- scrolling and cut and paste on parameter editing and information screen
 
-
-BUG and TODO
-------------
-- visualisation of project contents
+BUGs and OTHER TODOS
+--------------------
 - search highlight all occurences on the scrollbar
 - compare directories - smart compare 
 - drag and drop file and directory insertion

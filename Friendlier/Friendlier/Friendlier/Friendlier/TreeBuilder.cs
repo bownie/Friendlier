@@ -19,20 +19,43 @@ using QuickGraph.Graphviz;
 
 namespace Xyglo
 {
-    class TreeBuilder
+
+    public class TreeBuilderGraph : BidirectionalGraph<string, Edge<string>>
     {
-        public BidirectionalGraph<string, Edge<string>> m_graph = null;
+        public TreeBuilderGraph() : base() { }
+    };
 
+    /// <summary>
+    /// This class is used to build a tree from a collection of things within the
+    /// Friendlier universe.  That tree can then be traversed to build a model 
+    /// representation in 3D.
+    /// </summary>
+    public class TreeBuilder
+    {
+        //public BidirectionalGraph<string, Edge<string>> m_graph = null;
+        public TreeBuilderGraph m_graph = null;
 
+        /// <summary>
+        /// Default constructor
+        /// </summary>
         public TreeBuilder()
         {
-            initialise();
-
         }
 
-        public void initialise()
+        /// <summary>
+        /// Build some test data
+        /// </summary>
+        protected void testInitialise()
         {
-            m_graph = new BidirectionalGraph<string, Edge<string>>();
+            if (m_graph == null)
+            {
+                //m_graph = new BidirectionalGraph<string, Edge<string>>();
+                m_graph = new TreeBuilderGraph();
+            }
+            else
+            {
+                m_graph.Clear();
+            }
 
             //var g = new BidirectionalGraph<string, Edge<string>>();
             //var g3 = new UndirectedGraph<string, Edge<string>>();
@@ -67,7 +90,65 @@ namespace Xyglo
             m_graph.AddEdge(new Edge<string>("H", "1A"));
         }
 
-        public void topologicalSort()
+        /// <summary>
+        /// Accept a List<FileBuffer> and build a tree from that.  We examine the directories,
+        /// find a base directory for all of them, generate nodes for all the directories within
+        /// this tree and then connect them up.  Once we have a tree of directories we can 
+        /// overlay files on top of that.
+        /// 
+        /// The rootPath defines the root node.  All other directories spread from there.
+        /// </summary>
+        /// <param name="fbList"></param>
+        public TreeBuilderGraph buildTree(string rootPath, List<FileBuffer> fbList)
+        {
+            TreeBuilderGraph rG = new TreeBuilderGraph();
+
+            rG.AddVertex(rootPath);
+
+            foreach (FileBuffer fb in fbList)
+            {
+                string subPath = fb.getFilepath().Substring(rootPath.Length, fb.getFilepath().Length - rootPath.Length);
+
+                Logger.logMsg("Sub path = " + subPath);
+
+                // Always start lastVertex from the root and test while we expand downwards
+                //
+                string lastVertex = rootPath;
+
+                foreach (string subVertex in subPath.Split('\\'))
+                {
+                    // Test for vertex and add if it's not already there
+                    //
+                    if (!rG.ContainsVertex(subVertex))
+                    {
+                    Logger.logMsg("Adding sub vertex = " + subVertex);
+                    rG.AddVertex(subVertex);
+                    }
+
+                    // Generate edge between here and there
+                    //
+                    Edge<string> newEdge = new Edge<string>(lastVertex, subVertex);
+
+                    // Test and add as necessary
+                    //
+                    if (!rG.ContainsEdge(newEdge))
+                    {
+                        rG.AddEdge(newEdge);
+                    }
+
+                    // Now change lastVertex to this one
+                    //
+                    lastVertex = subVertex;
+                }
+            }
+
+            return rG;
+        }
+
+        /// <summary>
+        /// Print out a topological sort
+        /// </summary>
+        protected void testTopologicalSort()
         {
             foreach (string v in m_graph.TopologicalSort())
             {
@@ -75,12 +156,21 @@ namespace Xyglo
             }
         }
 
+        /// <summary>
+        /// Get the total nodes from the graph
+        /// </summary>
+        /// <returns></returns>
         public int getTotalNodes()
         {
             return m_graph.Vertices.Count<string>();
         }
 
-        public void buildTree()
+        /// <summary>
+        /// I currently have no idea what this method does but it looks like a playground
+        /// for trying out the various sorting methods.  For the moment it's logging output
+        /// only.
+        /// </summary>
+        protected void testBuildTree()
         {
             var roots = m_graph.Roots().ToList();
 
@@ -158,7 +248,6 @@ namespace Xyglo
             //int componentsConnected = m_graph.TreeBreadthFirstSearch<string, Edge<string>>("A");
 
             /* Breadth First */
-
             var parents = new Dictionary<string, string>();
             var distances = new Dictionary<string, int>();
             string currentVertex = default(string);
@@ -167,7 +256,6 @@ namespace Xyglo
             var algo = new BreadthFirstSearchAlgorithm<string, Edge<string>>(m_graph);
 
             string sourceVertex = "A";
-
 
             algo.DiscoverVertex += u =>
             {
@@ -258,7 +346,6 @@ namespace Xyglo
             // adding the edge (u,v)
             IEdge e = m_graph.AddEdge(u, v);     // IEdgeMutableGraph
             */
-
         }
     }
 }

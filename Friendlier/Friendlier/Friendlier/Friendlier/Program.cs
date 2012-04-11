@@ -21,8 +21,10 @@ namespace Xyglo
         [STAThread]// Setting this as single threaded for cut and paste of all things to work
         static void Main(string[] args)
         {
+#if OUTER_EXCEPTION_HANDLING
             try
             {
+#endif
                 // Build a list of Files/Entities/Fragments and label them and extact some basic information
                 //
 
@@ -35,7 +37,6 @@ namespace Xyglo
                 //
                 //ModelBuilder mb = new ModelBuilder(tb);
                 //mb.build();
-
 
                 bool checkValidity = Registration.checkRegistry();
 
@@ -84,18 +85,21 @@ namespace Xyglo
                     project = new Project("New Project", projectFile);
                 }
 
+                //Logger.logMsg("FILE BUFFER ROOT = " + project.getFileBufferRoot());
+
                 // Set the licencing state
                 //
                 project.setLicenced(checkValidity);
 
                 Friendlier friendlier = new Friendlier(project);
                 friendlier.Run();
-
+#if OUTER_EXCEPTION_HANDLING
             }
             catch (Exception e)
             {
                 MessageBox.Show("Friendlier encountered a problem: " + e.Message);
             }
+#endif
         }
     }
 #endif
