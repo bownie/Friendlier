@@ -17,8 +17,6 @@ using System.Diagnostics;
 using System.Management;
 using Microsoft.VisualBasic;
 
-
-
 namespace Xyglo
 {
     /// <summary>
@@ -417,6 +415,11 @@ namespace Xyglo
         /// </summary>
         Process m_buildProcess = null;
 
+        /// <summary>
+        /// Exit after save as
+        /// </summary>
+        protected bool m_saveAsExit = false;
+
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
         /// <summary>
@@ -542,6 +545,11 @@ namespace Xyglo
                 windowHeight = 576;
             }
 
+            // Set this for storage
+            //
+            m_project.setWindowSize(windowWidth, windowHeight);
+            m_project.setFullScreen(false);
+
             // Set the graphics modes
             initGraphicsMode(windowWidth, windowHeight, false);
         }
@@ -563,6 +571,8 @@ namespace Xyglo
                     maxHeight = dm.Height;
                 }
             }
+
+            m_project.setFullScreen(true);
 
             // Set the graphics modes
             initGraphicsMode(maxWidth, maxHeight, true);
@@ -865,6 +875,12 @@ namespace Xyglo
             //
             IsMouseVisible = false;
 
+            // Allow resizing
+            //
+            this.Window.AllowUserResizing = true;
+            this.Window.ClientSizeChanged += new EventHandler<EventArgs>(Window_ClientSizeChanged);
+
+
             /* NEW METHOD for font projection */
             m_basicEffect = new BasicEffect(m_graphics.GraphicsDevice)
             {
@@ -900,6 +916,13 @@ namespace Xyglo
             //
             initialiseProject();
         }
+
+        public void Window_ClientSizeChanged(object sender, EventArgs e)
+        {
+            // Make changes to handle the new window size.            
+            Logger.logMsg("Friendlier::Window_ClientSizeChanged() - got client resized event");
+        }
+
 
         /// <summary>
         /// Creates a new text scroller of given width
@@ -1179,7 +1202,7 @@ namespace Xyglo
 
                                 // If we have finished saving all of our files then we can exit (although we check once again)
                                 //
-                                if (m_filesToWrite.Count == 0)
+                                if (m_filesToWrite.Count == 0 && m_saveAsExit == true)
                                 {
                                     checkExit(gameTime);
                                 }
@@ -1291,6 +1314,7 @@ namespace Xyglo
                 {
                     setTemporaryMessage("[Unsaved Buffers.  Save?  Y/N/C]", gameTime, 0);
                     m_confirmState = ConfirmState.FileSaveCancel;
+                    m_saveAsExit = true;
                     //m_state = FriendlierState.FileSaveAs;
                 }
             }
@@ -1342,6 +1366,7 @@ namespace Xyglo
                         setTemporaryMessage("[Cancelled Quit]", gameTime, 0.5);
                         m_confirmState = ConfirmState.None;
                         m_state = FriendlierState.TextEditing;
+                        m_saveAsExit = false;
                         m_filesToWrite = null;
                         break;
 
@@ -1548,7 +1573,17 @@ namespace Xyglo
                 }
                 else
                 {
-                    if (m_altDown)
+                    if (m_altDown && m_shiftDown) // Do zoom
+                    {
+                        m_zoomLevel -= 500.0f;
+
+                        if (m_zoomLevel < 500.0f)
+                        {
+                            m_zoomLevel = 500.0f;
+                        }
+                        setActiveBuffer();
+                    }
+                    else if (m_altDown)
                     {
                         // Attempt to move right if there's a BufferView there
                         //
@@ -1597,7 +1632,12 @@ namespace Xyglo
                 }
                 else
                 {
-                    if (m_altDown)
+                    if (m_altDown && m_shiftDown) // Do zoom
+                    {
+                        m_zoomLevel += 500.0f;
+                        setActiveBuffer();
+                    }
+                    else if (m_altDown)
                     {
                         // Attempt to move right if there's a BufferView there
                         //
@@ -1803,7 +1843,7 @@ namespace Xyglo
             {
                 startBanner(gameTime, "Friendlier\nv1.0", 5);
             }
-            else if (checkKeyState(Keys.F7, gameTime))
+            /*else if (checkKeyState(Keys.F7, gameTime))
             {
                 if (m_shiftDown)
                 {
@@ -1840,21 +1880,29 @@ namespace Xyglo
                 }
 
                 setActiveBuffer();
-            }
+            }*/
             else if (checkKeyState(Keys.F6, gameTime))
             {
                 doBuildCommand(gameTime);
             }
-            else if (checkKeyState(Keys.F11, gameTime))
+            else if (checkKeyState(Keys.F11, gameTime)) // Toggle full screen
             {
-                windowedMode();
+                if (m_project.isFullScreen())
+                {
+                    windowedMode();
+                }
+                else
+                {
+                    fullScreenMode();
+                }
                 setSpriteFont();
             }
-            else if (checkKeyState(Keys.F12, gameTime))
+/*            else if (checkKeyState(Keys.F12, gameTime))
             {
                 fullScreenMode();
                 setSpriteFont();
             }
+ * */
             else if (checkKeyState(Keys.F1, gameTime))  // Cycle down through BufferViews
             {
                 int newValue = m_project.getSelectedBufferViewId() - 1;
@@ -2190,6 +2238,7 @@ namespace Xyglo
                             //
                             if (m_project.getSelectedBufferView().getFileBuffer().getFilepath() == "")
                             {
+                                m_saveAsExit = false;
                                 selectSaveFile();
                             }
                             else
@@ -2206,6 +2255,11 @@ namespace Xyglo
                                 m_state = FriendlierState.TextEditing;
                             }
                         }
+                    }
+                    else if (checkKeyState(Keys.A, gameTime)) // Explicit save as
+                    {
+                        m_saveAsExit = false;
+                        selectSaveFile();
                     }
                     else if (checkKeyState(Keys.N, gameTime)) // New BufferView on new FileBuffer
                     {
@@ -2337,7 +2391,10 @@ namespace Xyglo
                                             {
                                                 // Exit nicely and ensure we serialise
                                                 //
-                                                checkExit(gameTime);
+                                                if (m_saveAsExit)
+                                                {
+                                                    checkExit(gameTime);
+                                                }
                                             }
                                         }
                                     }
@@ -3040,6 +3097,16 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Testing whether arrived in bounding sphere
+        /// </summary>
+        protected BoundingSphere m_testArrived = new BoundingSphere();
+
+        /// <summary>
+        /// Test result
+        /// </summary>
+        protected ContainmentType m_testResult;
+
+        /// <summary>
         /// Transform current eye position to an intended eye position over time
         /// </summary>
         /// <param name="delta"></param>
@@ -3051,6 +3118,12 @@ namespace Xyglo
                 //
                 try
                 {
+                    // Result of any of our bounding checks
+                    //
+                    
+
+                    // Set up the flying vector for the first iteration
+                    //
                     if (m_changingPositionLastGameTime == TimeSpan.Zero)
                     {
                         m_vFly = (m_newEyePosition - m_eye) / m_flySteps;
@@ -3058,7 +3131,21 @@ namespace Xyglo
                         m_changingPositionLastGameTime = gameTime.TotalGameTime;
                     }
 
+                    // As we close in on target ensure that we smoothly stop
+                    //
+                    /*
+                    m_testArrived.Center = m_newEyePosition;
+                    m_testArrived.Radius = 80.0f;
 
+                    m_testArrived.Contains(ref m_eye, out m_testResult);
+                    if (m_testResult == ContainmentType.Contains)
+                    {
+                        m_vFly *= 0.9f;
+                    }
+                    */
+
+                    // Perform movement of the eye by the movement vector
+                    //
                     if (gameTime.TotalGameTime - m_changingPositionLastGameTime > m_movementPause)
                     {
                         m_eye += m_vFly;
@@ -3072,11 +3159,13 @@ namespace Xyglo
 #endif
                     }
 
-                    BoundingSphere testArrived = new BoundingSphere(m_newEyePosition, 1.0f);
+                    // Test arrival of the eye at destination position
+                    //
+                    m_testArrived.Center = m_newEyePosition;
+                    m_testArrived.Radius = 1.0f;
+                    m_testArrived.Contains(ref m_eye, out m_testResult);
 
-                    ContainmentType result;
-                    testArrived.Contains(ref m_eye, out result);
-                    if (result == ContainmentType.Contains)
+                    if (m_testResult == ContainmentType.Contains)
                     {
                         m_eye = m_newEyePosition;
                         m_target.X = m_newEyePosition.X;
@@ -3330,17 +3419,20 @@ namespace Xyglo
                     }
                 }
 
-                // Draw a background square for all buffer views
+                // Draw a background square for all buffer views if they are coloured
                 //
-                for (int i = 0; i < m_project.getBufferViews().Count; i++)
+                if (m_project.getViewMode() == Project.ViewMode.Coloured)
                 {
-                    renderQuad(m_project.getBufferViews()[i].getTopLeft(), m_project.getBufferViews()[i].getBottomRight(), m_project.getBufferViews()[i].getBackgroundColour());
+                    for (int i = 0; i < m_project.getBufferViews().Count; i++)
+                    {
+                        renderQuad(m_project.getBufferViews()[i].getTopLeft(), m_project.getBufferViews()[i].getBottomRight(), m_project.getBufferViews()[i].getBackgroundColour());
+                    }
                 }
             }
 
             // Draw a welcome banner
             //
-            if (m_bannerStartTime != -1)
+            if (m_bannerStartTime != -1 && m_project.getViewMode() != Project.ViewMode.Formal)
             {
                 drawBanner(gameTime);
             }
@@ -4056,7 +4148,18 @@ namespace Xyglo
                             }
                         }
                     }
-                    m_spriteBatch.DrawString(m_fontManager.getFont(), line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), bufferColour, 0, lineOrigin, m_fontManager.getTextScale(), 0, 0);
+
+                    m_spriteBatch.DrawString(
+                        m_fontManager.getFont(),
+                        line,
+                        new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition),
+                        bufferColour,
+                        0,
+                        lineOrigin,
+                        m_fontManager.getTextScale(),
+                        0,
+                        0);
+
                     yPosition += m_fontManager.getLineHeight();
                 }
             }
@@ -4098,7 +4201,17 @@ namespace Xyglo
             m_graphics.GraphicsDevice.SetRenderTarget(m_textScroller);
             m_graphics.GraphicsDevice.Clear(Color.Black);
 
-            int xPosition = (int)((m_gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime) * - 50.0f);
+            int xPosition = m_textScroller.Width + (int)((m_gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime) * - 150.0f);
+            int nextPosition = xPosition + ((m_temporaryMessage.Length + 10) * (int)m_fontManager.getCharWidth(FontManager.FontType.Overlay));
+
+            // Adjust 
+            if (nextPosition + ((m_temporaryMessage.Length) * (int)m_fontManager.getCharWidth(FontManager.FontType.Overlay)) < 0)
+            {
+                m_temporaryMessageStartTime = m_gameTime.TotalGameTime.TotalSeconds;
+                return;
+                //xPosition = m_textScroller.Width + (int)((m_gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime) * -150.0f);
+                //nextPosition = xPosition + ((m_temporaryMessage.Length + 10) * (int)m_fontManager.getCharWidth(FontManager.FontType.Overlay));
+            }
 
             // Draw to the render target
             //
@@ -4107,7 +4220,7 @@ namespace Xyglo
 
             // If we leave a gap and there is still room for the message again then render it again!
             //
-            int nextPosition = xPosition + ((m_temporaryMessage.Length + 10) * (int)m_fontManager.getCharWidth(FontManager.FontType.Overlay));
+            
             if (nextPosition < m_textScroller.Width)
             {
                 m_spriteBatch.DrawString(m_fontManager.getOverlayFont(), m_temporaryMessage, new Vector2(nextPosition, 0), Color.Pink, 0, new Vector2(0, 0), 1.0f, 0, 0);
@@ -4260,12 +4373,12 @@ namespace Xyglo
             m_userHelp += "F2  - Cycle up through buffer views\n";
             m_userHelp += "F3  - Search again\n";
             m_userHelp += "F6  - Perform Build\n";
-            m_userHelp += "F7  - Zoom Out\n";
-            m_userHelp += "F8  - Zoom In\n";
+            //m_userHelp += "F7  - Zoom Out\n";
+            //m_userHelp += "F8  - Zoom In\n";
             m_userHelp += "F9  - Rotate anticlockwise around group of 4\n";
             m_userHelp += "F10 - Rotate clockwise around group of 4\n";
-            m_userHelp += "F11 - Full Screen Mode\n";
-            m_userHelp += "F12 - Windowed Mode\n";
+            m_userHelp += "F11 - Toggle Full Screen Mode\n";
+            //m_userHelp += "F12 - Windowed Mode\n";
 
             m_userHelp += "Alt + N - New buffer view on new buffer\n";
             m_userHelp += "Alt + B - Copy existing buffer view on existing buffer\n";

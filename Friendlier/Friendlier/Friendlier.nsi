@@ -86,6 +86,9 @@ Section "-MS .NET Framework v${NETVersion}" NETFramework
 
     ;MessageBox MB_OK "Will install .NET 4.0"
     DetailPrint "Starting Microsoft .NET 4.0 Framework v${NETVersion} installer."
+	
+	File /oname=$TEMP\${NETInstaller} ${NETInstaller}
+
     ExecWait "msiexec /i $TEMP\${NETInstaller} /q" $0
 
 	; check for errors
@@ -119,6 +122,7 @@ Section "-XNA Framework v${XNAVersion}" XNAFramework
 
     ;MessageBox MB_OK "Will install XNA 4.0"
     DetailPrint "Starting Microsoft XNA Framework v${XNAVersion} installer."
+    File /oname=$TEMP\${XNAInstaller} ${XNAInstaller}
     ExecWait "msiexec /i $TEMP\${XNAInstaller}" $0
 
     ; check for errors
@@ -155,9 +159,6 @@ Section "Friendlier"
 	;
 	;File ${NETINSTALLER}
 	;File ${XNAINSTALLER}
-
-	File /oname=$TEMP\${NETInstaller} ${NETInstaller}
-	File /oname=$TEMP\${XNAInstaller} ${XNAInstaller}
 
     File "Xyglo.ico"
 

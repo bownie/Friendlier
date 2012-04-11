@@ -2,14 +2,26 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+//using Microsoft.VisualBasic.ApplicationServices;
+
+
 
 namespace Xyglo
 {
     /// <summary>
     /// Convenience class for storing some global information
     /// </summary>
-    public class VersionInformation
+    public class VersionInformation // : AssemblyInfo
     {
+
+        /// <summary>
+        /// Default constructor
+        /// </summary>
+        /*
+        public VersionInformation(AssemblyInfo ass)
+        {
+        }*/
+
         /// <summary>
         /// Version of this software
         /// </summary>

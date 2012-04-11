@@ -42,6 +42,16 @@ namespace Xyglo
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class Project
     {
+
+        /// <summary>
+        /// Define a viewing mode for this project
+        /// </summary>
+        public enum ViewMode
+        {
+            Formal,
+            Coloured
+        }
+
         //////////// MEMBER VARIABLES ///////////////
 
         /// <summary>
@@ -152,6 +162,29 @@ namespace Xyglo
         [DataMember]
         protected Color[] m_bvColours = { Color.DeepSkyBlue, Color.IndianRed, Color.OrangeRed, Color.GreenYellow, Color.HotPink, Color.LavenderBlush };
 
+        /// <summary>
+        /// Viewing mode of the project
+        /// </summary>
+        [DataMember]
+        protected ViewMode m_viewMode = ViewMode.Formal;
+
+        /// <summary>
+        /// Is the project full screen?
+        /// </summary>
+        [DataMember]
+        protected bool m_fullScreen = false;
+
+        /// <summary>
+        /// Window size
+        /// </summary>
+        [DataMember]
+        protected Vector2 m_windowSize;
+
+        /// <summary>
+        /// Window position
+        /// </summary>
+        [DataMember]
+        protected Vector2 m_windowPosition;
 
         ////////// CONSTRUCTORS ///////////
 
@@ -925,6 +958,96 @@ namespace Xyglo
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// What is our viewing mode - for colouring purposes
+        /// </summary>
+        /// <returns></returns>
+        public ViewMode getViewMode()
+        {
+            return m_viewMode;
+        }
+
+        public void setViewMode(ViewMode viewMode)
+        {
+            m_viewMode = viewMode;
+        }
+
+        /// <summary>
+        /// Check the full screen state
+        /// </summary>
+        /// <returns></returns>
+        public bool isFullScreen()
+        {
+            return m_fullScreen;
+        }
+
+        /// <summary>
+        /// Set the full screen state
+        /// </summary>
+        /// <param name="state"></param>
+        public void setFullScreen(bool state)
+        {
+            m_fullScreen = state;
+        }
+
+        /// <summary>
+        /// Get the window size
+        /// </summary>
+        /// <returns></returns>
+        public Vector2 getWindowSize()
+        {
+            return m_windowSize;
+        }
+
+        /// <summary>
+        /// Set the window size
+        /// </summary>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        public void setWindowSize(float width, float height)
+        {
+            m_windowSize.X = width;
+            m_windowSize.Y = height;
+        }
+
+        /// <summary>
+        /// Set the window size
+        /// </summary>
+        /// <param name="size"></param>
+        public void setWindowSize(Vector2 size)
+        {
+            m_windowSize = size;
+        }
+
+        /// <summary>
+        /// Get the window position
+        /// </summary>
+        /// <returns></returns>
+        public Vector2 getWindowPostion()
+        {
+            return m_windowPosition;
+        }
+
+        /// <summary>
+        /// Set the window position
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        public void setWindowPostion(float x, float y)
+        {
+            m_windowPosition.X = x;
+            m_windowPosition.Y = y;
+        }
+
+        /// <summary>
+        /// Set the window position
+        /// </summary>
+        /// <param name="pos"></param>
+        public void setWindowPosition(Vector2 pos)
+        {
+            m_windowPosition = pos;
         }
     }
 }

@@ -1,13 +1,42 @@
-OTHER
------
+- Fuzzy fonts - some tips:
+
+  + http://gamedev.stackexchange.com/questions/15469/how-do-i-get-beautiful-small-text-in-xna-without-using-external-libraries
+  + Need to overhaul the font rendering completely
+
 - Licence file [STARTED]
+
+  + Fonts licence
+  + append to licence terms
+
 - Registry key and licence key [Need to make sure that this is run at installation time as administrator - not through the program itself]
+
 - Icons [PROVED but need a good one]
+
+  + http://www.axialis.com/iconworkshop/
+
 - Splash screen [DONE!]
-- Packaging .NET and XNA integrate with NSIS [DONE]
+
+  + would like a nice 3d model
 
 http://gamedev.stackexchange.com/questions/24697/how-to-clip-cut-off-text-in-a-textbox
 http://social.msdn.microsoft.com/forums/en-US/xnaframework/thread/71263016-b26a-44bd-80f3-8cd620b119ff
+
+
+Build version:
+
+http://autobuildversion.codeplex.com/
+
+
+SUGGESTIONS
+-----------
+- Kinect integration
+- file management
+- resizing window [IN PROGRESS]
+- zooming is not very good at the moment [IN PROGRESS]
+- f-keys for zooming etc is unnatural [FIXED to CURSOR plus ALT SHIFT] 
+- save as not working [IN PROGRESS]
+- some way of seeing/modifying/deleting files in project
+- scrolling and cut and paste on parameter editing and information screen
 
 
 BUG and TODO
@@ -21,13 +50,10 @@ BUG and TODO
 - animations and intro
 - change buffer show length interactively
 - auto colouring build paths (executable paths, directories etc)
-- scrolling and cut and paste on parameter editing and information screen
 - undo remembers last highlight [PENDING]
 - overlapping BufferViews
-- file management
 - copy section into new BufferView [ALMOST DONE]
 - moving to bufferviews with the alt + direction buttons [DONE - but bug with positions when mode switches due to font sizing]
-- some way of seeing/modifying/deleting files in project
 - some way of seeing/modifying/deleting bufferviews (and their indexes) in project
 - Saving/opening/browsing - ensure status is correct
 - Logging (timestamps and makes sense) 
@@ -41,13 +67,14 @@ NOTES
 
 TO TEST/BUGS
 ------------
-- work update status (sessions - time developing etc) [DONE]
 - auto indent [DONE TO SOME EXTENT]
 - Undo/redo testing and fixing [DONE for INSERT]
 - Pasting multiple lines for Replace [HALF COMPLETE]
 
 DONE
 ----
+- work update status (sessions - time developing etc) [DONE]
+- Packaging .NET and XNA integrate with NSIS [DONE]
 - Temporary file save messages to move somewhere [FIXED with SCROLLING MESSAGES]
 - fix error logs line wrapping [DONE]
 - seperate ERR and LOG file streams? [DONE]
