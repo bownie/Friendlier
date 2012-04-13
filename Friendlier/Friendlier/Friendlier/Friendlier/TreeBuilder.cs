@@ -45,7 +45,7 @@ namespace Xyglo
         /// <summary>
         /// Build some test data
         /// </summary>
-        protected void testInitialise()
+        private void testInitialise()
         {
             if (m_graph == null)
             {
@@ -97,9 +97,16 @@ namespace Xyglo
         /// overlay files on top of that.
         /// 
         /// The rootPath defines the root node.  All other directories spread from there.
+        /// 
+        /// Note: this is the simple case of building a tree, we implicitly know the depth of the
+        /// tree from the information we have already, that said we still build the tree as a 
+        /// set of connected nodes with no implied depth information and leave the ModelBuilder
+        /// to work this out.  In the future we may be connecting nodes that we want to examine
+        /// for depth information later so we force that to be in the ModelBuilder.
+        /// 
         /// </summary>
         /// <param name="fbList"></param>
-        public TreeBuilderGraph buildTree(string rootPath, List<FileBuffer> fbList)
+        public TreeBuilderGraph buildTreeFromFiles(string rootPath, List<FileBuffer> fbList)
         {
             TreeBuilderGraph rG = new TreeBuilderGraph();
 
@@ -109,36 +116,52 @@ namespace Xyglo
             {
                 string subPath = fb.getFilepath().Substring(rootPath.Length, fb.getFilepath().Length - rootPath.Length);
 
-                Logger.logMsg("Sub path = " + subPath);
+                Logger.logMsg("TreeBuilder::buildTree() - sub path = " + subPath);
 
                 // Always start lastVertex from the root and test while we expand downwards
                 //
                 string lastVertex = rootPath;
 
+                // Build the current vertex from the rootpath so that vertex names are unique
+                //
+                string thisVertex = "";
+
                 foreach (string subVertex in subPath.Split('\\'))
                 {
+                    // Prepend thisVertex
+                    //
+                    if (thisVertex == "")
+                    {
+                        thisVertex = subVertex;
+                    }
+                    else
+                    {
+                        thisVertex = thisVertex + "\\" + subVertex;    
+                    }
+
                     // Test for vertex and add if it's not already there
                     //
-                    if (!rG.ContainsVertex(subVertex))
+                    if (!rG.ContainsVertex(thisVertex))
                     {
-                    Logger.logMsg("Adding sub vertex = " + subVertex);
-                    rG.AddVertex(subVertex);
+                        Logger.logMsg("TreeBuilder::buildTree() - adding sub vertex = " + thisVertex);
+                        rG.AddVertex(thisVertex);
                     }
 
                     // Generate edge between here and there
                     //
-                    Edge<string> newEdge = new Edge<string>(lastVertex, subVertex);
+                    Edge<string> newEdge = new Edge<string>(lastVertex, thisVertex);
 
                     // Test and add as necessary
                     //
                     if (!rG.ContainsEdge(newEdge))
                     {
+                        Logger.logMsg("TreeBuilder::buildTree() - adding edge between " + lastVertex + " and " + thisVertex);
                         rG.AddEdge(newEdge);
                     }
 
                     // Now change lastVertex to this one
                     //
-                    lastVertex = subVertex;
+                    lastVertex = thisVertex;
                 }
             }
 

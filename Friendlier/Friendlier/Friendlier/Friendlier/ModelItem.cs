@@ -10,35 +10,35 @@ namespace Xyglo
     /// <summary>
     /// A base Item for inclusion in a Model
     /// </summary>
-    abstract class ModelItem
+    public abstract class ModelItem
     {
         public ModelItem(string name)
         {
-            itemName = name;
-            itemBoundary = new Vector3(0.2f, 0.2f, 0.2f);
-            itemType = ItemType.NoType;
+            m_itemName = name;
+            m_itemBoundary = new Vector3(0.2f, 0.2f, 0.2f);
+            m_itemType = ItemType.NoType;
             zPlane = 0.0f;
         }
 
         /// <summary>
         /// Name of this item
         /// </summary>
-        public string itemName;
+        public string m_itemName;
 
         /// <summary>
         /// Top left front point position
         /// </summary>
-        public Vector3 position;
+        public Vector3 m_position;
         
         /// <summary>
         /// Dimensions - width, height, depth
         /// </summary>
-        public Vector3 dimensions;
+        public Vector3 m_dimensions;
        
         /// <summary>
         /// The spacing around this item
         /// </summary>
-        protected Vector3 itemBoundary;
+        protected Vector3 m_itemBoundary;
 
 
         /// <summary>
@@ -57,7 +57,7 @@ namespace Xyglo
         /// <summary>
         /// Default item type is NoType
         /// </summary>
-        public ItemType itemType;
+        public ItemType m_itemType;
 
         /// <summary>
         /// Z-plane we're working in
@@ -70,7 +70,7 @@ namespace Xyglo
         /// <returns></returns>
         public BoundingBox getBoundingBox()
         {
-            return new BoundingBox(position - itemBoundary, position + dimensions + itemBoundary);
+            return new BoundingBox(m_position - m_itemBoundary, m_position + m_dimensions + m_itemBoundary);
         }
 
         public void placeAround(ModelItem anotherItem, BoundingBox bBox)

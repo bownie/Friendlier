@@ -14,15 +14,15 @@ namespace Xyglo
     {
         public ModelCodeFragment(string name):base(name)
         {
-            itemType = ItemType.CodeFragment;
-            dimensions.X = 0.4f;
+            m_itemType = ItemType.CodeFragment;
+            m_dimensions.X = 0.4f;
         }
 
         public ModelCodeFragment(string name, Vector3 pos)
             : base(name)
         {
-            itemType = ItemType.CodeFragment;
-            position = pos;
+            m_itemType = ItemType.CodeFragment;
+            m_position = pos;
         }
     }
 }

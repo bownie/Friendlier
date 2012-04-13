@@ -21,17 +21,25 @@ namespace Xyglo
         /// <summary>
         /// http://kinectxna.blogspot.com/2012/02/tutorial-2-moving-kinect-sensor.html
         /// </summary>
-        public void initialise()
+        public bool initialise()
         {
+            // Return false if there are no kinects available
+            //
+            if (KinectSensor.KinectSensors.Count == 0)
+            {
+                return false;
+            }
+
+            // Generate the helper
+            //
             if (m_kinectHelper == null)
             {
                 m_kinectHelper = new XygloKinectHelper();
             }
 
-            m_kinectSensor = KinectSensor.KinectSensors[0];
-
             try
             {
+                m_kinectSensor = KinectSensor.KinectSensors[0];
                 m_kinectSensor.Start();
             }
             catch (Exception e)
@@ -39,6 +47,8 @@ namespace Xyglo
                 Logger.logMsg("XygloKinectManager::initialise() - couldn't start kinect " + e.Message);
             }
             //m_kinectHelper.InitializeKinectServices(m_kinectSensor);
+
+            return true;
         }
 
 
@@ -46,9 +56,15 @@ namespace Xyglo
         {
             if (m_kinectSensor != null)
             {
-                m_kinectSensor.Stop();
+                try
+                {
+                    m_kinectSensor.Stop();
+                }
+                catch (Exception e)
+                {
+                    Logger.logMsg("XygloKinectManager::close() - can't stop kinect - " + e.Message);
+                }
             }
         }
-
     }
 }

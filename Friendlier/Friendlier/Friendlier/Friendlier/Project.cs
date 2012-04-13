@@ -480,6 +480,15 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Doing the same as above with an IEnumerable
+        /// </summary>
+        /// <returns></returns>
+        public List<FileBuffer> getNonNullFileBuffersIEnumerable()
+        {
+            return m_fileBuffers.Where(item => ( item.getFilepath() != null && item.getFilepath() != "")).ToList();
+        }
+
+        /// <summary>
         /// Clear down this project
         /// </summary>
         public void clear()

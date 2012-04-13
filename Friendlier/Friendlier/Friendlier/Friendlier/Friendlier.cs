@@ -136,6 +136,11 @@ namespace Xyglo
         protected string m_gotoBufferView = "";
 
         /// <summary>
+        /// The position where the project model will be viewable
+        /// </summary>
+        Vector3 m_projectPosition = Vector3.Zero;
+
+        /// <summary>
         /// Confirmation state 
         /// </summary>
         enum ConfirmState
@@ -708,14 +713,13 @@ namespace Xyglo
             //
             m_fileSystemView = new FileSystemView(m_filePath, new Vector3(-800.0f, 0f, 0f), m_fontManager.getLineHeight(), m_fontManager.getCharWidth());
 
-            // Tree builder and model builder
-            //
-            generateTreeModel();
-
             // Generate a kinect manager
             //
             m_kinectManager = new XygloKinectManager();
-            m_kinectManager.initialise();
+            if (!m_kinectManager.initialise())
+            {
+                Logger.logMsg("Friendlier::initialiseProject() - no kinect device found");
+            }
         }
 
         /// <summary>
@@ -727,10 +731,10 @@ namespace Xyglo
             //
             string fileRoot = m_project.getFileBufferRoot();
 
-            TreeBuilderGraph rG = m_treeBuilder.buildTree(fileRoot, m_project.getNonNullFileBuffers());
+            TreeBuilderGraph rG = m_treeBuilder.buildTreeFromFiles(fileRoot, m_project.getNonNullFileBuffers());
 
             ModelBuilder mB = new ModelBuilder(rG);
-            //mB.build();
+            mB.build(m_projectPosition);
         }
 
 
@@ -2385,9 +2389,23 @@ namespace Xyglo
                     else if (checkKeyState(Keys.M, gameTime))
                     {
                         m_state = FriendlierState.ManageProject; // Manage the files in the project
-                        Vector3 newPos = m_eye;
+
+                        // Copy current position to m_projectPosition - then hardcode
+                        //
+                        m_projectPosition = m_project.getSelectedBufferView().getPosition();
+                        m_projectPosition.X = -1000.0f;
+                        m_projectPosition.Y = -1000.0f;
+
+                        // Tree builder and model builder
+                        //
+                        generateTreeModel();
+
+                        // Fly to a new position in this mode to view the model
+                        //
+                        Vector3 newPos = m_projectPosition;
                         newPos.Z = 800.0f;
                         flyToPosition(newPos);
+
                     }
                     else if (checkKeyState(Keys.D0, gameTime) ||
                              checkKeyState(Keys.D1, gameTime) ||
