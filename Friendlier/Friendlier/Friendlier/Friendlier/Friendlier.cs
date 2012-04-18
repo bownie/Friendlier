@@ -930,6 +930,8 @@ namespace Xyglo
             {
                 TextureEnabled = true,
                 VertexColorEnabled = true,
+                //Alpha = 0.5f,
+                //LightingEnabled = true
                 //World = Matrix.Identity,
                 //DiffuseColor = Vector3.One
             };
@@ -1040,6 +1042,10 @@ namespace Xyglo
             }
 
             Logger.logMsg("Friendlier:setActiveBuffer() - active buffer view is " + m_project.getSelectedBufferViewId());
+
+            // Set the font manager up with a zoom level
+            //
+            m_fontManager.setScreenState(m_zoomLevel, m_project.isFullScreen());
 
             // All the maths is done in the Buffer View
             //
@@ -1672,7 +1678,7 @@ namespace Xyglo
                 {
                     if (m_altDown && m_shiftDown) // Do zoom
                     {
-                        m_zoomLevel -= 500.0f;
+                        m_zoomLevel -= 250.0f;
 
                         if (m_zoomLevel < 500.0f)
                         {
@@ -1731,7 +1737,7 @@ namespace Xyglo
                 {
                     if (m_altDown && m_shiftDown) // Do zoom
                     {
-                        m_zoomLevel += 500.0f;
+                        m_zoomLevel += 250.0f;
                         setActiveBuffer();
                     }
                     else if (m_altDown)
@@ -3445,7 +3451,7 @@ namespace Xyglo
             // 
             m_viewMatrix = Matrix.CreateLookAt(m_eye, m_target, Vector3.Up);
 
-            m_projection = Matrix.CreateTranslation(-0.5f, -0.5f, 0) * Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 10000f);
+            m_projection = /* Matrix.CreateTranslation(-0.5f, -0.5f, 0) * */ Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 10000f);
 
             m_basicEffect.World = Matrix.CreateScale(1, -1, 1); // *Matrix.CreateTranslation(textPosition);
             m_basicEffect.View = m_viewMatrix;
@@ -3472,11 +3478,12 @@ namespace Xyglo
             //
             if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
             {
-                m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+                //m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+                m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
             }
             else
             {
-                m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+                m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.LinearClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
             }
 
             // In the manage project mode we zoom off into the distance
@@ -4279,7 +4286,7 @@ namespace Xyglo
                     m_spriteBatch.DrawString(
                         m_fontManager.getFont(),
                         line,
-                        new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition),
+                        new Vector2((int)viewSpaceTextPosition.X, (int)(viewSpaceTextPosition.Y + yPosition)),
                         bufferColour,
                         0,
                         lineOrigin,
@@ -4290,6 +4297,8 @@ namespace Xyglo
                     yPosition += m_fontManager.getLineHeight();
                 }
             }
+
+            //Logger.logMsg("TEXT SCALE = " + m_fontManager.getTextScale());
 
             // Draw overlaid ID on this window if we're far enough away to use it
             //

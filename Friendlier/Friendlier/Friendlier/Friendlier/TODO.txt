@@ -1,5 +1,12 @@
 TODO
 ----
+- Fuzzy fonts - some tips:
+
+  + http://gamedev.stackexchange.com/questions/15469/how-do-i-get-beautiful-small-text-in-xna-without-using-external-libraries
+  + Need to overhaul the font rendering completely
+  + Tried nuclex - looks good but artifacts
+  + Therefore add zoom level and full screenness to fontmanager and add extra font levels - match font level to zoom level
+
 - some way of seeing/modifying/deleting files in project / visualisation of project contents  [STARTED]
 - Kinect integration [STARTED]
 - file management
@@ -8,10 +15,6 @@ TODO
 - f-keys for zooming etc is unnatural [FIXED to CURSOR plus ALT SHIFT] 
 - save as not working [IN PROGRESS]
 - scrolling and cut and paste on parameter editing and information screen
-- Fuzzy fonts - some tips:
-
-  + http://gamedev.stackexchange.com/questions/15469/how-do-i-get-beautiful-small-text-in-xna-without-using-external-libraries
-  + Need to overhaul the font rendering completely
 
 - Licence file [STARTED]
 

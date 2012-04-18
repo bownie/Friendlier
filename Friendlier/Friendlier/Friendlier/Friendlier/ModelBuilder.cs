@@ -227,7 +227,7 @@ namespace Xyglo
                     {
                         if (m_vertexLevel[edge.Target] != sourceLevel + 1)
                         {
-                            Logger.logMsg("ModelBuilder::buildLevels() - trtying to set vertex level for " + edge.Target + " to a different value to that already stored");
+                            Logger.logMsg("ModelBuilder::buildLevels() - trying to set vertex level for " + edge.Target + " to a different value to that already stored");
                         }
                     }
                 }
@@ -330,8 +330,6 @@ namespace Xyglo
                 }
 
                 m_rootFound = true;
-
-
             }
 
             // Degree is how many connections this node has

@@ -102,6 +102,27 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Font manager needs to know where we're zoomed out to decide on best font to pick
+        /// </summary>
+        protected float m_zoomLevel = 500.0f;
+
+        /// <summary>
+        /// Font manager needs to know if we are full screen or not
+        /// </summary>
+        protected bool m_fullScreen = false;
+
+        /// <summary>
+        /// Set the current screen state 
+        /// </summary>
+        /// <param name="zoomLevel"></param>
+        /// <param name="fullScreen"></param>
+        public void setScreenState(float zoomLevel, bool fullScreen)
+        {
+            m_zoomLevel = zoomLevel;
+            m_fullScreen = fullScreen;
+        }
+
+        /// <summary>
         /// Get the font state we've selected
         /// </summary>
         /// <returns></returns>
@@ -172,11 +193,7 @@ namespace Xyglo
             switch (type)
             {
                 case FontType.Small:
-                    return getTextScale() * m_smallWindowFont.MeasureString("X").Y;
-
                 case FontType.Window:
-                    return getTextScale() * m_windowFont.MeasureString("X").Y;
-
                 case FontType.Full:
                     return getTextScale() * m_fullScreenFont.MeasureString("X").Y;
 
@@ -229,11 +246,7 @@ namespace Xyglo
             switch (m_state)
             {
                 case FontType.Small:
-                    return 8.0f / getLineSpacing() * m_aspectRatio;
-
                 case FontType.Window:
-                    return 8.0f / getLineSpacing() * m_aspectRatio;
-
                 case FontType.Full:
                     return 8.0f / getLineSpacing() * m_aspectRatio;
 
