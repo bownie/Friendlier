@@ -1043,9 +1043,24 @@ namespace Xyglo
 
             Logger.logMsg("Friendlier:setActiveBuffer() - active buffer view is " + m_project.getSelectedBufferViewId());
 
-            // Set the font manager up with a zoom level
-            //
-            m_fontManager.setScreenState(m_zoomLevel, m_project.isFullScreen());
+                // Set the font manager up with a zoom level
+                //
+                m_fontManager.setScreenState(m_zoomLevel, m_project.isFullScreen());
+
+                // Now we need to make all of our BufferViews have this setting too
+                //
+                foreach (BufferView bv in m_project.getBufferViews())
+                {
+                    bv.setCharWidth(m_fontManager.getCharWidth());
+                    bv.setLineHeight(m_fontManager.getLineHeight());
+                }
+
+                // Now recalculate positions
+                //
+                foreach (BufferView bv in m_project.getBufferViews())
+                {
+                    bv.calculateMyRelativePosition();
+                }
 
             // All the maths is done in the Buffer View
             //

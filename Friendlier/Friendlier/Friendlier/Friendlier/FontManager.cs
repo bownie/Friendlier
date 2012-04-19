@@ -120,6 +120,21 @@ namespace Xyglo
         {
             m_zoomLevel = zoomLevel;
             m_fullScreen = fullScreen;
+
+            if (!m_fullScreen)
+            {
+                if (m_zoomLevel == 500.0f)
+                {
+                    m_state = FontType.Window;
+                    Logger.logMsg("FontManager::setScreenState() - setting FontType.Window");
+
+                }
+                else 
+                {
+                    m_state = FontType.Small;
+                    Logger.logMsg("FontManager::setScreenState() - setting FontType.Small");
+                }
+            }
         }
 
         /// <summary>
@@ -193,7 +208,11 @@ namespace Xyglo
             switch (type)
             {
                 case FontType.Small:
+                    return getTextScale() * m_smallWindowFont.MeasureString("X").Y;
+
                 case FontType.Window:
+                    return getTextScale() * m_windowFont.MeasureString("X").Y;
+
                 case FontType.Full:
                     return getTextScale() * m_fullScreenFont.MeasureString("X").Y;
 
