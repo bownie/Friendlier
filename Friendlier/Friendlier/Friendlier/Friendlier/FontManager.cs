@@ -27,26 +27,32 @@ namespace Xyglo
         /// <param name="contentManager"></param>
         /// <param name="fontFamily"></param>
         /// <param name="aspectRatio"></param>
-        public void initialise(Microsoft.Xna.Framework.Content.ContentManager contentManager, string fontFamily, float aspectRatio)
+        public void initialise(Microsoft.Xna.Framework.Content.ContentManager contentManager, string fontFamily, float aspectRatio, string processor = "")
         {
             m_fontFamily = fontFamily;
             m_contentManager = contentManager;
             m_aspectRatio = aspectRatio;
 
+            // If we have passed a processor then append this to the name
+            if (processor != "")
+            {
+                processor += "_";
+            }
+
             Logger.logMsg("FontManager.initialise() - attempting to load fonts");
             try
             {
-                m_smallWindowFont = m_contentManager.Load<SpriteFont>(fontFamily + "_smallWindow");
-                Logger.logMsg("FontManager.initialise() - Loaded font " + fontFamily + "_smallWindow");
+                m_smallWindowFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_smallWindow");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_smallWindow");
 
-                m_windowFont = m_contentManager.Load<SpriteFont>(fontFamily + "_window");
-                Logger.logMsg("FontManager.initialise() - Loaded font " + fontFamily + "_window");
+                m_windowFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_window");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_window");
 
-                m_fullScreenFont = m_contentManager.Load<SpriteFont>(fontFamily + "_fullScreen");
-                Logger.logMsg("FontManager.initialise() - Loaded font " + fontFamily + "_fullScreen");
+                m_fullScreenFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_fullScreen");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_fullScreen");
 
-                m_overlayFont = m_contentManager.Load<SpriteFont>(fontFamily + "_overlay");
-                Logger.logMsg("FontManager.initialise() - Loaded font " + fontFamily + "_overlay");
+                m_overlayFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_overlay");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_overlay");
 
                 // Set default characters
                 //
@@ -195,7 +201,8 @@ namespace Xyglo
         /// <returns></returns>
         public float getLineHeight()
         {
-            return getTextScale() * getFont().MeasureString("X").Y;
+            return getTextScale() * getFont().LineSpacing;
+            //return getTextScale() * getFont().MeasureString("X").Y;
         }
 
         /// <summary>
@@ -208,16 +215,20 @@ namespace Xyglo
             switch (type)
             {
                 case FontType.Small:
-                    return getTextScale() * m_smallWindowFont.MeasureString("X").Y;
+                    return getTextScale() * m_smallWindowFont.LineSpacing;
+                    //return getTextScale() * m_smallWindowFont.MeasureString("X").Y;
 
                 case FontType.Window:
-                    return getTextScale() * m_windowFont.MeasureString("X").Y;
+                    return getTextScale() * m_windowFont.LineSpacing;
+                    //return getTextScale() * m_windowFont.MeasureString("X").Y;
 
                 case FontType.Full:
-                    return getTextScale() * m_fullScreenFont.MeasureString("X").Y;
+                    return getTextScale() * m_fullScreenFont.LineSpacing;
+                    //return getTextScale() * m_fullScreenFont.MeasureString("X").Y;
 
                 case FontType.Overlay:
-                    return m_overlayFont.MeasureString("X").Y;
+                    return m_overlayFont.LineSpacing;
+                    //return m_overlayFont.MeasureString("X").Y;
 
                 default:
                     return 0.0f;

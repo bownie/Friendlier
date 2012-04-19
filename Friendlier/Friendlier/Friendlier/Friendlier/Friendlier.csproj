@@ -124,6 +124,7 @@
     <Reference Include="System.Net">
       <Private>False</Private>
     </Reference>
+    <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BufferView.cs" />
@@ -137,6 +138,7 @@
     <Compile Include="FileSystemView.cs" />
     <Compile Include="FontManager.cs" />
     <Compile Include="InsertTextCommand.cs" />
+    <Compile Include="User.cs" />
     <Compile Include="XygloKinectHelper.cs" />
     <Compile Include="XygloKinectManager.cs" />
     <Compile Include="Logger.cs" />

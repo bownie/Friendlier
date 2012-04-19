@@ -186,15 +186,21 @@ namespace Xyglo
         [DataMember]
         protected Vector2 m_windowPosition;
 
+        /// <summary>
+        /// Font manager passed in and set from Friendlier
+        /// </summary>
+        protected FontManager m_fontManager;
+
         ////////// CONSTRUCTORS ///////////
 
         /// <summary>
         /// Default constructor 
         /// </summary>
-        public Project()
+        public Project(FontManager fontManager)
         {
             m_projectName = "<unnamed>";
             m_lastAccessTime = DateTime.Now;
+            m_fontManager = fontManager;
 
             // Initialise
             //
@@ -210,11 +216,12 @@ namespace Xyglo
         /// Name constructor
         /// </summary>
         /// <param name="name"></param>
-        public Project(string name, string projectFile)
+        public Project(FontManager fontManager, string name, string projectFile)
         {
             m_projectName = name;
             m_lastAccessTime = DateTime.Now;
             m_projectFile = projectFile;
+            m_fontManager = fontManager;
 
             // Initialise
             //
@@ -585,12 +592,12 @@ namespace Xyglo
         /// that we can reconnect it after deserialisation.
         /// </summary>
         /// <param name="text"></param>
-        public BufferView addFileBuffer(string filePath, int fileIndex)
+        public BufferView addFileBuffer(FontManager fontManager, string filePath, int fileIndex)
         {
             FileBuffer newFB = new FileBuffer(filePath);
             m_fileBuffers.Add(newFB);
 
-            BufferView newBV = new BufferView(newFB, Vector3.Zero, 0, m_bufferViewLength, fileIndex);
+            BufferView newBV = new BufferView(fontManager, newFB, Vector3.Zero, 0, m_bufferViewLength, fileIndex);
             m_bufferViews.Add(newBV);
 
             return newBV;
@@ -614,13 +621,13 @@ namespace Xyglo
         /// <param name="rootbv"></param>
         /// <param name="position"></param>
         /// <param name="text"></param>
-        public BufferView addFileBufferRelative(string filePath, BufferView rootbv, BufferView.BufferPosition position)
+        public BufferView addFileBufferRelative(FontManager fontManager, string filePath, BufferView rootbv, BufferView.BufferPosition position)
         {
             FileBuffer newFB = new FileBuffer(filePath);
             m_fileBuffers.Add(newFB);
             int index = m_fileBuffers.IndexOf(newFB);
 
-            BufferView newBV = new BufferView(rootbv, position);
+            BufferView newBV = new BufferView(fontManager, rootbv, position);
             m_bufferViews.Add(newBV);
 
             return newBV;
@@ -631,7 +638,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="fileName"></param>
         /// <returns></returns>
-        static public Project dataContractDeserialise(string fileName)
+        static public Project dataContractDeserialise(FontManager fontManager, string fileName)
         {
             Logger.logMsg("Project::dataContractDeserialise() - deserializing an instance of the Project object.");
             FileStream fs = new FileStream(fileName, FileMode.Open);
@@ -645,6 +652,7 @@ namespace Xyglo
             try
             {
                 deserializedProject = (Project)ser.ReadObject(reader, true);
+                deserializedProject.setFontManager(fontManager);
             }
             catch (Exception e)
             {
@@ -652,7 +660,7 @@ namespace Xyglo
 
                 // Use an empty project and clear up the existing project file
                 //
-                deserializedProject = new Project();
+                deserializedProject = new Project(fontManager);
                 BufferView bv = new BufferView();
                 deserializedProject.addBufferView(bv);
                 reader.Close();
@@ -731,6 +739,8 @@ namespace Xyglo
                 {
                     bv.setFileBuffer(m_fileBuffers[bv.getFileBufferIndex()]);
                 }
+
+                bv.setFontManager(m_fontManager);
             }
 
             // Fix our FileBuffers
@@ -739,6 +749,24 @@ namespace Xyglo
             {
                 fb.initialiseAfterDeseralising();
             }
+        }
+
+        /// <summary>
+        /// Return our font manager instance
+        /// </summary>
+        /// <returns></returns>
+        public FontManager getFontManager()
+        {
+            return m_fontManager;
+        }
+
+        /// <summary>
+        /// Set the font manager
+        /// </summary>
+        /// <param name="fontManager"></param>
+        public void setFontManager(FontManager fontManager)
+        {
+            m_fontManager = fontManager;
         }
 
 

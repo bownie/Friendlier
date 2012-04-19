@@ -83,6 +83,38 @@
       <Processor>FontDescriptionProcessor</Processor>
     </Compile>
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_fullScreen.spritefont">
+      <SubType>Designer</SubType>
+      <Name>Nuclex_Bitstream Vera Sans Mono_fullScreen</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>NuclexSpriteFontDescriptionProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_window.spritefont">
+      <SubType>Designer</SubType>
+      <Name>Nuclex_Bitstream Vera Sans Mono_window</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>NuclexSpriteFontDescriptionProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_overlay.spritefont">
+      <SubType>Designer</SubType>
+      <Name>Nuclex_Bitstream Vera Sans Mono_overlay</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>NuclexSpriteFontDescriptionProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_smallWindow.spritefont">
+      <SubType>Designer</SubType>
+      <Name>Nuclex_Bitstream Vera Sans Mono_smallWindow</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>NuclexSpriteFontDescriptionProcessor</Processor>
+    </Compile>
+  </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\$(XnaFrameworkVersion)\Microsoft.Xna.GameStudio.ContentPipeline.targets" />
   <!--  To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

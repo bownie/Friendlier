@@ -6,13 +6,14 @@ TODO
   + Need to overhaul the font rendering completely
   + Tried nuclex - looks good but artifacts
   + Therefore add zoom level and full screenness to fontmanager and add extra font levels - match font level to zoom level
+  + The above won't work - we have to stick with same size but at least we can modify some processing directives
+  + Ensured that all drawStrings are aligned on integers
 
+- improve search
 - some way of seeing/modifying/deleting files in project / visualisation of project contents  [STARTED]
 - Kinect integration [STARTED]
-- file management
 - resizing window [IN PROGRESS]
 - zooming is not very good at the moment [IN PROGRESS]
-- f-keys for zooming etc is unnatural [FIXED to CURSOR plus ALT SHIFT] 
 - save as not working [IN PROGRESS]
 - scrolling and cut and paste on parameter editing and information screen
 
@@ -38,6 +39,11 @@ http://social.msdn.microsoft.com/forums/en-US/xnaframework/thread/71263016-b26a-
 Build version:
 
 http://autobuildversion.codeplex.com/
+
+1.1 DONE
+--------
+- f-keys for zooming etc is unnatural [CHANGED to CURSOR plus ALT SHIFT] 
+- highlight on scrollbar [DONE]
 
 
 

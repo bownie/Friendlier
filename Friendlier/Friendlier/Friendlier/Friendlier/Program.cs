@@ -65,7 +65,9 @@ namespace Xyglo
                 //Logger.logMsg("SHHH = " + Registration.generate("me", "rich@xyglo.com", VersionInformation.getProductName(), VersionInformation.getProductVersion()));
 
 
-
+                // Create a FontManager
+                //
+                FontManager fontManager = new FontManager();
 
                 // Create a project or load one
                 //
@@ -76,13 +78,13 @@ namespace Xyglo
 
                 if (File.Exists(projectFile))
                 {
-                    project = Project.dataContractDeserialise(projectFile);
+                    project = Project.dataContractDeserialise(fontManager, projectFile);
                     project.loadFiles();
                     project.connectFloatingWorld();
                 }
                 else
                 {
-                    project = new Project("New Project", projectFile);
+                    project = new Project(fontManager, "New Project", projectFile);
                 }
 
                 //Logger.logMsg("FILE BUFFER ROOT = " + project.getFileBufferRoot());
