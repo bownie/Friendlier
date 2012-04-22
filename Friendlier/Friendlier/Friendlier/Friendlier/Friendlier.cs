@@ -950,7 +950,8 @@ namespace Xyglo
             //
             //FontManager.initialise(Content, "Lucida Sans Typewriter");
             //FontManager.initialise(Content, "Sax Mono");
-            m_project.getFontManager().initialise(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio);
+            m_project.getFontManager().initialise(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio, "Nuclex");
+            //m_project.getFontManager().initialise(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio);
 
             // Create a new SpriteBatch, which can be used to draw textures.
             m_spriteBatch = new SpriteBatch(m_graphics.GraphicsDevice);
@@ -1476,6 +1477,11 @@ namespace Xyglo
             }
         }
 
+
+        public float m_lastDepthPosition = 0;
+
+        public float m_initialDepthPosition = 0;
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -1493,6 +1499,40 @@ namespace Xyglo
             // Store gameTime
             //
             m_gameTime = gameTime;
+
+            if (m_kinectManager.getDepthValue() != 0)
+            {
+                if (m_initialDepthPosition == 0)
+                {
+                    m_initialDepthPosition = m_kinectManager.getDepthValue();
+                }
+
+                if (gameTime.TotalGameTime.Milliseconds % 250 == 0)
+                {
+                    if (m_kinectManager.depthIsStable(m_lastDepthPosition))
+                    {
+                        //Logger.logMsg("DEPTH STABLE @ " + m_kinectManager.getDepthValue());
+                        ;
+                    }
+                    else
+                    {
+                        //m_lastDepthPosition = m_kinectManager.getDepthValue();
+                        //Logger.logMsg("LAST = " + m_lastDepthPosition);
+                        //Logger.logMsg("NEW  = " + m_kinectManager.getDepthValue());
+
+
+                        // Move to new position
+                        //Vector3 newPosition = m_eye;
+                        //newPosition.Z += (m_kinectManager.getDepthValue() - m_initialDepthPosition) / 100.0f;
+                        //flyToPosition(newPosition);
+                    }
+
+                    m_lastDepthPosition = m_kinectManager.getDepthValue();
+
+                }
+            }
+
+
 
             // If mouse left button is down and window size is changing then we are
             // resizing it.

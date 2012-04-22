@@ -6,6 +6,11 @@ using Microsoft.Kinect;
 
 namespace Xyglo
 {
+    public class XygloKinectEventArgs : EventArgs
+    {
+        public float m_distance;
+    };
+
     public class XygloKinectManager
     {
         XygloKinectHelper m_kinectHelper;
@@ -19,6 +24,9 @@ namespace Xyglo
             Logger.logMsg("XygloKinectManager::XygloKinectManager() - got " + KinectSensor.KinectSensors.Count + " kinect instances");
         }
 
+        // A delegate type for hooking up change notifications.
+        //
+        public delegate void distanceMoved(object sender, XygloKinectEventArgs e);
 
         /// <summary>
         /// http://kinectxna.blogspot.com/2012/02/tutorial-2-moving-kinect-sensor.html
@@ -119,14 +127,41 @@ namespace Xyglo
 
         DepthImageFormat m_lastImageFormat;
 
-        //DepthImageFrame m
+        /// <summary>
+        /// How something is from the sensor
+        /// </summary>
+        protected float m_depthValue = 0;
 
+        /// <summary>
+        /// Return the depth value
+        /// </summary>
+        /// <returns></returns>
+        public float getDepthValue()
+        {
+            return m_depthValue;
+        }
+
+        /// <summary>
+        /// Check to see if we're stable against depth
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public bool depthIsStable(float value)
+        {
+            return (( m_depthValue * 0.95f ) < value && ( m_depthValue * 1.05f ) > value );
+        }
+
+        
+        /// <summary>
+        /// Handle the depth buffer
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void kinectDepthFrameReady(object sender, DepthImageFrameReadyEventArgs e)
         {
-            Logger.logMsg("XygloKinectManager::kinectDepthFrameReady()");
+//            Logger.logMsg("XygloKinectManager::kinectDepthFrameReady()");
 
             //SkeletonPoint sp = e.OpenDepthImageFrame().MapToSkeletonPoint(0, 0);
-
             //e.OpenDepthImageFrame().
 
             //Logger.logMsg("In front of me I got depth " + sp.Z);
@@ -152,15 +187,42 @@ namespace Xyglo
                         //this.depthFrame32 = new byte[imageFrame.Width * imageFrame.Height * Bgr32BytesPerPixel];
                     }
 
+                    float width = (float)imageFrame.Width;
+                    float height = (float)imageFrame.Height;
+
                     imageFrame.CopyPixelDataTo(m_pixelData);
 
-                    int middlePixel = (int)(((float)imageFrame.Width) * (0.5 + (float)(imageFrame.Height / 2)));
+                    int middlePixel = (int)((width + 0.5) * (height / 2.0f));
+
+                    // Let's take a middle third sample
+                    //
+                    int endPosition = (int)((width * 2.0f * height / 3.0f) + (width * 2.0f / 3.0f));
+                    int startPosition = (int)((width * height / 3.0f) + (width / 3.0f));
+                    int curPos = startPosition;
+                    int curHeight = (int)(height / 3.0f);
+                    float counter = 0;
+                    float sampleTotal = 0.0f;
+                    while (curPos < endPosition)
+                    {
+                        curPos = (int)(width * curHeight + (width / 3.0f));
+                        while ((curPos - (curHeight * width)) < (int)(width * 2.0f / 3.0f))
+                        {
+                            sampleTotal += m_pixelData[curPos];
+                            counter++;
+                            curPos++;
+                        }
+                        curHeight++;
+                    }
+
+                    float total = sampleTotal / counter;
+
 
                     //SkeletonPoint sp = imageFrame.MapToSkeletonPoint(0, 0);
 
-                    Logger.logMsg("Z IS = " + m_pixelData[middlePixel]);
+                    //Logger.logMsg("Z IS = " + m_pixelData[middlePixel]);
+                    //Logger.logMsg("AV IS = " + total);
 
-
+                    m_depthValue = total;
 
                     /*
                     byte[] convertedDepthBits = this.ConvertDepthFrame(this.pixelData, ((KinectSensor)sender).DepthStream);

@@ -4,10 +4,10 @@ TODO
 
   + http://gamedev.stackexchange.com/questions/15469/how-do-i-get-beautiful-small-text-in-xna-without-using-external-libraries
   + Need to overhaul the font rendering completely
-  + Tried nuclex - looks good but artifacts
+  + Tried nuclex - looks good but artifacts [FIXED]
   + Therefore add zoom level and full screenness to fontmanager and add extra font levels - match font level to zoom level
   + The above won't work - we have to stick with same size but at least we can modify some processing directives
-  + Ensured that all drawStrings are aligned on integers
+  + Ensured that all drawStrings are aligned on integers[DONE]
 
 - improve search
 - some way of seeing/modifying/deleting files in project / visualisation of project contents  [STARTED]
