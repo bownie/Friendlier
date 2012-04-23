@@ -138,6 +138,7 @@
     <Compile Include="FileSystemView.cs" />
     <Compile Include="FontManager.cs" />
     <Compile Include="InsertTextCommand.cs" />
+    <Compile Include="KinectWorker.cs" />
     <Compile Include="User.cs" />
     <Compile Include="XygloKinectHelper.cs" />
     <Compile Include="XygloKinectManager.cs" />

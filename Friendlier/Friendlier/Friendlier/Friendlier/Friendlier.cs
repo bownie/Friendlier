@@ -389,6 +389,16 @@ namespace Xyglo
         protected Thread m_counterWorkerThread;
 
         /// <summary>
+        /// Worker thread for the Kinect management
+        /// </summary>
+        protected KinectWorker m_kinectWorker;
+
+        /// <summary>
+        /// The thread that is used for Kinect
+        /// </summary>
+        protected Thread m_kinectWorkerThread;
+
+        /// <summary>
         /// What we're searching for
         /// </summary>
         protected string m_searchText = "";
@@ -441,11 +451,6 @@ namespace Xyglo
         protected ModelBuilder m_modelBuilder;
 
         /// <summary>
-        /// For managing any Kinect devices that are attached
-        /// </summary>
-        protected XygloKinectManager m_kinectManager;
-
-        /// <summary>
         /// Start time for a banner
         /// </summary>
         protected double m_bannerStartTime = -1;
@@ -484,7 +489,6 @@ namespace Xyglo
         /// Config screen x direction
         /// </summary>
         protected int m_configXOffset = 0;
-
 
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
@@ -759,14 +763,6 @@ namespace Xyglo
             // Set-up the single FileSystemView we have
             //
             m_fileSystemView = new FileSystemView(m_filePath, new Vector3(-800.0f, 0f, 0f), m_project.getFontManager().getLineHeight(), m_project.getFontManager().getCharWidth());
-
-            // Generate a kinect manager
-            //
-            m_kinectManager = new XygloKinectManager();
-            if (!m_kinectManager.initialise())
-            {
-                Logger.logMsg("Friendlier::initialiseProject() - no kinect device found");
-            }
         }
 
         /// <summary>
@@ -935,7 +931,7 @@ namespace Xyglo
         /// </summary>
         protected override void LoadContent()
         {
-            // Start up the worker thread
+            // Start up the worker thread for the performance counters
             //
             m_counterWorker = new PerformanceWorker();
             m_counterWorkerThread = new Thread(m_counterWorker.startWorking);
@@ -943,7 +939,18 @@ namespace Xyglo
 
             // Loop until worker thread activates.
             //
-            while (!m_counterWorkerThread.IsAlive) ;
+            while (!m_counterWorkerThread.IsAlive);
+            Thread.Sleep(1);
+
+            // Start up the worker thread for Kinect integration
+            //
+            m_kinectWorker = new KinectWorker();
+            m_kinectWorkerThread = new Thread(m_kinectWorker.startWorking);
+            m_kinectWorkerThread.Start();
+
+            // Loop until worker thread activates.
+            //
+            while (!m_kinectWorkerThread.IsAlive);
             Thread.Sleep(1);
 
             // Initialise and load fonts into our Content context by family.
@@ -967,7 +974,7 @@ namespace Xyglo
 
             // Make mouse [in[visible
             //
-            IsMouseVisible = false;
+            IsMouseVisible = true;
 
             // Allow resizing
             //
@@ -1131,6 +1138,7 @@ namespace Xyglo
 #endif
         }
 
+        /*
         protected void setFileView()
         {
             Vector3 eyePos = m_fileSystemView.getEyePosition();
@@ -1138,6 +1146,7 @@ namespace Xyglo
 
             flyToPosition(eyePos);
         }
+         * */
 
         // Y axis rotation - also known as Yaw
         //
@@ -1322,14 +1331,14 @@ namespace Xyglo
                                     // Check if we need to remove this FileBuffer from the todo list - it's not important if we can't
                                     // remove it here but we should try to anyway.
                                     //
-                                    if (m_filesToWrite.Remove(m_project.getSelectedBufferView().getFileBuffer()))
-                                    {
+                                    m_filesToWrite.RemoveAt(0);
+/*                                    {
                                         Logger.logMsg("Friendlier::Update() - could not find FileBuffer to remove from m_filesToWrite");
                                     }
                                     else
-                                    {
+                                    {*/
                                         Logger.logMsg("Friendlier::Update() - total files left to write is now " + m_filesToWrite.Count);
-                                    }
+                                    //}
 
                                     // If we have finished saving all of our files then we can exit (although we check once again)
                                     //
@@ -1391,10 +1400,8 @@ namespace Xyglo
 
                 if (m_filesToWrite != null && m_filesToWrite.Count > 0)
                 {
-                    if (m_filesToWrite.Remove(m_project.getSelectedBufferView().getFileBuffer()))
-                    {
-                        Logger.logMsg("Friendlier::completeSaveFile() - files remaining to be written " + m_filesToWrite.Count);
-                    }
+                    m_filesToWrite.RemoveAt(0);
+                    Logger.logMsg("Friendlier::completeSaveFile() - files remaining to be written " + m_filesToWrite.Count);
                 }
 
                 Vector3 newPosition = m_eye;
@@ -1417,15 +1424,6 @@ namespace Xyglo
         /// </summary>
         protected void checkExit(GameTime gameTime, bool force = false)
         {
-            // Store the eye and target positions to the project before serialising it
-            //
-            m_project.setEyePosition(m_eye);
-            m_project.setTargetPosition(m_target);
-
-            // Save our project
-            //
-            m_project.dataContractSerialise();
-
             // Firstly check for any unsaved buffers and warn
             //
             bool unsaved = false;
@@ -1469,18 +1467,60 @@ namespace Xyglo
                 m_counterWorker.requestStop();
                 m_counterWorkerThread.Join();
 
-                // Close any kinect
+                // Close the kinect thread
                 //
-                m_kinectManager.close();
+                m_kinectWorker.requestStop();
+                m_kinectWorkerThread.Join();
+
+                // Modify Z if we're in the file selector height of 600.0f
+                //
+                if (m_eye.Z == 600.0f)
+                {
+                    m_eye.Z = 500.0f;
+                }
+
+                // Store the eye and target positions to the project before serialising it.
+                //
+                m_project.setEyePosition(m_eye);
+                m_project.setTargetPosition(m_target);
+
+                // Save our project including any updated file statuses
+                //
+                m_project.dataContractSerialise();
 
                 this.Exit();
             }
         }
 
+        /// <summary>
+        /// Mouse wheel value
+        /// </summary>
+        protected int m_lastMouseWheelValue = 0;
 
-        public float m_lastDepthPosition = 0;
+        /// <summary>
+        /// Position of last mouse click
+        /// </summary>
+        protected Vector3 m_lastClickPosition = Vector3.Zero;
 
-        public float m_initialDepthPosition = 0;
+        /// <summary>
+        /// Vector resulting from last mouse click
+        /// </summary>
+        protected Vector3 m_lastClickVector = Vector3.Zero;
+
+        /// <summary>
+        /// Set a current zoom level
+        /// </summary>
+        /// <param name="zoomLevel"></param>
+        protected void setZoomLevel(float zoomLevel)
+        {
+            m_zoomLevel = zoomLevel;
+
+            if (m_zoomLevel < 500.0f)
+            {
+                m_zoomLevel = 500.0f;
+            }
+            setActiveBuffer();
+        }
 
         /// <summary>
         /// Allows the game to run logic such as updating the world,
@@ -1489,6 +1529,10 @@ namespace Xyglo
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            // Set the cursor to something useful
+            //
+            System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.IBeam;
+
             // Set the startup banner on the first pass through
             //
             if (m_gameTime == null)
@@ -1500,39 +1544,21 @@ namespace Xyglo
             //
             m_gameTime = gameTime;
 
-            if (m_kinectManager.getDepthValue() != 0)
+            // Check for any other mouse clicks
+            //
+            checkMouseClick(gameTime);
+
+            // Mouse scrollwheel
+            //
+            if (m_lastMouseWheelValue != Mouse.GetState().ScrollWheelValue)
             {
-                if (m_initialDepthPosition == 0)
-                {
-                    m_initialDepthPosition = m_kinectManager.getDepthValue();
-                }
+                Logger.logMsg("Friendlier::Update() - mouse wheel value now = " + Mouse.GetState().ScrollWheelValue);
 
-                if (gameTime.TotalGameTime.Milliseconds % 250 == 0)
-                {
-                    if (m_kinectManager.depthIsStable(m_lastDepthPosition))
-                    {
-                        //Logger.logMsg("DEPTH STABLE @ " + m_kinectManager.getDepthValue());
-                        ;
-                    }
-                    else
-                    {
-                        //m_lastDepthPosition = m_kinectManager.getDepthValue();
-                        //Logger.logMsg("LAST = " + m_lastDepthPosition);
-                        //Logger.logMsg("NEW  = " + m_kinectManager.getDepthValue());
+                float newZoomLevel = m_zoomLevel + (m_zoomStep * ((m_lastMouseWheelValue - Mouse.GetState().ScrollWheelValue) / 120.0f));
+                setZoomLevel(newZoomLevel);
 
-
-                        // Move to new position
-                        //Vector3 newPosition = m_eye;
-                        //newPosition.Z += (m_kinectManager.getDepthValue() - m_initialDepthPosition) / 100.0f;
-                        //flyToPosition(newPosition);
-                    }
-
-                    m_lastDepthPosition = m_kinectManager.getDepthValue();
-
-                }
+                m_lastMouseWheelValue = Mouse.GetState().ScrollWheelValue;
             }
-
-
 
             // If mouse left button is down and window size is changing then we are
             // resizing it.
@@ -1804,13 +1830,7 @@ namespace Xyglo
                 {
                     if (m_altDown && m_shiftDown) // Do zoom
                     {
-                        m_zoomLevel -= m_zoomStep;
-
-                        if (m_zoomLevel < 500.0f)
-                        {
-                            m_zoomLevel = 500.0f;
-                        }
-                        setActiveBuffer();
+                        setZoomLevel(m_zoomLevel - m_zoomStep);
                     }
                     else if (m_altDown)
                     {
@@ -2072,44 +2092,6 @@ namespace Xyglo
             {
                 startBanner(gameTime, "Friendlier\nv1.0", 5);
             }
-            /*else if (checkKeyState(Keys.F7, gameTime))
-            {
-                if (m_shiftDown)
-                {
-                    m_zoomLevel -= 1;
-                }
-                else if (m_ctrlDown)
-                {
-                    m_zoomLevel -= 5;
-                }
-                else
-                {
-                    m_zoomLevel -= 500.0f;
-                }
-
-                if (m_zoomLevel < 500.0f)
-                {
-                    m_zoomLevel = 500.0f;
-                }
-                setActiveBuffer();
-            }
-            else if (checkKeyState(Keys.F8, gameTime))
-            {
-                if (m_shiftDown)
-                {
-                    m_zoomLevel += 1;
-                }
-                else if (m_ctrlDown)
-                {
-                    m_zoomLevel += 5;
-                }
-                else
-                {
-                    m_zoomLevel += 500.0f;
-                }
-
-                setActiveBuffer();
-            }*/
             else if (checkKeyState(Keys.F6, gameTime))
             {
                 doBuildCommand(gameTime);
@@ -2314,13 +2296,31 @@ namespace Xyglo
 
                                 foreach (FileBuffer fb in m_project.getFileBuffers())
                                 {
-                                    if (fb.isWriteable())
+                                    if (fb.isModified())
                                     {
-                                        fb.save();
-                                    }
-                                    else
-                                    {
-                                        m_filesToWrite.Add(fb);
+                                        if (fb.isWriteable())
+                                        {
+                                            fb.save();
+                                        }
+                                        else
+                                        {
+                                            // Only add a filebuffer if it's not the same physical file
+                                            //
+                                            bool addFileBuffer = true;
+                                            foreach (FileBuffer fb2 in m_filesToWrite)
+                                            {
+                                                if (fb2.getFilepath() == fb.getFilepath())
+                                                {
+                                                    addFileBuffer = false;
+                                                    break;
+                                                }
+                                            }
+
+                                            if (addFileBuffer)
+                                            {
+                                                m_filesToWrite.Add(fb);
+                                            }
+                                        }
                                     }
                                 }
 
@@ -3443,8 +3443,12 @@ namespace Xyglo
             }
         }
 
-        // Gets a single key click - but also repeats if it's still held down after a while
-        //
+        /// <summary>
+        /// Gets a single key click - but also repeats if it's still held down after a while
+        /// </summary>
+        /// <param name="check"></param>
+        /// <param name="gameTime"></param>
+        /// <returns></returns>
         bool checkKeyState(Keys check, GameTime gameTime)
         {
             // Do we have any keys pressed down?  If not return
@@ -3490,6 +3494,10 @@ namespace Xyglo
             return false;
         }
 
+        /// <summary>
+        /// Get some rays to help us work out where the user is clicking
+        /// </summary>
+        /// <returns></returns>
         public Ray GetPickRay()
         {
             MouseState mouseState = Mouse.GetState();
@@ -3515,16 +3523,55 @@ namespace Xyglo
         }
 
 
-        /*
-        public void checkMouseClick()
+        /// <summary>
+        /// Last mouse state
+        /// </summary>
+        protected MouseState m_lastMouseState = new MouseState();
+
+        /// <summary>
+        /// Time of last click
+        /// </summary>
+        protected TimeSpan m_lastClickTime = TimeSpan.Zero;
+
+        /// <summary>
+        /// Handle mouse clicks
+        /// </summary>
+        /// <param name="gameTime"></param>
+        public void checkMouseClick(GameTime gameTime)
         {
             MouseState mouseState = Mouse.GetState();
             if (mouseState.LeftButton == ButtonState.Pressed)
             {
-
+                // Get the pick ray
+                //
                 Ray pickRay = GetPickRay();
 
+                if (m_lastMouseState.LeftButton == ButtonState.Released)
+                {
+                    m_lastClickPosition = pickRay.Position;
+                    m_lastClickVector = pickRay.Direction;
+                    m_lastClickTime = gameTime.TotalGameTime;
+                }
+                else
+                {
+                    // We are dragging - work out the rate
+                    //
+                    double deltaX = pickRay.Position.X - m_lastClickPosition.X;
+                    double deltaY = pickRay.Position.Y - m_lastClickPosition.Y;
 
+                    // Vector and angle
+                    //
+                    double dragVector = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
+                    double dragAngle = Math.Atan2(deltaY, deltaX);
+
+                    //Logger.logMsg("Friendlier::checkMouseClick() - Pick Ray X=" + pickRay.Position.X + ", Y=" + pickRay.Position.Y + ", Z=" + pickRay.Position.Z);
+
+
+                    Logger.logMsg("Friendlier::checkMouseClick() - dragVector = " + dragVector);
+                    Logger.logMsg("Friendlier::checkMouseClick() - dragAngle = " + dragAngle);
+                }
+
+                /*
                 //Nullable<float> result = pickRay.Intersects(triangleBB);
                 int selectedIndex = -1;
                 float selectedDistance = float.MaxValue;
@@ -3547,10 +3594,20 @@ namespace Xyglo
                 {
                     worldObjects[selectedIndex].texture2D = selectedTexture;
                 }
-
+                */
+            } else if (mouseState.LeftButton == ButtonState.Released)
+            {
+                if (m_lastMouseState.LeftButton == ButtonState.Pressed) // Have just released
+                {
+                    m_lastClickPosition = Vector3.Zero;
+                }
             }
+
+            // Store the last mouse state
+            //
+            m_lastMouseState = mouseState;
+
         }
-        */
 
         /// <summary>
         /// This is called when the game should draw itself.
@@ -3592,7 +3649,7 @@ namespace Xyglo
             // 
             m_viewMatrix = Matrix.CreateLookAt(m_eye, m_target, Vector3.Up);
 
-            m_projection = /* Matrix.CreateTranslation(-0.5f, -0.5f, 0) * */ Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 10000f);
+            m_projection = Matrix.CreateTranslation(-0.5f, -0.5f, 0) * Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 10000f);
 
             m_basicEffect.World = Matrix.CreateScale(1, -1, 1); // *Matrix.CreateTranslation(textPosition);
             m_basicEffect.View = m_viewMatrix;
@@ -3717,6 +3774,7 @@ namespace Xyglo
 
         protected void drawKinectInformation()
         {
+            /*
             if (m_kinectManager.gotUser())
             {
                 string skeletonPosition = m_kinectManager.getSkeletonDetails();
@@ -3732,6 +3790,7 @@ namespace Xyglo
                 //m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), filePercentString, new Vector2((int)filePercentStringXPos, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
                 m_overlaySpriteBatch.End();
             }
+             * */
         }
 
 
@@ -4469,7 +4528,7 @@ namespace Xyglo
 
             // Draw overlaid ID on this window if we're far enough away to use it
             //
-            if (m_zoomLevel > 800.0f)
+            if (m_zoomLevel > 950.0f)
             {
                 int viewId = m_project.getBufferViews().IndexOf(view);
                 string bufferId = viewId.ToString();
@@ -4727,11 +4786,17 @@ namespace Xyglo
             //
             string text = "";
 
-            text += "Current file path  : " + m_project.getSelectedBufferView().getFileBuffer().getFilepath() + "\n\n";
+            text += "Current file path  : " + m_project.getSelectedBufferView().getFileBuffer().getFilepath() + "\n";
+            text += "File status        : " + (m_project.getSelectedBufferView().getFileBuffer().isWriteable() ? "Writeable " : "Read Only") + "\n";
+            text += "File lines         : " + m_project.getSelectedBufferView().getFileBuffer().getLineCount() + "\n";
+            text += "\n"; // divider
             text += "Project name:      : " + m_project.m_projectName + "\n";
             text += "Project created    : " + m_project.getCreationTime().ToString() + "\n";
-            text += "Total files        : " + m_project.getFileBuffers().Count + "\n";
-            text += "Total lines        : " + m_project.getFilesTotalLines() + "\n";
+            text += "Project files      : " + m_project.getFileBuffers().Count + "\n";
+            text += "Project lines      : " + m_project.getFilesTotalLines() + "\n";
+            text += "FileBuffers        : " + m_project.getFileBuffers().Count + "\n";
+            text += "BufferViews        : " + m_project.getBufferViews().Count + "\n";
+            text += "\n"; // divider
 
             // Some timings
             //

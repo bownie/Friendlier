@@ -1000,6 +1000,7 @@ namespace Xyglo
             rV.Y -= m_fontManager.getLineHeight() * m_bufferShowLength / 2;
             rV.Z = zoomLevel;
 
+#if QUADRANT_ZOOMING
             if (zoomLevel == 1000.0f)
             {
 
@@ -1031,6 +1032,7 @@ namespace Xyglo
                 }
 
             }
+#endif // QUADRANT_ZOOMING
 
             return rV;
         }
@@ -1689,6 +1691,32 @@ namespace Xyglo
                 m_highlightEnd.Y = 0;
             }
         }
+
+        /// <summary>
+        /// Get my search locations in the BufferView
+        /// </summary>
+        protected List<int> m_searchLocations = new List<int>();
+
+        /// <summary>
+        /// Rturn the locations at which we've found stuffe
+        /// </summary>
+        /// <returns></returns>
+        public List<int> getFindLocations()
+        {
+            return m_searchLocations;
+        }
+
+        /// <summary>
+        /// Update the locations of the search string so we can provide our preview
+        /// </summary>
+        /// <param name="text"></param>
+        protected void updateFindLocations(string text)
+        {
+            m_searchLocations.Clear();
+
+
+        }
+
 
         /// <summary>
         /// Find the text and move the cursor and highlight it
