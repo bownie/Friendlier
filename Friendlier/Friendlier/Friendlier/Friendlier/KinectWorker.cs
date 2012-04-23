@@ -48,6 +48,8 @@ namespace Xyglo
                 Thread.Sleep(50); // sleep for 10ms
             }
 
+            m_kinectManager.close();
+
             Console.WriteLine("KinectWorker::startWorking() - terminating gracefully");
         }
 
