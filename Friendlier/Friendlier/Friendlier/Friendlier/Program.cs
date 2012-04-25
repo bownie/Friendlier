@@ -79,8 +79,8 @@ namespace Xyglo
                 if (File.Exists(projectFile))
                 {
                     project = Project.dataContractDeserialise(fontManager, projectFile);
-                    project.loadFiles();
-                    project.connectFloatingWorld();
+                    //project.loadFiles();
+                    //project.connectFloatingWorld();
                 }
                 else
                 {

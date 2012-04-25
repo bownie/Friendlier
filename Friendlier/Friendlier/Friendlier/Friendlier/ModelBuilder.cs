@@ -290,12 +290,15 @@ namespace Xyglo
             IEnumerable<Edge<string>> edges;
             if (observer.TryGetPath(vertex, out edges))
             {
-            
+#if MODEL_BUILDER_DEBUG
                 Logger.logMsg("ModelBuilder::getEdgeTargets() - To get to vertex '" + vertex + "', take the following edges:");
+#endif
                 foreach (Edge<string> edge in edges)
                 {
                     rL.Add(edge);
+#if MODEL_BUILDER_DEBUG
                     Logger.logMsg("ModelBuilder::getEdgeTargets() - " + edge.Source + " -> " + edge.Target);
+#endif
                 }
             }
 

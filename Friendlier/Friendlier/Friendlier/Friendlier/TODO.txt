@@ -1,6 +1,15 @@
+USE CASES
+---------
+
+- The writer - writing a book, researching
+- The journalist - writing a story, researching
+- The developer - developing, debugging, coding
+
 TODO
 ----
 
+- Bloom highlight?
+- Text highlighting and indenting (simple)
 - Depth buffer for kinect improved
 - improve search
 - some way of seeing/modifying/deleting files in project / visualisation of project contents  [STARTED]

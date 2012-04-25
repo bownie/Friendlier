@@ -116,7 +116,9 @@ namespace Xyglo
             {
                 string subPath = fb.getFilepath().Substring(rootPath.Length, fb.getFilepath().Length - rootPath.Length);
 
+#if TREE_BUILDER_DEBUG
                 Logger.logMsg("TreeBuilder::buildTree() - sub path = " + subPath);
+#endif
 
                 // Always start lastVertex from the root and test while we expand downwards
                 //
@@ -143,7 +145,9 @@ namespace Xyglo
                     //
                     if (!rG.ContainsVertex(thisVertex))
                     {
+#if TREE_BUILDER_DEBUG
                         Logger.logMsg("TreeBuilder::buildTree() - adding sub vertex = " + thisVertex);
+#endif
                         rG.AddVertex(thisVertex);
                     }
 
@@ -155,7 +159,9 @@ namespace Xyglo
                     //
                     if (!rG.ContainsEdge(newEdge))
                     {
+#if TREE_BUILDER_DEBUG
                         Logger.logMsg("TreeBuilder::buildTree() - adding edge between " + lastVertex + " and " + thisVertex);
+#endif
                         rG.AddEdge(newEdge);
                     }
 

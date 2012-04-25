@@ -84,6 +84,19 @@ namespace Xyglo
         [IgnoreDataMember]
         protected TimeSpan m_fetchWindow;
 
+        /// <summary>
+        /// List of highlight information - this is updated via a SyntaxManager but is retrieved directly
+        /// from this class.
+        /// </summary>
+        [IgnoreDataMember]
+        public List<Highlight> m_highlightList = new List<Highlight>();
+
+
+        /// <summary>
+        /// List of highlights we're going to return to the drawFileBuffer in the main loop
+        /// </summary>
+        protected List<Highlight> m_returnLineList = new List<Highlight>();
+
         //////////// CONSTRUCTORS ////////////
 
         /// <summary>
@@ -188,9 +201,9 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Load this file
+        /// Load this file - passing a syntax manager to do the necessary syntax processing for it.
         /// </summary>
-        public void loadFile()
+        public void loadFile(SyntaxManager syntaxManager)
         {
             // test to see if file exists
             if (!File.Exists(m_filename))
@@ -200,11 +213,16 @@ namespace Xyglo
             }
 
             // If we have recovered this FileBuffer from a persisted state then m_lines could
-            // very well be null at this point - initialise it if it is.
+            // very well be null at this point - initialise it if it is.  Otherwise we clear
+            // before we load.
             //
             if (m_lines == null)
             {
                 m_lines = new List<string>();
+            }
+            else
+            {
+                m_lines.Clear();
             }
 
             // Open a file non-exclusively for reading
@@ -218,13 +236,16 @@ namespace Xyglo
                     m_lines.Add(line);
                 }
             }
+
+            syntaxManager.updateHighlighting(this);
+
         }
 
         /// <summary>
         /// We call this when we want to refetch a file for example if we're tailing it
         /// and need a recent copy.   For the moment this is horribly inefficient.
         /// </summary>
-        public bool refetchFile(GameTime gametime)
+        public bool refetchFile(GameTime gametime, SyntaxManager syntaxManager)
         {
             //m_fetchWindow = new TimeSpan(0, 0, 1);
 
@@ -251,7 +272,7 @@ namespace Xyglo
                 //if (fileModTime != m_lastFetchSystemTime)
                 //{
                     m_lines.Clear();
-                    loadFile();
+                    loadFile(syntaxManager);
                     m_lastFetchTime = gametime.TotalGameTime;
                     m_lastFetchSystemTime = DateTime.Now;
 
@@ -266,10 +287,10 @@ namespace Xyglo
         /// <summary>
         /// Brute force refetch
         /// </summary>
-        public void forceRefetchFile()
+        public void forceRefetchFile(SyntaxManager syntaxManager)
         {
             m_lines.Clear();
-            loadFile();
+            loadFile(syntaxManager);
         }
 
         /// <summary>
@@ -689,6 +710,60 @@ namespace Xyglo
         public bool getReadOnly()
         {
             return m_readOnly;
+        }
+
+        /// <summary>
+        /// Get some highlighting suggestions from the indicated line
+        /// </summary>
+        /// <param name="line"></param>
+        /// <returns></returns>
+        public List<Highlight> getHighlighting(int line)
+        {
+            m_returnLineList.Clear();
+
+            // Find all highlighting for this line
+            //
+            m_returnLineList = m_highlightList.FindAll(
+            delegate(Highlight h)
+            {
+                return h.m_startHighlight.Y == line;
+            }
+            );
+
+            // Ensure it's sorted
+            //
+            m_returnLineList.Sort();
+
+            // Return 
+            //
+            return m_returnLineList;
+        }
+
+        /// <summary>
+        /// Get some highlighting suggestions from the indicated line range
+        /// </summary>
+        /// <param name="line"></param>
+        /// <returns></returns>
+        public List<Highlight> getHighlighting(int startLine, int endLine)
+        {
+            m_returnLineList.Clear();
+
+            // Find all highlighting for this line
+            //
+            m_returnLineList = m_highlightList.FindAll(
+            delegate(Highlight h)
+            {
+                return (h.m_startHighlight.Y >= startLine && h.m_startHighlight.Y <= endLine);
+            }
+            );
+
+            // Ensure it's sorted
+            //
+            m_returnLineList.Sort();
+
+            // Return 
+            //
+            return m_returnLineList;
         }
     }
 }

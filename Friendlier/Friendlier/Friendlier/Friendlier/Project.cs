@@ -191,6 +191,13 @@ namespace Xyglo
         /// </summary>
         protected FontManager m_fontManager;
 
+        /// <summary>
+        /// When this is instantiated it makes a language specific syntax handler to
+        /// provide syntax highlighting, suggestions for autocompletes and also indent
+        /// levels.
+        /// </summary>
+        protected SyntaxManager m_syntaxManager;
+
         ////////// CONSTRUCTORS ///////////
 
         /// <summary>
@@ -199,16 +206,7 @@ namespace Xyglo
         public Project(FontManager fontManager)
         {
             m_projectName = "<unnamed>";
-            m_lastAccessTime = DateTime.Now;
-            m_fontManager = fontManager;
-
-            // Initialise
-            //
-            m_activeTime = TimeSpan.Zero;
-
-            // Build some configuation if we need to
-            //
-            buildInitialConfiguration();
+            initialise();
         }
 
 
@@ -219,10 +217,34 @@ namespace Xyglo
         public Project(FontManager fontManager, string name, string projectFile)
         {
             m_projectName = name;
-            m_lastAccessTime = DateTime.Now;
             m_projectFile = projectFile;
             m_fontManager = fontManager;
+            initialise();
+        }
 
+        ////////////// METHODS ////////////////
+
+        /// <summary>
+        /// Interface for initialising the font manager via the Project
+        /// </summary>
+        /// <param name="contentManager"></param>
+        /// <param name="fontFamily"></param>
+        /// <param name="aspectRatio"></param>
+        /// <param name="processor"></param>
+        public void initialiseFonts(Microsoft.Xna.Framework.Content.ContentManager contentManager, string fontFamily, float aspectRatio, string processor = "")
+        {
+            m_fontManager.initialise(contentManager, fontFamily, aspectRatio, processor);
+        }
+
+        /// <summary>
+        /// Initialise this project
+        /// </summary>
+        protected void initialise()
+        {
+            // Update this
+            //
+            m_lastAccessTime = DateTime.Now;
+            
             // Initialise
             //
             m_activeTime = TimeSpan.Zero;
@@ -230,9 +252,11 @@ namespace Xyglo
             // Build some configuation if we need to
             //
             buildInitialConfiguration();
-        }
 
-        ////////////// METHODS ////////////////
+            // Build the syntax manager - for the moment we force it to Cpp
+            //
+            m_syntaxManager = new CppSyntaxManager(this);
+        }
 
         /// <summary>
         /// Return the next colour we should use for a BufferView
@@ -399,7 +423,6 @@ namespace Xyglo
 
             throw new Exception("No configuration item for " + name);
         }
-
 
         /// <summary>
         /// Update an existing configuration item
@@ -714,10 +737,23 @@ namespace Xyglo
         /// </summary>
         public void loadFiles()
         {
+            // We always need a Syntax Manager when handling files
+            //
+            if (m_syntaxManager == null)
+            {
+                // Build the syntax manager - for the moment we force it to Cpp
+                //
+                m_syntaxManager = new CppSyntaxManager(this);
+            }
+
             foreach (FileBuffer fb in m_fileBuffers)
             {
-                fb.loadFile();
+                fb.loadFile(m_syntaxManager);
             }
+
+            // Generate the highlighting for all the FileBuffers
+            //
+            m_syntaxManager.generateHighlighting();
 
             // Also reset our access timer
             //
@@ -1197,6 +1233,15 @@ namespace Xyglo
             }
 
             return rS;
+        }
+
+        /// <summary>
+        /// Return the syntax manager hanlde
+        /// </summary>
+        /// <returns></returns>
+        public SyntaxManager getSyntaxManager()
+        {
+            return m_syntaxManager;
         }
     }
 

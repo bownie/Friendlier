@@ -404,13 +404,6 @@ namespace Xyglo
         protected string m_searchText = "";
 
         /// <summary>
-        /// When this is instantiated it makes a language specific syntax handler to
-        /// provide syntax highlighting, suggestions for autocompletes and also indent
-        /// levels.
-        /// </summary>
-        protected SyntaxManager m_syntaxManager;
-
-        /// <summary>
         /// Lock the log file for writing
         /// </summary>
         protected Mutex m_logFileMutex = new Mutex();
@@ -654,9 +647,17 @@ namespace Xyglo
         /// <param name="project"></param>
         public void initialiseProject()
         {
-            // Build the syntax manager - for the moment we force it to Cpp
+            // Initialise and load fonts into our Content context by family.
             //
-            m_syntaxManager = new CppSyntaxManager(m_project);
+            //FontManager.initialise(Content, "Lucida Sans Typewriter");
+            //FontManager.initialise(Content, "Sax Mono");
+            m_project.initialiseFonts(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio, "Nuclex");
+            //m_project.getFontManager().initialise(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio);
+
+            // We need to do this to connect up all the BufferViews, FileBuffers and the other components
+            // such as FontManager etc.
+            //
+            m_project.connectFloatingWorld();
 
             // Initialise the configuration item if it's null - this is in case we've persisted
             // a version of the project without a configuration item it will create it here.
@@ -795,7 +796,7 @@ namespace Xyglo
             {
                 if (fb.getFilepath() == e.FullPath)
                 {
-                    fb.forceRefetchFile();
+                    fb.forceRefetchFile(m_project.getSyntaxManager());
                 }
             }
 
@@ -953,12 +954,9 @@ namespace Xyglo
             while (!m_kinectWorkerThread.IsAlive);
             Thread.Sleep(1);
 
-            // Initialise and load fonts into our Content context by family.
+            // Initialise the project - do this only once and after the font maan
             //
-            //FontManager.initialise(Content, "Lucida Sans Typewriter");
-            //FontManager.initialise(Content, "Sax Mono");
-            m_project.getFontManager().initialise(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio, "Nuclex");
-            //m_project.getFontManager().initialise(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio);
+            initialiseProject();
 
             // Create a new SpriteBatch, which can be used to draw textures.
             m_spriteBatch = new SpriteBatch(m_graphics.GraphicsDevice);
@@ -1014,11 +1012,6 @@ namespace Xyglo
             // Set up the text scroller width
             //
             setTextScrollerWidth(Convert.ToInt16(m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 32));
-
-            // Initialise the project - do this only once
-            //
-            initialiseProject();
-
             
         }
 
@@ -1215,12 +1208,12 @@ namespace Xyglo
 
             // Set temporary bird's eye view if we're in close
             //
-            Vector3 newPosition = m_eye;
-            newPosition.Z = 600.0f;
+            //Vector3 newPosition = m_eye;
+            //newPosition.Z = 600.0f;
 
             // Fly there
             //
-            flyToPosition(newPosition);
+            //flyToPosition(newPosition);
         }
 
         /// <summary>
@@ -2186,7 +2179,7 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.Tab, gameTime)) // Insert a tab space
             {
-                m_project.getSelectedBufferView().insertText("  ");
+                m_project.getSelectedBufferView().insertText("  ", m_project.getSyntaxManager());
             }
             else if (checkKeyState(Keys.Delete, gameTime) || checkKeyState(Keys.Back, gameTime))
             {
@@ -2221,13 +2214,13 @@ namespace Xyglo
                     // All the clever stuff with the cursor is done at the BufferView level and it also
                     // calls the command in the FileBuffer.
                     //
-                    m_project.getSelectedBufferView().deleteCurrentSelection();
+                    m_project.getSelectedBufferView().deleteCurrentSelection(m_project.getSyntaxManager());
                 }
                 else // delete at cursor
                 {
                     if (checkKeyState(Keys.Delete, gameTime))
                     {
-                        m_project.getSelectedBufferView().deleteSingle();
+                        m_project.getSelectedBufferView().deleteSingle(m_project.getSyntaxManager());
                     }
                     else if (checkKeyState(Keys.Back, gameTime))
                     {
@@ -2239,7 +2232,7 @@ namespace Xyglo
                             //
                             fp.X--;
                             m_project.getSelectedBufferView().setCursorPosition(fp);
-                            m_project.getSelectedBufferView().deleteSingle();
+                            m_project.getSelectedBufferView().deleteSingle(m_project.getSyntaxManager());
                         }
                         else if (fp.Y > 0)
                         {
@@ -2247,7 +2240,7 @@ namespace Xyglo
                             fp.X = m_project.getSelectedBufferView().getFileBuffer().getLine(Convert.ToInt16(fp.Y)).Length;
                             m_project.getSelectedBufferView().setCursorPosition(fp);
 
-                            m_project.getSelectedBufferView().deleteSingle();
+                            m_project.getSelectedBufferView().deleteSingle(m_project.getSyntaxManager());
                         }
                     }
                 }
@@ -2379,7 +2372,7 @@ namespace Xyglo
                         Logger.logMsg("Friendler::update() - cut");
 
                         System.Windows.Forms.Clipboard.SetText(m_project.getSelectedBufferView().getSelection().getClipboardString());
-                        m_project.getSelectedBufferView().deleteCurrentSelection();
+                        m_project.getSelectedBufferView().deleteCurrentSelection(m_project.getSyntaxManager());
                     }
                     else if (checkKeyState(Keys.V, gameTime)) // Paste
                     {
@@ -2394,7 +2387,7 @@ namespace Xyglo
                             }
                             else
                             {
-                                m_project.getSelectedBufferView().insertText(System.Windows.Forms.Clipboard.GetText());
+                                m_project.getSelectedBufferView().insertText(System.Windows.Forms.Clipboard.GetText(), m_project.getSyntaxManager());
                             }
                         }
                     }
@@ -2409,8 +2402,7 @@ namespace Xyglo
                             //
                             if (m_project.getSelectedBufferView().getFileBuffer().getUndoPosition() > 0)
                             {
-                                //m_project.getSelectedBufferView().setCursorPosition(m_project.getSelectedBufferView().getFileBuffer().undo(1));
-                                m_project.getSelectedBufferView().undo(1);
+                                m_project.getSelectedBufferView().undo(m_project.getSyntaxManager() ,1);
                             }
                             else
                             {
@@ -2437,7 +2429,8 @@ namespace Xyglo
                             if (m_project.getSelectedBufferView().getFileBuffer().getUndoPosition() <
                                 m_project.getSelectedBufferView().getFileBuffer().getCommandStackLength())
                             {
-                                m_project.getSelectedBufferView().setCursorPosition(m_project.getSelectedBufferView().getFileBuffer().redo(1));
+                                //m_project.getSelectedBufferView().setCursorPosition(m_project.getSelectedBufferView().getFileBuffer().redo(1));
+                                m_project.getSelectedBufferView().redo(m_project.getSyntaxManager(), 1);
                             }
                             else
                             {
@@ -2697,7 +2690,7 @@ namespace Xyglo
                                             Logger.logMsg("Friendlier::Update() - couldn't get AUTOINDENT from config - " + e.Message);
                                         }
 
-                                        m_project.getSelectedBufferView().insertNewLine(indent);
+                                        m_project.getSelectedBufferView().insertNewLine(indent, m_project.getSyntaxManager());
 
                                         //fp = m_activeBufferView.getFileBuffer().insertNewLine(m_activeBufferView.getCursorPosition());
 
@@ -3057,7 +3050,7 @@ namespace Xyglo
                                             }
                                             else
                                             {
-                                                m_project.getSelectedBufferView().insertText(key);
+                                                m_project.getSelectedBufferView().insertText(key, m_project.getSyntaxManager());
                                             }
                                         }
                                     }
@@ -3235,7 +3228,7 @@ namespace Xyglo
 
                 // Load the file
                 //
-                newFB.loadFile();
+                newFB.loadFile(m_project.getSyntaxManager());
             }
 
             // Add the FileBuffer and keep the index for our BufferView
@@ -3688,8 +3681,8 @@ namespace Xyglo
             //
             if (m_state == FriendlierState.ManageProject)
             {
-                drawManageProject(gameTime);
                 m_spriteBatch.End();
+                drawManageProject(gameTime);
             }
             else
             {
@@ -3799,13 +3792,91 @@ namespace Xyglo
         /// </summary>
         protected void drawManageProject(GameTime gameTime)
         {
+            string text = "";
+            int fixedWidth = 0;
             
-            /*
-            foreach(FileBuffers fb in m_project.getFileBuffers())
+            foreach(FileBuffer fb in m_project.getFileBuffers())
             {
-                
+                text += fb.getFilepath() + "\n";             
             }
-             * */
+
+            Vector3 fp = m_project.getSelectedBufferView().getPosition();
+
+            // Always start from 0 for offsets
+            //
+            float yPos = 0.0f;
+            float xPos = 0.0f;
+
+            // Split out the input line
+            //
+            string[] infoRows = text.Split('\n');
+
+            // We need to store this value so that page up and page down work
+            //
+            m_textScreenLength = infoRows.Length;
+
+            //  Position the information centrally
+            //
+            int longestRow = 0;
+            for (int i = 0; i < m_textScreenLength; i++)
+            {
+                if (infoRows[i].Length > longestRow)
+                {
+                    longestRow = infoRows[i].Length;
+                }
+            }
+
+            // Limit the row length when centring
+            //
+            if (fixedWidth == 0)
+            {
+                if (longestRow > m_project.getSelectedBufferView().getBufferShowWidth())
+                {
+                    longestRow = m_project.getSelectedBufferView().getBufferShowWidth();
+                }
+            }
+            else
+            {
+                longestRow = fixedWidth;
+            }
+
+            // Modify by height of the screen to centralise
+            //
+            yPos += (m_graphics.GraphicsDevice.Viewport.Height / 2) - (m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay) * m_textScreenLength / 2);
+
+            // Adjust xPos
+            //
+            xPos = (m_graphics.GraphicsDevice.Viewport.Width / 2) - (longestRow * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2);
+
+            m_overlaySpriteBatch.Begin();
+
+            // hardcode the font size to 1.0f so it looks nice
+            //
+            int endLine = m_textScreenPositionY + Math.Min(infoRows.Length - m_textScreenPositionY, m_project.getSelectedBufferView().getBufferShowLength());
+            for (int i = m_textScreenPositionY; i < endLine; i++)
+            {
+                // Always Always Always render a string on an integer - never on a float as it looks terrible
+                //
+                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), infoRows[i], new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+                yPos += m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay);
+            }
+
+            // Draw a page header
+            //
+            yPos = m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay) * 3;
+
+            double dPages = Math.Ceiling((float)m_textScreenLength / (float)m_project.getSelectedBufferView().getBufferShowLength());
+            double cPage = Math.Ceiling((float)(m_textScreenPositionY + 1) / ((float)m_project.getSelectedBufferView().getBufferShowLength()));
+            string pageString = "---- Page " + cPage + " of " + dPages + " ----";
+
+            // 3 characeter adjustment below
+            xPos = (m_graphics.GraphicsDevice.Viewport.Width / 2) - ((pageString.Length + 3) * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2);
+
+            // Always Always Always render a string on an integer - never on a float as it looks terrible
+            //
+            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), pageString, new Vector2((int)xPos, (int)yPos), Color.White);
+
+            m_overlaySpriteBatch.End();
         }
 
         /// <summary>
@@ -4361,7 +4432,7 @@ namespace Xyglo
                 // We don't do this all the time so let the FileBuffer work out when we've updated
                 // the file and need to change the viewing position to tail it.
                 //
-                view.getFileBuffer().refetchFile(gameTime);
+                view.getFileBuffer().refetchFile(gameTime, m_project.getSyntaxManager());
                 bufPos = view.getFileBuffer().getLineCount() - view.getBufferShowLength();
 
 
@@ -4475,6 +4546,10 @@ namespace Xyglo
             }
             else
             {
+                // Get a whole highlight list
+                //
+                //List<Highlight> highlightList = view.getVisibleHighlighting();
+
                 for (int i = 0; i < view.getBufferShowLength(); i++)
                 {
                     line = "~";
@@ -4509,16 +4584,49 @@ namespace Xyglo
                         }
                     }
 
-                    m_spriteBatch.DrawString(
-                        m_project.getFontManager().getFont(),
-                        line,
-                        new Vector2((int)viewSpaceTextPosition.X, (int)(viewSpaceTextPosition.Y + yPosition)),
-                        bufferColour,
-                        0,
-                        Vector2.Zero,
-                        m_project.getFontManager().getTextScale(),
-                        0,
-                        0);
+                    List<Highlight> highlights = view.getFileBuffer().getHighlighting(i + bufPos);
+
+                    // Only do syntax highlighting when we're not greyed out
+                    //
+                    if (highlights.Count > 0 && bufferColour != m_greyedColour)
+                    {
+                        highlights.Sort();
+
+                        // Need to print the line by section with some unhighlighted
+                        //
+
+                        //Logger.logMsg("Friendlier::drawFileBuffer() - got " + highlights.Count + " highlights");
+
+                        //int j = 0;
+                        // Step through the 
+                        //while(j < line.Length)
+                        //{
+
+                            m_spriteBatch.DrawString(
+                                m_project.getFontManager().getFont(),
+                                line,
+                                new Vector2((int)viewSpaceTextPosition.X, (int)(viewSpaceTextPosition.Y + yPosition)),
+                                highlights[0].m_colour,
+                                0,
+                                Vector2.Zero,
+                                m_project.getFontManager().getTextScale(),
+                                0,
+                                0);
+                        //}
+                    }
+                    else
+                    {
+                        m_spriteBatch.DrawString(
+                            m_project.getFontManager().getFont(),
+                            line,
+                            new Vector2((int)viewSpaceTextPosition.X, (int)(viewSpaceTextPosition.Y + yPosition)),
+                            bufferColour,
+                            0,
+                            Vector2.Zero,
+                            m_project.getFontManager().getTextScale(),
+                            0,
+                            0);
+                    }
 
                     yPosition += m_project.getFontManager().getLineHeight();
                 }

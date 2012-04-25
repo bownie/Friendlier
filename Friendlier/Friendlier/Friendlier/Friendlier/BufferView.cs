@@ -230,7 +230,13 @@ namespace Xyglo
         /// </summary>
         [NonSerialized]
         protected FontManager m_fontManager = null;
-        
+
+        /// <summary>
+        /// Get my search locations in the BufferView
+        /// </summary>
+        protected List<int> m_searchLocations = new List<int>();
+
+
         /////// CONSTRUCTORS /////////
 
         /// <summary>
@@ -1340,7 +1346,7 @@ namespace Xyglo
         /// <summary>
         /// Once we have a highlighted section we can delete it with this method
         /// </summary>
-        public void deleteCurrentSelection()
+        public void deleteCurrentSelection(SyntaxManager syntaxManager)
         {
             m_fileBuffer.deleteSelection(m_highlightStart, m_highlightEnd);
 
@@ -1353,6 +1359,10 @@ namespace Xyglo
                 m_cursorPosition = m_highlightEnd;
             }
 
+            // Update the syntax highlighting
+            //
+            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+
             // Cancel our highlight
             //
             noHighlight();
@@ -1361,9 +1371,13 @@ namespace Xyglo
         /// <summary>
         /// Delete a single character at the cursor
         /// </summary>
-        public void deleteSingle()
+        public void deleteSingle(SyntaxManager syntaxManager)
         {
             m_fileBuffer.deleteSelection(m_cursorPosition, m_cursorPosition);
+
+            // Update the syntax highlighting
+            //
+            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
         }
 
         /// <summary>
@@ -1419,16 +1433,23 @@ namespace Xyglo
         /// Insert some text into the BufferView
         /// </summary>
         /// <param name="text"></param>
-        public void insertText(string text)
+        public void insertText(string text, SyntaxManager syntaxManager)
         {
             m_cursorPosition = m_fileBuffer.insertText(m_cursorPosition, text);
+
+            // Update the syntax highlighting
+            //
+            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+
+            // Keep visible
+            //
             keepVisible();
         }
 
         /// <summary>
         /// Insert a new line at the cursor
         /// </summary>
-        public void insertNewLine(string autoindent)
+        public void insertNewLine(string autoindent, SyntaxManager syntaxManager)
         {
             // Define an indent
             //
@@ -1454,6 +1475,11 @@ namespace Xyglo
             }
 
             m_cursorPosition = m_fileBuffer.insertNewLine(m_cursorPosition, indent);
+
+            // Update the syntax highlighting
+            //
+            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+
             keepVisible();
         }
 
@@ -1693,11 +1719,6 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Get my search locations in the BufferView
-        /// </summary>
-        protected List<int> m_searchLocations = new List<int>();
-
-        /// <summary>
         /// Rturn the locations at which we've found stuffe
         /// </summary>
         /// <returns></returns>
@@ -1713,10 +1734,7 @@ namespace Xyglo
         protected void updateFindLocations(string text)
         {
             m_searchLocations.Clear();
-
-
         }
-
 
         /// <summary>
         /// Find the text and move the cursor and highlight it
@@ -1804,7 +1822,7 @@ namespace Xyglo
         /// Provide a nice interface for undoing things
         /// </summary>
         /// <param name="steps"></param>
-        public void undo(int steps = 1)
+        public void undo(SyntaxManager syntaxManager, int steps = 1)
         {
             m_cursorPosition = m_fileBuffer.undo(steps);
 
@@ -1814,10 +1832,39 @@ namespace Xyglo
             m_highlightStart.Y = 0;
             m_highlightEnd = m_highlightStart;
 
+            // Update the syntax highlighting
+            //
+            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+
             // Ensure that the cursor is visible in the BufferView
             //
             keepVisible();
         }
+
+        /// <summary>
+        /// Redo a certain number of commands
+        /// </summary>
+        /// <param name="syntaxManager"></param>
+        /// <param name="steps"></param>
+        public void redo(SyntaxManager syntaxManager, int steps = 1)
+        {
+            m_cursorPosition = m_fileBuffer.redo(1);
+
+            // Remove any highlight
+            //
+            m_highlightStart.X = 0;
+            m_highlightStart.Y = 0;
+            m_highlightEnd = m_highlightStart;
+
+            // Update the syntax highlighting
+            //
+            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+
+            // Ensure that the cursor is visible in the BufferView
+            //
+            keepVisible();
+        }
+
 
 
         /// <summary>
@@ -1994,6 +2041,19 @@ namespace Xyglo
         public void setBackgroundColour(Color colour)
         {
             m_backgroundColour = colour;
+        }
+
+        /// <summary>
+        /// Returns a list of Highlights for the visible BufferView segment
+        /// </summary>
+        /// <returns></returns>
+        public List<Highlight> getVisibleHighlighting()
+        {
+            if (m_fileBuffer != null)
+            {
+                return m_fileBuffer.getHighlighting(m_bufferShowStartY, m_bufferShowStartY + m_bufferShowLength);
+            }
+            return null;
         }
     }
 }
