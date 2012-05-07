@@ -737,6 +737,8 @@ namespace Xyglo
         /// </summary>
         public void loadFiles()
         {
+            Logger.logMsg("Project::loadFiles() - starting");
+
             // We always need a Syntax Manager when handling files
             //
             if (m_syntaxManager == null)
@@ -748,16 +750,28 @@ namespace Xyglo
 
             foreach (FileBuffer fb in m_fileBuffers)
             {
+                Logger.logMsg("Project::loadFiles() - loading " + fb.getFilepath(), true);
                 fb.loadFile(m_syntaxManager);
+                Logger.logMsg("Project::loadFiles() - completed loading " + fb.getFilepath(), true);
             }
 
             // Generate the highlighting for all the FileBuffers
             //
-            m_syntaxManager.generateHighlighting();
+            Logger.logMsg("Project::loadFiles() - generating highlighting for available BufferViews", true);
+
+            foreach (BufferView bv in m_bufferViews)
+            {
+                m_syntaxManager.updateHighlighting(bv.getFileBuffer());
+            }
+//            m_syntaxManager.generateHighlighting();
+
+            Logger.logMsg("Project::loadFiles() - completed generating highlighting for BufferViews", true);
 
             // Also reset our access timer
             //
             m_lastAccessTime = DateTime.Now;
+
+            Logger.logMsg("Project::loadFiles() - completed.");
         }
 
         /// <summary>
@@ -1154,10 +1168,42 @@ namespace Xyglo
             // Firstly strip out any null paths which might exist for unsaved FileBuffers
             //
             List<FileBuffer> rL = new List<FileBuffer>();
+
+            // Length of the longest file path
+            //
             int longLength = 0;
+
+            // Store the id of the longest file path
+            //
             int longId = 0;
+
+            // Test initial drive letter
+            //
+            string testDriveLetter = "";
+            string driveLetter = "";
+
             foreach (FileBuffer fb in getNonNullFileBuffers())
             {
+                // Store the drive letter
+                //
+                if (fb.getFilepath().Length > 0)
+                {
+                    testDriveLetter = fb.getFilepath().ToUpper().Substring(0, 1);
+                    if (driveLetter == "" && testDriveLetter != "")
+                    {
+                        driveLetter = testDriveLetter;
+                    }
+                    else
+                    {
+                        if (driveLetter != testDriveLetter)
+                        {
+                            return ""; // we have differnet drives here
+                        }
+
+                    }
+                }
+
+
                 // Store the length of the longest string
                 if (fb.getFilepath().Length > longLength)
                 {

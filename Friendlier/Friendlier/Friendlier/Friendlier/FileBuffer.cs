@@ -86,11 +86,11 @@ namespace Xyglo
 
         /// <summary>
         /// List of highlight information - this is updated via a SyntaxManager but is retrieved directly
-        /// from this class.
+        /// from this class.  We persist this information to avoid having to regenerate it every time we
+        /// load the file.
         /// </summary>
-        [IgnoreDataMember]
+        [DataMember]
         public List<Highlight> m_highlightList = new List<Highlight>();
-
 
         /// <summary>
         /// List of highlights we're going to return to the drawFileBuffer in the main loop
@@ -764,6 +764,33 @@ namespace Xyglo
             // Return 
             //
             return m_returnLineList;
+        }
+
+        /// <summary>
+        /// Public accessor for creation time
+        /// </summary>
+        /// <returns></returns>
+        public DateTime getCreationSystemTime()
+        {
+            return m_creationSystemTime;
+        }
+
+        /// <summary>
+        /// Last write system time
+        /// </summary>
+        /// <returns></returns>
+        public DateTime getLastWriteSystemTime()
+        {
+            return m_lastWriteSystemTime;
+        }
+
+        /// <summary>
+        /// Last fetch system time
+        /// </summary>
+        /// <returns></returns>
+        public DateTime getLastFetchSystemTime()
+        {
+            return m_lastFetchSystemTime;
         }
     }
 }

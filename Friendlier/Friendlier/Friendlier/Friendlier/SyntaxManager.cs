@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using System.Runtime.Serialization;
 
 namespace Xyglo
 {
@@ -39,8 +40,10 @@ namespace Xyglo
     /// <summary>
     /// A highlight is a position range and a colour
     /// </summary>
+    [DataContractAttribute]
     public class Highlight : IComparable
     {
+        
         public Highlight(int line, int startX, int endX, string text, Color colour, int indent = 0)
         {
             m_startHighlight = new FilePosition(startX, line);
@@ -202,7 +205,6 @@ namespace Xyglo
         /// <returns></returns>
         public abstract string getIndent(int line);
 
-
         /// <summary>
         /// Colour of comment
         /// </summary>
@@ -212,7 +214,6 @@ namespace Xyglo
         /// Colour of #define
         /// </summary>
         static public Color m_defineColour = Color.Yellow;
-
 
     }
 }

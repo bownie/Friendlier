@@ -83,14 +83,19 @@ namespace Xyglo
          */
 
         /// <summary>
-        /// Generate highlighting for every FileBuffer
+        /// Generate highlighting for every FileBuffer for example whenever we load a project - we might want
+        /// to think about persisting the highlighting and restoring it if it's onerous to work this out..
         /// </summary>
         public override void generateHighlighting()
         {
+            Logger.logMsg("CppSyntaxManager::generateHighlighting() - starting");
+
             foreach (FileBuffer fb in m_project.getFileBuffers())
             {
                 updateHighlighting(fb, 0);
             }
+
+            Logger.logMsg("CppSyntaxManager::generateHighlighting() - completed.");
         }
 
 
@@ -99,6 +104,8 @@ namespace Xyglo
         /// </summary>
         public override void updateHighlighting(FileBuffer fileBuffer, int fromLine = 0)
         {
+            Logger.logMsg("CppSyntaxManager::updateHighlighting() - updating " + fileBuffer.getFilepath(), true);
+
             if (fromLine != 0 && fromLine > (fileBuffer.getLineCount() - 1))
             {
                 throw new Exception("Line number greater than buffer length when updating highlighting");
@@ -195,7 +202,6 @@ namespace Xyglo
                                 fileBuffer.m_highlightList.Add(newHighlight);
                             }
                         }
-
                     }
 
                     if (lastXPosition == xPosition)
@@ -204,6 +210,8 @@ namespace Xyglo
                     }
                 }
             }
+
+            Logger.logMsg("CppSyntaxManager::updateHighlighting() - completed " + fileBuffer.getFilepath(), true);
         }
 
         /// <summary>

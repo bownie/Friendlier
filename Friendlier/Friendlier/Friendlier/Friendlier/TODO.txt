@@ -8,6 +8,7 @@ USE CASES
 TODO
 ----
 
+- Sortable collections - FileBuffers, BufferViews, Highlights
 - Bloom highlight?
 - Text highlighting and indenting (simple)
 - Depth buffer for kinect improved

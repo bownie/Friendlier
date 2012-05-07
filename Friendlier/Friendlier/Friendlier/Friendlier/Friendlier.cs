@@ -7,6 +7,7 @@
 #endregion
 
 using System;
+using System.Text;
 using System.IO;
 using System.Collections.Generic;
 using System.Threading;
@@ -652,6 +653,7 @@ namespace Xyglo
             //FontManager.initialise(Content, "Lucida Sans Typewriter");
             //FontManager.initialise(Content, "Sax Mono");
             m_project.initialiseFonts(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio, "Nuclex");
+            //m_project.initialiseFonts(Content, "Proggy Clean", GraphicsDevice.Viewport.AspectRatio, "Nuclex");
             //m_project.getFontManager().initialise(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio);
 
             // We need to do this to connect up all the BufferViews, FileBuffers and the other components
@@ -777,8 +779,10 @@ namespace Xyglo
 
             TreeBuilderGraph rG = m_treeBuilder.buildTreeFromFiles(fileRoot, m_project.getNonNullFileBuffers());
 
-            ModelBuilder mB = new ModelBuilder(rG);
-            mB.build(m_projectPosition);
+            // Build a model and store it centrally
+            //
+            m_modelBuilder = new ModelBuilder(rG);
+            m_modelBuilder.build(m_projectPosition);
         }
 
 
@@ -1627,7 +1631,7 @@ namespace Xyglo
             // of this mode.  Note that we also have to mind any animations so we
             // also want to ensure that m_changingEyePosition is not true.
             //
-            if ((m_state == FriendlierState.Information || m_state == FriendlierState.Help) && m_changingEyePosition == false)
+            if ((m_state == FriendlierState.Information || m_state == FriendlierState.Help /* || m_state == FriendlierState.ManageProject */ ) && m_changingEyePosition == false)
             {
                 if (checkKeyState(Keys.PageDown, gameTime))
                 {
@@ -1812,7 +1816,7 @@ namespace Xyglo
                         m_fileSystemView.incrementHighlightIndex(-1);
                     }
                 }
-                else if (m_state == FriendlierState.Configuration && m_editConfigurationItem == false) // Configuration changes
+                else if (m_state == FriendlierState.ManageProject || (m_state == FriendlierState.Configuration && m_editConfigurationItem == false)) // Configuration changes
                 {
                     if (m_configPosition > 0)
                     {
@@ -1871,6 +1875,10 @@ namespace Xyglo
                     {
                         m_configPosition++;
                     }
+                }
+                else if (m_state == FriendlierState.ManageProject)
+                {
+                    m_configPosition++;
                 }
                 else
                 {
@@ -2528,6 +2536,11 @@ namespace Xyglo
                     }
                     else if (checkKeyState(Keys.M, gameTime))
                     {
+                        // Set the config position - we (re)use this to hold menu position in the manage
+                        // project screen for removing file items.
+                        //
+                        m_configPosition = 0;
+
                         m_state = FriendlierState.ManageProject; // Manage the files in the project
 
                         // Copy current position to m_projectPosition - then hardcode
@@ -3793,90 +3806,53 @@ namespace Xyglo
         protected void drawManageProject(GameTime gameTime)
         {
             string text = "";
-            int fixedWidth = 0;
-            
-            foreach(FileBuffer fb in m_project.getFileBuffers())
+
+            //int fixedWidth = 0;
+            //List<FileBuffer> sortList = m_project.getFileBuffers().Sort(delegate(FileBuffer fb1, FileBuffer fb2) { return fb1.getFilepath().CompareTo(fb2.getFilepath()); } );
+
+            /*
+            m_project.getFileBuffers().ForEach(delegate(FileBuffer fb)
             {
-                text += fb.getFilepath() + "\n";             
+                text += fb.getFilepath() + "\n";
+            }
+            );
+
+            m_project.getFileBuffers().Sort(delegate(FileBuffer fb1, FileBuffer fb2)
+            {
+                return fb1.getFilepath().CompareTo(fb2.getFilepath());
+            }
+            );
+
+            text = "";
+            m_project.getFileBuffers().ForEach(delegate(FileBuffer fb)
+            {
+                text += fb.getFilepath() + "\n";
+            }
+            );
+            */
+
+            //text = m_modelBuilder.getRootString() + "\n";
+
+            // Create an indent string
+            //
+            string indentString = "";
+            for(int i = 0; i < m_modelBuilder.getRootString().Length; i++)
+            {
+                indentString += " ";
             }
 
-            Vector3 fp = m_project.getSelectedBufferView().getPosition();
-
-            // Always start from 0 for offsets
-            //
-            float yPos = 0.0f;
-            float xPos = 0.0f;
-
-            // Split out the input line
-            //
-            string[] infoRows = text.Split('\n');
-
-            // We need to store this value so that page up and page down work
-            //
-            m_textScreenLength = infoRows.Length;
-
-            //  Position the information centrally
-            //
-            int longestRow = 0;
-            for (int i = 0; i < m_textScreenLength; i++)
+            foreach(string fileName in m_modelBuilder.getReturnString().Split('\n'))
             {
-                if (infoRows[i].Length > longestRow)
-                {
-                    longestRow = infoRows[i].Length;
-                }
+                text += indentString + fileName + "\n"; ;
             }
 
-            // Limit the row length when centring
+            // Draw the main text screen - using the m_configPosition as the place holder
             //
-            if (fixedWidth == 0)
-            {
-                if (longestRow > m_project.getSelectedBufferView().getBufferShowWidth())
-                {
-                    longestRow = m_project.getSelectedBufferView().getBufferShowWidth();
-                }
-            }
-            else
-            {
-                longestRow = fixedWidth;
-            }
+            drawTextScreen(gameTime, text, 0, m_configPosition);
 
-            // Modify by height of the screen to centralise
+            // Some key help
             //
-            yPos += (m_graphics.GraphicsDevice.Viewport.Height / 2) - (m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay) * m_textScreenLength / 2);
-
-            // Adjust xPos
-            //
-            xPos = (m_graphics.GraphicsDevice.Viewport.Width / 2) - (longestRow * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2);
-
-            m_overlaySpriteBatch.Begin();
-
-            // hardcode the font size to 1.0f so it looks nice
-            //
-            int endLine = m_textScreenPositionY + Math.Min(infoRows.Length - m_textScreenPositionY, m_project.getSelectedBufferView().getBufferShowLength());
-            for (int i = m_textScreenPositionY; i < endLine; i++)
-            {
-                // Always Always Always render a string on an integer - never on a float as it looks terrible
-                //
-                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), infoRows[i], new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
-                yPos += m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay);
-            }
-
-            // Draw a page header
-            //
-            yPos = m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay) * 3;
-
-            double dPages = Math.Ceiling((float)m_textScreenLength / (float)m_project.getSelectedBufferView().getBufferShowLength());
-            double cPage = Math.Ceiling((float)(m_textScreenPositionY + 1) / ((float)m_project.getSelectedBufferView().getBufferShowLength()));
-            string pageString = "---- Page " + cPage + " of " + dPages + " ----";
-
-            // 3 characeter adjustment below
-            xPos = (m_graphics.GraphicsDevice.Viewport.Width / 2) - ((pageString.Length + 3) * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2);
-
-            // Always Always Always render a string on an integer - never on a float as it looks terrible
-            //
-            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), pageString, new Vector2((int)xPos, (int)yPos), Color.White);
-
-            m_overlaySpriteBatch.End();
+            drawTextOverlay(10, m_project.getSelectedBufferView().getBufferShowLength() + 6, "[Delete] - remove file from project", Color.LightCoral);
         }
 
         /// <summary>
@@ -4897,6 +4873,10 @@ namespace Xyglo
             text += "Current file path  : " + m_project.getSelectedBufferView().getFileBuffer().getFilepath() + "\n";
             text += "File status        : " + (m_project.getSelectedBufferView().getFileBuffer().isWriteable() ? "Writeable " : "Read Only") + "\n";
             text += "File lines         : " + m_project.getSelectedBufferView().getFileBuffer().getLineCount() + "\n";
+            text += "File created       : " + m_project.getSelectedBufferView().getFileBuffer().getCreationSystemTime().ToString() +"\n";
+            text += "File last modified : " + m_project.getSelectedBufferView().getFileBuffer().getLastWriteSystemTime().ToString() + "\n";
+            text += "File last accessed : " + m_project.getSelectedBufferView().getFileBuffer().getLastFetchSystemTime().ToString() + "\n";
+
             text += "\n"; // divider
             text += "Project name:      : " + m_project.m_projectName + "\n";
             text += "Project created    : " + m_project.getCreationTime().ToString() + "\n";
@@ -4919,10 +4899,11 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Format a screen of information text
+        /// Format a screen of information text - this will allow for screen height and provide paging
+        /// using m_textScreenPositionY
         /// </summary>
         /// <param name="text"></param>
-        protected void drawTextScreen(GameTime gameTime, string text, int fixedWidth = 0)
+        protected void drawTextScreen(GameTime gameTime, string text, int fixedWidth = 0, int highlight = -1)
         {
             Vector3 fp = m_project.getSelectedBufferView().getPosition();
 
@@ -4964,9 +4945,13 @@ namespace Xyglo
                 longestRow = fixedWidth;
             }
 
+            // Calculate endline
+            //
+            int endLine = m_textScreenPositionY + Math.Min(infoRows.Length - m_textScreenPositionY, m_project.getSelectedBufferView().getBufferShowLength());
+
             // Modify by height of the screen to centralise
             //
-            yPos += (m_graphics.GraphicsDevice.Viewport.Height / 2) - (m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay) * m_textScreenLength / 2);
+            yPos += (m_graphics.GraphicsDevice.Viewport.Height / 2) - (m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay) * ( endLine - m_textScreenPositionY ) / 2);
 
             // Adjust xPos
             //
@@ -4976,12 +4961,24 @@ namespace Xyglo
 
             // hardcode the font size to 1.0f so it looks nice
             //
-            int endLine = m_textScreenPositionY + Math.Min(infoRows.Length - m_textScreenPositionY, m_project.getSelectedBufferView().getBufferShowLength());
+
             for (int i = m_textScreenPositionY; i < endLine; i++)
             {
                 // Always Always Always render a string on an integer - never on a float as it looks terrible
                 //
-                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), infoRows[i], new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), infoRows[i], new Vector2((int)xPos, (int)yPos), (highlight == i ? Color.LightBlue : Color.White), 0, Vector2.Zero, 1.0f, 0, 0);
+
+                /*
+                if (i == highlight)
+                {
+                    Logger.logMsg("BLUE");
+                }
+                else
+                {
+                    Logger.logMsg("WHITE");
+                }
+                */
+
                 yPos += m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay);
             }
 
@@ -4993,7 +4990,8 @@ namespace Xyglo
             double cPage = Math.Ceiling((float)(m_textScreenPositionY + 1)/((float)m_project.getSelectedBufferView().getBufferShowLength()));
             string pageString = "---- Page " + cPage + " of " + dPages + " ----";
 
-            // 3 characeter adjustment below
+            // 3 character adjustment below
+            //
             xPos = (m_graphics.GraphicsDevice.Viewport.Width / 2) - ((pageString.Length + 3 )* m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2);
 
             // Always Always Always render a string on an integer - never on a float as it looks terrible
@@ -5003,6 +5001,27 @@ namespace Xyglo
             m_overlaySpriteBatch.End();
 
         }
+
+        /// <summary>
+        /// Draw some text with specified colour and position on the overlay SpriteBatch
+        /// </summary>
+        /// <param name="screenPosition"></param>
+        /// <param name="text"></param>
+        /// <param name="textColour"></param>
+        protected void drawTextOverlay(int xRow, int yCol, string text, Color textColour)
+        {
+            int xPos = (int)((float)xRow * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay));
+            int yPos = (int)((float)yCol * m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay));
+
+            m_overlaySpriteBatch.Begin();
+
+            // Always Always Always render a string on an integer - never on a float as it looks terrible
+            //
+            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), text, new Vector2(xPos, yPos), textColour);
+
+            m_overlaySpriteBatch.End();
+        }
+
 
         /// <summary>
         /// Draw a screen which allows us to configure some settings

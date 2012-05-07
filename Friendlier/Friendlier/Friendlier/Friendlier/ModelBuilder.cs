@@ -21,7 +21,10 @@ using QuickGraph.Graphviz;
 namespace Xyglo
 {
     /// <summary>
-    /// Builds a 3D ready model from an arbitrary acyclic directed or undirected graph
+    /// Builds a (filesystem) model from an arbitrary acyclic directed or undirected graph.
+    /// We've used QuickGraph to generate the tree - here we build some views on this tree
+    /// that may help us visualise it.
+    /// 
     /// </summary>
     public class ModelBuilder
     {
@@ -84,8 +87,37 @@ namespace Xyglo
         /// </summary>
         protected Dictionary<string, ModelItem> m_itemList = new Dictionary<string, ModelItem>();
 
-        // --------------------------------- CONSTRUCTORS -------------------------------
+        /// <summary>
+        /// Store how many targets each vertex has
+        /// </summary>
+        protected Dictionary<string, int> m_vertexTargets = new Dictionary<string, int>();
 
+        /// <summary>
+        /// Store level of each vertex
+        /// </summary>
+        protected Dictionary<string, int> m_vertexLevel = new Dictionary<string, int>();
+
+        /// <summary>
+        /// Store how many vertices will live at each level of our graph
+        /// </summary>
+        protected Dictionary<int, int> m_levelNumbers = new Dictionary<int, int>();
+
+        /// <summary>
+        /// Have we found a root already when laying out?
+        /// </summary>
+        protected bool m_rootFound = false;
+
+        /// <summary>
+        /// A return string we can build up whilst tree walking
+        /// </summary>
+        protected string m_returnString;
+
+        /// <summary>
+        /// The root directory of the tree
+        /// </summary>
+        protected string m_rootString = "";
+
+        // --------------------------------- CONSTRUCTORS -------------------------------
         /// <summary>
         /// Constructor accepts a TreeBuilderGraph
         /// </summary>
@@ -103,7 +135,6 @@ namespace Xyglo
 
 
         // --------------------------------  METHODS -----------------------------
-
         /// <summary>
         /// Do the build
         /// </summary>
@@ -150,6 +181,7 @@ namespace Xyglo
 
             return m_itemList;
 
+#if OLD_CODE 
             // For the moment we do a Topological sort only so we expect our graphic to
             // be acyclic.  We fetch the top-most node with this search and then iterate
             // each node placing it in a 3D space according to how much space we think we 
@@ -170,6 +202,7 @@ namespace Xyglo
             }
 
             return m_itemList;
+#endif // OLD_CODE
         }
 
         /// <summary>
@@ -183,6 +216,11 @@ namespace Xyglo
             m_vertexTargets.Clear();
             m_vertexLevel.Clear();
             m_levelNumbers.Clear();
+
+            //Dictionary
+            // Clear down return string
+            //
+            m_returnString = "";
 
             // For every vertex, find the edges and increment the number of them in
             // the dictionary.
@@ -198,6 +236,14 @@ namespace Xyglo
                     // Initialise the root vertex
                     //
                     m_vertexLevel[vertex] = 0;
+
+                    m_rootFound = true;
+                    m_rootString = vertex;
+                }
+
+                if (m_treeBuilderGraph.Degree(vertex) == 1)
+                {
+                    m_returnString += vertex + "\n";
                 }
 
                 // for each source vertex how many targets do we have?
@@ -222,6 +268,11 @@ namespace Xyglo
                     if (!m_vertexLevel.ContainsKey(edge.Target))
                     {
                         m_vertexLevel[edge.Target] = sourceLevel + 1;
+
+                        //if (getEdgeTargets(edge.Target).Count == 0)
+                        //{
+                            //m_returnString += edge.Target + "\n";
+                        //}
                     }
                     else
                     {
@@ -249,27 +300,19 @@ namespace Xyglo
                     m_levelNumbers[m_vertexLevel[vertex]] = 1;
                 }
             }
+
+            //foreach (Dictionary<string, int> thing in m_vertexTargets.Where(item => item.Value == 0).ToDictionary(Dictionary<string, int>))
+            foreach(string value in m_vertexTargets.Keys)
+            {
+                if (m_vertexTargets[value] == 0)
+                {
+                    Logger.logMsg("GOT NODE = " + value);
+                }
+            }
+
+            //m_returnString += vertex + "\n";
         }
 
-        /// <summary>
-        /// Store how many targets each vertex has
-        /// </summary>
-        protected Dictionary<string, int> m_vertexTargets = new Dictionary<string, int>();
-
-        /// <summary>
-        /// Store level of each vertex
-        /// </summary>
-        protected Dictionary<string, int> m_vertexLevel = new Dictionary<string, int>();
-
-        /// <summary>
-        /// Store how many vertices will live at each level of our graph
-        /// </summary>
-        protected Dictionary<int, int> m_levelNumbers = new Dictionary<int, int>();
-
-        /// <summary>
-        /// Have we found a root already when laying out?
-        /// </summary>
-        protected bool m_rootFound = false;
 
         /// <summary>
         /// Get a list of edges for a given vertex
@@ -309,7 +352,7 @@ namespace Xyglo
         /// Best place a node for the given Z value
         /// </summary>
         /// <param name="zLayer"></param>
-        bool bestPlace(string vertex)
+        protected bool bestPlace(string vertex)
         {
             Logger.logMsg("ModelBuilder::bestPlace() - placing vertex " + vertex);
 
@@ -349,8 +392,6 @@ namespace Xyglo
 
             }
             */
-            //m_treeBuilderGraph.
-
             //m_treeBuilderGraph.
 
             // Distance to current Z from EyePosition - assume currentZ is backing
@@ -434,6 +475,59 @@ namespace Xyglo
                 m_currentZ += m_incrementZ;
             }
             return true;
+        }
+
+        /// <summary>
+        /// Return the return string
+        /// </summary>
+        /// <returns></returns>
+        public string getReturnString()
+        {
+            return m_returnString;
+        }
+
+        public string getRootString()
+        {
+            return m_rootString;
+        }
+
+        /// <summary>
+        /// Visualise this model as a string - debug purposes mainly
+        /// </summary>
+        /// <returns></returns>
+        public string visualiseModel()
+        {
+            string rS = "";
+
+            // Find the max width of the levels like this
+            //
+            int maxWidth = m_levelNumbers.Max(item => item.Value);
+
+            rS += "Max Width = " + maxWidth + "\n";
+
+            // Max height
+            //
+            int maxHeight = m_levelNumbers.Max(item => item.Key);
+            int minHeight = m_levelNumbers.Min(item => item.Key);
+
+            rS += "Min height = " + minHeight + "\n";
+            rS += "Max height = " + maxHeight + "\n";
+
+            int level = 0;
+
+            while (level < maxHeight)
+            {
+                IEnumerable<string> elementList = from entry in m_vertexLevel where (entry.Value == level) select entry.Key;
+
+                for (int i = 0; i < elementList.Count(); i++)
+                {
+                    rS += "Level " + level + " - Element = " + elementList.ElementAt(i) + "\n";
+                }
+
+                level++;
+            }
+
+            return rS;
         }
     }
 }
