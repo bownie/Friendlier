@@ -78,9 +78,9 @@ namespace Xyglo
         protected Vector3 m_modelPosition;
 
         /// <summary>
-        /// Count how many vertices we've placed
+        /// Count how many leaf nodes we've placed
         /// </summary>
-        protected int m_verticesPlaced;
+        protected int m_leafNodesPlaced;
 
         /// <summary>
         /// The list of model items that will be generated from the tree
@@ -145,7 +145,7 @@ namespace Xyglo
             // Store the model position and set up some initial conditions
             //
             m_modelPosition = startPosition;
-            m_verticesPlaced = 0;
+            m_leafNodesPlaced = 0;
             m_rootFound = false;
 
             // The rate at which we expand the tree has to be proportional to the square of the
@@ -241,9 +241,12 @@ namespace Xyglo
                     m_rootString = vertex;
                 }
 
+                // For all the leaf nodes we place we add them to the string and increment this
+                //
                 if (m_treeBuilderGraph.Degree(vertex) == 1)
                 {
                     m_returnString += vertex + "\n";
+                    m_leafNodesPlaced++;
                 }
 
                 // for each source vertex how many targets do we have?
@@ -529,5 +532,38 @@ namespace Xyglo
 
             return rS;
         }
+
+        /// <summary>
+        ///  How many leaf nodes do we have in this model?
+        /// </summary>
+        /// <returns></returns>
+        public int getLeafNodesPlaces()
+        {
+            return m_leafNodesPlaced;
+        }
+
+        /// <summary>
+        /// Return from the return list the 
+        /// </summary>
+        /// <returns></returns>
+        public string getSelectedModelString(int selected)
+        {
+            string [] rS = m_returnString.Split('\n');
+
+            if (selected >= 0 && selected < rS.Length)
+            {
+                // Build return string with a root if specified
+                //
+                string returnString = m_rootString + @"\" + rS[selected];
+
+                // Ensure we remove any double slashes in the path
+                //
+                return returnString.Replace(@"\\", @"\");
+            }
+            
+            Logger.logMsg("ModelBuilder::getSelectedModelString() - can't get return string item for id " + selected);
+            return "";
+        }
+
     }
 }

@@ -549,6 +549,27 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Remove a FileBuffer by filePath
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
+        public bool removeFileBuffer(string filePath)
+        {
+            // Ensure that slashes are matching when we check the path
+            //
+            FileBuffer result = m_fileBuffers.Find(item => item.getFilepath().Replace(@"\\", @"\").ToUpper() == filePath.Replace(@"\\", @"\").ToUpper());
+
+            if (result == null)
+            {
+                Logger.logMsg("Project::removeFileBuffer() - cannot find file " + filePath + " to remove");
+                return false;
+            }
+
+            return removeFileBuffer(result);
+        }
+
+
+        /// <summary>
         /// Remove a FileBuffer from our project - any BufferViews that are open against it
         /// are also removed.
         /// </summary>
@@ -558,9 +579,9 @@ namespace Xyglo
         {
             // Firstly ensure that FileBuffer exists
             //
-            FileBuffer result = m_fileBuffers.Find(item => item.getFilepath() == fb.getFilepath());
+            FileBuffer result = m_fileBuffers.Find(item => item.getFilepath().Replace(@"\\", @"\").ToUpper() == fb.getFilepath().Replace(@"\\", @"\").ToUpper());
 
-            if (result != null)
+            if (result == null)
             {
                 Logger.logMsg("Project::removeFileBuffer() - cannot find file to remove " + fb.getFilepath());
                 return false;
@@ -569,14 +590,27 @@ namespace Xyglo
             // Create a removal list
             //
             List<BufferView> removeList = new List<BufferView>();
+            bool bvIsActive = false;
 
             foreach (BufferView bv in m_bufferViews)
             {
                 if (bv.getFileBuffer().getFilepath() == fb.getFilepath())
                 {
+
+                    // Test to see if the bufferview we want to remove is active
+                    //
+                    if (bv == m_bufferViews[m_selectedViewId])
+                    {
+                        bvIsActive = true;
+                    }
+
                     removeList.Add(bv);
                 }
             }
+
+            // Now check to see if our FileBuffer is in one of these views
+            //
+            removeList.Find(item => item.getFileBuffer() == fb);
 
             // Remove our list from the m_bufferViews
             //

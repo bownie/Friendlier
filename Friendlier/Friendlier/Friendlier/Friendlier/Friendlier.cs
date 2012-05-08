@@ -766,6 +766,10 @@ namespace Xyglo
             // Set-up the single FileSystemView we have
             //
             m_fileSystemView = new FileSystemView(m_filePath, new Vector3(-800.0f, 0f, 0f), m_project.getFontManager().getLineHeight(), m_project.getFontManager().getCharWidth());
+
+            // Tree builder and model builder
+            //
+            generateTreeModel();
         }
 
         /// <summary>
@@ -773,16 +777,26 @@ namespace Xyglo
         /// </summary>
         private void generateTreeModel()
         {
+            Logger.logMsg("Friendlier::generateTreeModel() - starting");
+
             // Firstly get a root directory for the FileBuffer tree
             //
             string fileRoot = m_project.getFileBufferRoot();
 
             TreeBuilderGraph rG = m_treeBuilder.buildTreeFromFiles(fileRoot, m_project.getNonNullFileBuffers());
 
-            // Build a model and store it centrally
+            // Build a model and store it if we don't have one
             //
-            m_modelBuilder = new ModelBuilder(rG);
+            if (m_modelBuilder == null)
+            {
+                m_modelBuilder = new ModelBuilder(rG);
+            }
+
+            // Rebuild it in a given position
+            //
             m_modelBuilder.build(m_projectPosition);
+
+            Logger.logMsg("Friendlier::generateTreeModel() - completed.");
         }
 
 
@@ -1878,7 +1892,10 @@ namespace Xyglo
                 }
                 else if (m_state == FriendlierState.ManageProject)
                 {
-                    m_configPosition++;
+                    if (m_configPosition < m_modelBuilder.getLeafNodesPlaces() - 1)
+                    {
+                        m_configPosition++;
+                    }
                 }
                 else
                 {
@@ -2217,6 +2234,27 @@ namespace Xyglo
                         m_editConfigurationItemValue = m_editConfigurationItemValue.Substring(0, m_editConfigurationItemValue.Length - 1);
                     }
                 }
+                else if (m_state == FriendlierState.ManageProject)
+                {
+                    if (m_configPosition >= 0 && m_configPosition < m_modelBuilder.getLeafNodesPlaces())
+                    {
+                        string fileToRemove = m_modelBuilder.getSelectedModelString(m_configPosition);
+                        if (m_project.removeFileBuffer(fileToRemove))
+                        {
+                            Logger.logMsg("Friendlier::Update() - removed FileBuffer for " + fileToRemove);
+
+                            // Rebuild the model
+                            //
+                            generateTreeModel();
+
+                            setTemporaryMessage("Removed " + fileToRemove + " from project", 5);
+                        }
+                        else
+                        {
+                            Logger.logMsg("Friendlier::Update() - failed to remove FileBuffer for " + fileToRemove);
+                        }
+                    }
+                }
                 else if (m_project.getSelectedBufferView().gotHighlight()) // If we have a valid highlighted selection then delete it (normal editing)
                 {
                     // All the clever stuff with the cursor is done at the BufferView level and it also
@@ -2548,17 +2586,13 @@ namespace Xyglo
                         m_projectPosition = m_project.getSelectedBufferView().getPosition();
                         m_projectPosition.X = -1000.0f;
                         m_projectPosition.Y = -1000.0f;
-
-                        // Tree builder and model builder
-                        //
-                        generateTreeModel();
+                        m_modelBuilder.build(m_projectPosition);
 
                         // Fly to a new position in this mode to view the model
                         //
                         Vector3 newPos = m_projectPosition;
                         newPos.Z = 800.0f;
                         flyToPosition(newPos);
-
                     }
                     else if (checkKeyState(Keys.D0, gameTime) ||
                              checkKeyState(Keys.D1, gameTime) ||
@@ -3263,6 +3297,10 @@ namespace Xyglo
             // Set the background colour
             //
             newBV.setBackgroundColour(m_project.getNewFileBufferColour());
+
+            // We've add a new file so regenerate the model
+            //
+            generateTreeModel();
 
             return newBV;
         }
