@@ -92,7 +92,7 @@ namespace Xyglo
 
             foreach (FileBuffer fb in m_project.getFileBuffers())
             {
-                updateHighlighting(fb, 0);
+                updateHighlighting(fb /*, 0*/);
             }
 
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - completed.");
@@ -102,23 +102,31 @@ namespace Xyglo
         /// <summary>
         /// Regenerate the highlightList by parsing the entire file
         /// </summary>
-        public override void updateHighlighting(FileBuffer fileBuffer, int fromLine = 0)
+        public override void updateHighlighting(FileBuffer fileBuffer /* , int fromLine = 0 */)
         {
             Logger.logMsg("CppSyntaxManager::updateHighlighting() - updating " + fileBuffer.getFilepath(), true);
 
+            // Start line for highlight update
+            //
+            int startLine = 0;
+
+            // We have to recalculate these every time in case we're removing or adding lines
+            //
+            m_bracePositions.Clear();
+
+            /*
             if (fromLine != 0 && fromLine > (fileBuffer.getLineCount() - 1))
             {
                 throw new Exception("Line number greater than buffer length when updating highlighting");
             }
 
-            int startLine = 0;
             for (startLine = 0; startLine < fileBuffer.m_highlightList.Count; startLine++)
             {
                 if (fileBuffer.m_highlightList[startLine].m_startHighlight.Y >= fromLine)
                 {
                     break;
                 }
-            }
+            }*/
 
             // Remove the range we're going to update
             //
@@ -129,6 +137,8 @@ namespace Xyglo
             int foundPosition = 0;
             bool inMLComment = false;
 
+            // Ok - we scan the whole file - this might have to be optimised at some point
+            //
             for (int i = startLine; i < fileBuffer.getLineCount(); i++)
             {
                 string line = fileBuffer.getLine(i);
@@ -138,8 +148,8 @@ namespace Xyglo
                 xPosition = 0;
                 foundPosition = -1;
 
-
                 // Scan whole line potentially many times for embedded comments etc
+                //
                 while (xPosition < line.Length)
                 {
                     lastXPosition = xPosition;
@@ -184,7 +194,7 @@ namespace Xyglo
 
                             inMLComment = true;
                         }
-                        else // other comments and things
+                        else // other comments and everything that is not commented but requires highlighting
                         {
                             // #defines etc
                             if (line.IndexOf('#') == 0)
@@ -200,6 +210,36 @@ namespace Xyglo
                             {
                                 Highlight newHighlight = new Highlight(i, foundPosition, line.Length - foundPosition, line.Substring(foundPosition, line.Length - foundPosition), SyntaxManager.m_commentColour);
                                 fileBuffer.m_highlightList.Add(newHighlight);
+                            }
+
+                            // Now process any other characters ensuring that we're still within the string
+                            //
+                            if (xPosition < line.Length)
+                            {
+                                if (line[xPosition] == '{')
+                                {
+                                    // Check to see if there is an existing BraceDepth entry here
+                                    //
+                                    if (testBraceDepth(xPosition, i) == -1)
+                                    {
+                                        int existingDepth = getIndentDepth(xPosition, i);
+                                        int newDepth = existingDepth + 2;
+                                        BraceDepth bd = new BraceDepth(xPosition, i, newDepth);
+                                        m_bracePositions.Add(bd, newDepth);
+                                    }
+                                }
+
+                                if (line[xPosition] == '}')
+                                {
+                                    if (testBraceDepth(xPosition, i) == -1)
+                                    {
+                                        int existingDepth = getIndentDepth(xPosition, i);
+                                        int newDepth = Math.Max(existingDepth - 2, 0);
+
+                                        BraceDepth bd = new BraceDepth(xPosition, i, newDepth);
+                                        m_bracePositions.Add(bd, newDepth);
+                                    }
+                                }
                             }
                         }
                     }
@@ -230,10 +270,20 @@ namespace Xyglo
         /// </summary>
         /// <param name="line"></param>
         /// <returns></returns>
-        public override string getIndent(int line)
+        public override string getIndent(FilePosition fp)
         {
-            string rs = "";
-            return rs;
+            string rS = "";
+
+            int depth = getIndentDepth(fp);
+
+            // Build up the indent - char by char
+            //
+            for (int i = 0; i < depth; i++)
+            {
+                rS += " ";
+            }
+
+            return rS;
         }
     }
 }

@@ -1,19 +1,20 @@
 USE CASES
 ---------
-
+- The developer - developing, debugging, coding
 - The writer - writing a book, researching
 - The journalist - writing a story, researching
-- The developer - developing, debugging, coding
+
 
 TODO
 ----
 
+- remember last directory indent
+- indenting [PARTLY WORKING]
+- brace matching
 - Sortable collections - FileBuffers, BufferViews, Highlights
 - Bloom highlight?
-- Text highlighting and indenting (simple)
 - Depth buffer for kinect improved
 - improve search
-- some way of seeing/modifying/deleting files in project / visualisation of project contents  [STARTED]
 - resizing window [IN PROGRESS]
 - zooming is not very good at the moment [IN PROGRESS]
 - scrolling and cut and paste on parameter editing and information screen
@@ -41,8 +42,10 @@ Build version:
 
 http://autobuildversion.codeplex.com/
 
-1.1 DONE
---------
+ALPHA 2 DONE
+------------
+- Some basic text highlighting and indenting [DONE]
+- some way of seeing/modifying/deleting files in project / visualisation of project contents  [DONE]
 - f-keys for zooming etc is unnatural [CHANGED to CURSOR plus ALT SHIFT] 
 - highlight on scrollbar [DONE]
 - Added basic Kinect support [DONE]

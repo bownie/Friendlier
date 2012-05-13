@@ -90,6 +90,22 @@ namespace Xyglo
             return base.Equals(obj);
         }
 
+        /// <summary>
+        /// Definition of a zero FilePosition for static use
+        /// </summary>
+        /// <returns></returns>
+        public static FilePosition Zero()
+        {
+            return m_zero;
+        }
+
+        /// <summary>
+        /// Global one-off definition
+        /// </summary>
+        static public FilePosition m_zero = new FilePosition(0, 0);
+
+        // Our values
+        //
         public int X;
         public int Y;
     }

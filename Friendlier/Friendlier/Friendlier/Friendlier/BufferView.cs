@@ -755,6 +755,26 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Return the position of the first non space character on the current line
+        /// </summary>
+        /// <returns></returns>
+        public FilePosition getFirstNonSpace()
+        {
+            string line = m_fileBuffer.getLine(m_cursorPosition.Y);
+
+            int pos = 0;
+            while (pos < line.Length)
+            {
+                if (line[pos] != ' ')
+                {
+                    break;
+                }
+                pos++;
+            }
+            return new FilePosition(pos, m_cursorPosition.Y);
+        }
+
+        /// <summary>
         /// We have a highlight if the two endpoints are not equal
         /// </summary>
         /// <returns></returns>
@@ -1361,7 +1381,7 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */ );
 
             // Cancel our highlight
             //
@@ -1377,7 +1397,7 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y*/);
         }
 
         /// <summary>
@@ -1435,11 +1455,11 @@ namespace Xyglo
         /// <param name="text"></param>
         public void insertText(string text, SyntaxManager syntaxManager)
         {
-            m_cursorPosition = m_fileBuffer.insertText(m_cursorPosition, text);
+            m_cursorPosition = m_fileBuffer.insertText(syntaxManager, m_cursorPosition, text);
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
 
             // Keep visible
             //
@@ -1459,6 +1479,7 @@ namespace Xyglo
             //
             if (autoindent == "TRUE")
             {
+                /*
                 string testLine = m_fileBuffer.getLine(m_cursorPosition.Y);
 
                 for (int i = 0; i < testLine.Length; i++)
@@ -1471,14 +1492,18 @@ namespace Xyglo
                     {
                         break;
                     }
-                }
+                }*/
+
+                // Use the Syntax Manager to fetch the indent
+                //
+                indent = syntaxManager.getIndent(m_cursorPosition);
             }
 
             m_cursorPosition = m_fileBuffer.insertNewLine(m_cursorPosition, indent);
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
 
             keepVisible();
         }
@@ -1834,7 +1859,7 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
 
             // Ensure that the cursor is visible in the BufferView
             //
@@ -1858,7 +1883,7 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
 
             // Ensure that the cursor is visible in the BufferView
             //

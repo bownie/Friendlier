@@ -38,7 +38,7 @@ namespace Xyglo
      * */
 
     /// <summary>
-    /// A highlight is a position range and a colour
+    /// A highlight is a piece of text, a position range, a colour and an optional indent
     /// </summary>
     [DataContractAttribute]
     public class Highlight : IComparable
@@ -96,6 +96,80 @@ namespace Xyglo
     }
 
     /// <summary>
+    /// BraceDepth holds a value for the number of indents (tabs) in we are at a certain position
+    /// in a file.  This way we can hold the markers where the indents change.
+    /// </summary>
+    public class BraceDepth : IComparable
+    {
+        /// <summary>
+        /// Position of the brace
+        /// </summary>
+        protected FilePosition m_position;
+
+        /// <summary>
+        /// Depth at the brace
+        /// </summary>
+        protected int m_depth;
+
+        /// <summary>
+        /// Integer constructor
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <param name="depth"></param>
+        public BraceDepth(int x, int y, int depth)
+        {
+            m_position = new FilePosition(x, y);
+            m_depth = depth;
+        }
+
+        /// <summary>
+        /// FilePosition constructor
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="depth"></param>
+        public BraceDepth(FilePosition position, int depth)
+        {
+            m_position = position;
+            m_depth = depth;
+        }
+
+        /// <summary>
+        /// Implemented for as we are an IComparable derivative so we can be used in SortedList
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public int CompareTo(object item)
+        {
+            if (item == null) return 1;
+
+            BraceDepth otherBD = item as BraceDepth;
+
+            if (otherBD.getPosition() < m_position) return 1;
+            else if (otherBD.getPosition() == m_position) return 0;
+            else return -1;
+        }
+
+        /// <summary>
+        /// Return the position
+        /// </summary>
+        /// <returns></returns>
+        public FilePosition getPosition()
+        {
+            return m_position;
+        }
+
+        /// <summary>
+        /// Return the depth
+        /// </summary>
+        /// <returns></returns>
+        public int getDepth()
+        {
+            return m_depth;
+        }
+    }
+
+    /// <summary>
     /// Syntax manager sends style hints and indenting tips to anyone who wants to
     /// call it.  It accepts a Project and you need to set a FileBuffer to get anything
     /// meaningful from the main methods calls.  This is an abstract base class that
@@ -108,12 +182,8 @@ namespace Xyglo
         /// <summary>
         /// The overall project
         /// </summary>
+        [NonSerialized]
         protected Project m_project;
-
-        /// <summary>
-        /// The FileBuffer we're currently interested in
-        /// </summary>
-        //protected FileBuffer m_fileBuffer;
 
         /// <summary>
         /// List of keywords for this language
@@ -121,19 +191,10 @@ namespace Xyglo
         protected List<string> m_keywords;
 
         /// <summary>
-        /// Start of a parenthesis or bracket
+        /// Sorted list of brace positions
         /// </summary>
-        public FilePosition m_parenthesisStart { get; set;  }
-
-        /// <summary>
-        /// End of a parenthesis
-        /// </summary>
-        public FilePosition m_parenthesisEnd { get; set;  }
-
-        /// <summary>
-        /// Return list for any highlights
-        /// </summary>
-        //protected List<Highlight> m_highlightList = new List<Highlight>();
+        [NonSerialized]
+        protected SortedList m_bracePositions = new SortedList();
 
         /////////////////////////////// CONSTRUCTORS ///////////////////////////////////////
 
@@ -147,15 +208,6 @@ namespace Xyglo
         }
 
         /////////////////////////////// METHODS ///////////////////////////////////
-
-        /// <summary>
-        /// Set the FileBuffer
-        /// </summary>
-        /// <param name="fileBuffer"></param>
-        //public void setFileBuffer(FileBuffer fileBuffer)
-        //{
-          //  m_fileBuffer = fileBuffer;
-        //}
 
         /// <summary>
         /// Is a line in a comment?
@@ -184,7 +236,7 @@ namespace Xyglo
         /// <summary>
         /// Update the highlighting information after we've made a modification
         /// </summary>
-        public abstract void updateHighlighting(FileBuffer fileBuffer, int fromLine = 0);
+        public abstract void updateHighlighting(FileBuffer fileBuffer /*, int fromLine = 0*/);
 
         /// <summary>
         /// Generates all highlighting for all FileBuffers
@@ -203,7 +255,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="line"></param>
         /// <returns></returns>
-        public abstract string getIndent(int line);
+        public abstract string getIndent(FilePosition fp);
 
         /// <summary>
         /// Colour of comment
@@ -215,5 +267,71 @@ namespace Xyglo
         /// </summary>
         static public Color m_defineColour = Color.Yellow;
 
+        /// <summary>
+        /// Colour of a Brace
+        /// </summary>
+        static public Color m_braceColour = Color.Pink;
+
+        /// <summary>
+        /// Colour of a Paranthesis
+        /// </summary>
+        static public Color m_paranthesisColour = Color.Blue;
+
+
+        /// <summary>
+        /// Get an existing indent depth for a given x and y coordinate (integer)
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <returns></returns>
+        public int getIndentDepth(int x, int y)
+        {
+            return getIndentDepth(new FilePosition(x, y));
+        }
+
+        /// <summary>
+        /// Get an existing indent depth for a given x and y coordinate (FilePosition)
+        /// </summary>
+        public int getIndentDepth(FilePosition fp)
+        {
+            int lastDepth = 0;
+
+            for (int i = 0; i < m_bracePositions.Count; i++)
+            {
+                BraceDepth bd = (BraceDepth)m_bracePositions.GetKey(i);
+
+                // While the FilePosition pointer is less then our test position then
+                // store the lastDepth as we'll use this when we exceed it.
+                //
+                if (bd.getPosition() < fp)
+                {
+                    lastDepth = bd.getDepth();
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return lastDepth;
+        }
+
+        /// <summary>
+        /// Test a position and return brace depth or -1
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <returns></returns>
+        public int testBraceDepth(int x, int y)
+        {
+            FilePosition fp = new FilePosition(x, y);
+            for (int i = 0; i < m_bracePositions.Count; i++)
+            {
+                BraceDepth bd = (BraceDepth)m_bracePositions.GetKey(i);
+                if (bd.getPosition() == fp) return bd.getDepth();
+            }
+            
+            return -1;
+        }
     }
 }

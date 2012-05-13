@@ -189,6 +189,7 @@ namespace Xyglo
         /// <summary>
         /// Font manager passed in and set from Friendlier
         /// </summary>
+        [NonSerialized]
         protected FontManager m_fontManager;
 
         /// <summary>
@@ -196,7 +197,14 @@ namespace Xyglo
         /// provide syntax highlighting, suggestions for autocompletes and also indent
         /// levels.
         /// </summary>
+        [NonSerialized]
         protected SyntaxManager m_syntaxManager;
+
+        /// <summary>
+        /// Tab spaces defined in the project
+        /// </summary>
+        [NonSerialized]
+        protected string m_tab;
 
         ////////// CONSTRUCTORS ///////////
 
@@ -256,6 +264,10 @@ namespace Xyglo
             // Build the syntax manager - for the moment we force it to Cpp
             //
             m_syntaxManager = new CppSyntaxManager(this);
+
+            // Default tab to two spaces here
+            //
+            m_tab = "  ";
         }
 
         /// <summary>
@@ -339,6 +351,10 @@ namespace Xyglo
 
                 addConfigurationItem("AUTOINDENT", "TRUE");
             }
+
+            // Recreate this here
+            //
+            //m_syntaxManager = new CppSyntaxManager(this);
         }
 
         /// <summary>
@@ -568,6 +584,36 @@ namespace Xyglo
             return removeFileBuffer(result);
         }
 
+        /// <summary>
+        /// Find a BufferView that is non-active currently and also doesn't have the indicated
+        /// FileBuffer in it - so that we can do a delete on it.
+        /// </summary>
+        /// <param name="fileBuffer"></param>
+        /// <returns></returns>
+        public int findNonActiveBufferView(FileBuffer fileBuffer)
+        {
+            if (m_bufferViews[m_selectedViewId].getFileBuffer() == fileBuffer)
+            {
+                int returnId = -1;
+
+                for (int i = 0; i < m_bufferViews.Count; i++)
+                {
+                    if (i != m_selectedViewId)
+                    {
+                        if (m_bufferViews[i].getFileBuffer() != fileBuffer)
+                        {
+                            returnId = i;
+                        }
+                    }
+                }
+
+                return returnId;
+            }
+            else
+            {
+                return m_selectedViewId;
+            }
+        }
 
         /// <summary>
         /// Remove a FileBuffer from our project - any BufferViews that are open against it
@@ -587,30 +633,47 @@ namespace Xyglo
                 return false;
             }
 
-            // Create a removal list
+            // Now ensure that we've got the right index for an active BufferView
             //
-            List<BufferView> removeList = new List<BufferView>();
-            bool bvIsActive = false;
+            int returnId = findNonActiveBufferView(fb);
 
-            foreach (BufferView bv in m_bufferViews)
+            if (returnId == -1)
             {
-                if (bv.getFileBuffer().getFilepath() == fb.getFilepath())
-                {
-
-                    // Test to see if the bufferview we want to remove is active
-                    //
-                    if (bv == m_bufferViews[m_selectedViewId])
-                    {
-                        bvIsActive = true;
-                    }
-
-                    removeList.Add(bv);
-                }
+                Logger.logMsg("Project::removeFileBuffer() - can't remove this FileBuffer");
+            }
+            else
+            {
+                m_selectedViewId = returnId;
             }
 
-            // Now check to see if our FileBuffer is in one of these views
+            // Create a removal list
             //
-            removeList.Find(item => item.getFileBuffer() == fb);
+            List<BufferView> removeList = m_bufferViews.Where(item => item.getFileBuffer().getFilepath().Replace(@"\\", @"\").ToUpper() == fb.getFilepath().Replace(@"\\", @"\").ToUpper()).ToList();
+
+            // Can we find an active BufferView which isn't involved in this FileBuffer removal?  If not
+            // we can't remove anything yet.
+            //
+            List<BufferView> remainingList = m_bufferViews.Except(removeList).ToList();
+
+            if (remainingList.Count == 0)
+            {
+                Logger.logMsg("Project::removeFileBuffer - can't remove this FileBuffer as there are no other BufferViews available to switch to");
+                return false;
+            }
+
+            // Save this as we need to reassign the m_selectedViewId after deletion
+            //
+            BufferView activeBufferView = m_bufferViews[m_selectedViewId];
+
+            // If a currently active view is visible then we need to find a new BufferView
+            //
+            if (m_bufferViews.Contains(activeBufferView))
+            {
+                // At this point we know we have another BufferView remaining and that
+                // this list is safe.
+                //
+                activeBufferView = remainingList[0];
+            };
 
             // Remove our list from the m_bufferViews
             //
@@ -618,6 +681,10 @@ namespace Xyglo
             {
                 m_bufferViews.Remove(bv);
             }
+
+            // Now we need to update the m_selectedViewId
+            //
+            m_selectedViewId = m_bufferViews.IndexOf(activeBufferView);
 
             // Now remove the FileBuffer
             //
@@ -1191,7 +1258,7 @@ namespace Xyglo
 
         /// <summary>
         /// Get the root directory of all the FileBuffers - does this in our own inimitable way.
-        /// If we supply a prefix it will look for all roots prefixed with this.
+        /// If we supply a prefix it will look for all roots prefixed with this.  This is horrible.
         /// </summary>
         /// <returns></returns>
         public string getFileBufferRoot(string prefix = "")
@@ -1279,7 +1346,9 @@ namespace Xyglo
                 {
                     if (j != longId)
                     {
-                        if (rS != rL[j].getFilepath().ToUpper().Substring(0, rS.Length))
+                        string check = rL[j].getFilepath().ToUpper();
+
+                        if (rS != check.Substring(0, Math.Min(rS.Length, check.Length)))
                         {
                             foundDifference = true;
                             break;
@@ -1323,6 +1392,25 @@ namespace Xyglo
         {
             return m_syntaxManager;
         }
+
+        /// <summary>
+        /// Get a tab character(s)
+        /// </summary>
+        /// <returns></returns>
+        public string getTab()
+        {
+            return m_tab;
+        }
+
+        /// <summary>
+        /// Set the tab string
+        /// </summary>
+        /// <param name="tabString"></param>
+        public void setTab(string tabString)
+        {
+            m_tab = tabString;
+        }
+
     }
 
     /// <summary>

@@ -661,6 +661,10 @@ namespace Xyglo
             //
             m_project.connectFloatingWorld();
 
+            // Set the tab space
+            //
+            m_project.setTab("  ");
+
             // Initialise the configuration item if it's null - this is in case we've persisted
             // a version of the project without a configuration item it will create it here.
             //
@@ -789,12 +793,12 @@ namespace Xyglo
             //
             if (m_modelBuilder == null)
             {
-                m_modelBuilder = new ModelBuilder(rG);
+                m_modelBuilder = new ModelBuilder();
             }
 
             // Rebuild it in a given position
             //
-            m_modelBuilder.build(m_projectPosition);
+            m_modelBuilder.build(rG, m_projectPosition);
 
             Logger.logMsg("Friendlier::generateTreeModel() - completed.");
         }
@@ -1030,7 +1034,14 @@ namespace Xyglo
             // Set up the text scroller width
             //
             setTextScrollerWidth(Convert.ToInt16(m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 32));
-            
+
+            // Hook up the drag and drop
+            //
+            System.Windows.Forms.Form gameForm = (System.Windows.Forms.Form)System.Windows.Forms.Form.FromHandle(Window.Handle);
+            gameForm.AllowDrop = true;
+            gameForm.DragEnter += new System.Windows.Forms.DragEventHandler(friendlierDragEnter);
+            gameForm.DragDrop += new System.Windows.Forms.DragEventHandler(friendlierDragDrop);
+
         }
 
         /// <summary>
@@ -1055,6 +1066,13 @@ namespace Xyglo
         /// </summary>
         protected void setTextScrollerWidth(int width)
         {
+            // Dispose
+            //
+            //if (m_textScroller != null)
+            //{
+                //m_textScroller.Dispose();
+            //}
+
             // Set up the text scrolling texture
             //
             m_textScroller = new RenderTarget2D(m_graphics.GraphicsDevice, width, Convert.ToInt16(m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay)));
@@ -1540,6 +1558,7 @@ namespace Xyglo
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+
             // Set the cursor to something useful
             //
             System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.IBeam;
@@ -2075,8 +2094,8 @@ namespace Xyglo
             {
                 // Reset the cursor to zero
                 //
-                FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
-                fp.X = 0;
+                FilePosition fp = m_project.getSelectedBufferView().getFirstNonSpace();
+
                 m_project.getSelectedBufferView().setCursorPosition(fp);
 
                 // Reset any X offset to zero
@@ -2204,7 +2223,7 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.Tab, gameTime)) // Insert a tab space
             {
-                m_project.getSelectedBufferView().insertText("  ", m_project.getSyntaxManager());
+                m_project.getSelectedBufferView().insertText(m_project.getTab(), m_project.getSyntaxManager());
             }
             else if (checkKeyState(Keys.Delete, gameTime) || checkKeyState(Keys.Back, gameTime))
             {
@@ -2243,7 +2262,11 @@ namespace Xyglo
                         {
                             Logger.logMsg("Friendlier::Update() - removed FileBuffer for " + fileToRemove);
 
-                            // Rebuild the model
+                            // Update Active Buffer as necessary
+                            //
+                            setActiveBuffer();
+
+                            // Rebuild the file model
                             //
                             generateTreeModel();
 
@@ -2581,12 +2604,13 @@ namespace Xyglo
 
                         m_state = FriendlierState.ManageProject; // Manage the files in the project
 
-                        // Copy current position to m_projectPosition - then hardcode
+                        // Copy current position to m_projectPosition - then rebuild model
                         //
                         m_projectPosition = m_project.getSelectedBufferView().getPosition();
                         m_projectPosition.X = -1000.0f;
                         m_projectPosition.Y = -1000.0f;
-                        m_modelBuilder.build(m_projectPosition);
+
+                        generateTreeModel();
 
                         // Fly to a new position in this mode to view the model
                         //
@@ -3611,8 +3635,8 @@ namespace Xyglo
                     //Logger.logMsg("Friendlier::checkMouseClick() - Pick Ray X=" + pickRay.Position.X + ", Y=" + pickRay.Position.Y + ", Z=" + pickRay.Position.Z);
 
 
-                    Logger.logMsg("Friendlier::checkMouseClick() - dragVector = " + dragVector);
-                    Logger.logMsg("Friendlier::checkMouseClick() - dragAngle = " + dragAngle);
+                    //Logger.logMsg("Friendlier::checkMouseClick() - dragVector = " + dragVector);
+                    //Logger.logMsg("Friendlier::checkMouseClick() - dragAngle = " + dragAngle);
                 }
 
                 /*
@@ -3722,6 +3746,8 @@ namespace Xyglo
             {
                 //m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
                 m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+                //m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, m_basicEffect);
+                
             }
             else
             {
@@ -3873,15 +3899,26 @@ namespace Xyglo
 
             // Create an indent string
             //
-            string indentString = "";
+            /*
+             * string indentString = "";
             for(int i = 0; i < m_modelBuilder.getRootString().Length; i++)
             {
                 indentString += " ";
             }
+             * */
+
+            //Logger.logMsg("RETURN STRING = " + m_modelBuilder.getReturnString() + "END");
+            //string[] rS = m_modelBuilder.getReturnString().Split('\n');
+            //Logger.logMsg("rS has " + rS.Length + " elements");
 
             foreach(string fileName in m_modelBuilder.getReturnString().Split('\n'))
             {
-                text += indentString + fileName + "\n"; ;
+                // Ignore the last split
+                //
+                if (fileName != "")
+                {
+                    text += m_modelBuilder.getRootString() + fileName + "\n";
+                }
             }
 
             // Draw the main text screen - using the m_configPosition as the place holder
@@ -3891,6 +3928,7 @@ namespace Xyglo
             // Some key help
             //
             drawTextOverlay(10, m_project.getSelectedBufferView().getBufferShowLength() + 6, "[Delete] - remove file from project", Color.LightCoral);
+
         }
 
         /// <summary>
@@ -3990,16 +4028,14 @@ namespace Xyglo
                     // we need to change the scroll space to for it.
                     //
                     int availableWidth = (int)(positionStringXPos - ((fileName.Length + 1) * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay)));
-                    if (availableWidth < m_textScroller.Width)
+                    if (availableWidth > m_textScroller.Width)
                     {
                         setTextScrollerWidth(availableWidth);
                     }
 
-            
                     // Now check if the temporary message is longer than the scroll space - scroll if it is
                     //
-                    if ((m_temporaryMessage.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay))
-                        < m_textScroller.Width) // hard code length for the moment
+                    if ((m_temporaryMessage.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay)) < m_textScroller.Width)
                     {
                         fileName += " " + m_temporaryMessage;
                     }
@@ -4250,7 +4286,7 @@ namespace Xyglo
 
             // Draw header line
             //
-            m_spriteBatch.DrawString(m_project.getFontManager().getFont(), line, new Vector2((int)startPosition.X, (int)(startPosition.Y - m_project.getSelectedBufferView().getLineHeight() * 3)), Color.White, 0, lineOrigin, m_project.getFontManager().getTextScale() * 2.0f, 0, 0);
+            m_spriteBatch.DrawString(m_project.getFontManager().getFont(), line, new Vector2((int)startPosition.X, (int)(startPosition.Y - m_project.getSelectedBufferView().getLineHeight() * 3)), Color.White, 0, lineOrigin, m_project.getFontManager().getTextScale() /* * 2.0f */, 0, 0);
 
             // If we're using this method to position a new window only then don't show the directory chooser part..
             //
@@ -4299,7 +4335,7 @@ namespace Xyglo
                         }
                         else
                         {
-                            yPosition += m_project.getFontManager().getLineHeight() * 1.5f;
+                            yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
                             line = "...";
                         }
 
@@ -4309,10 +4345,10 @@ namespace Xyglo
                              (lineNumber == m_fileSystemView.getHighlightIndex() ? m_highlightColour : (lineNumber == endShowing ? Color.White : dirColour)),
                              0,
                              lineOrigin,
-                             m_project.getFontManager().getTextScale() * 1.5f,
+                             m_project.getFontManager().getTextScale() /* * 1.5f */,
                              0, 0);
 
-                        yPosition += m_project.getFontManager().getLineHeight() * 1.5f;
+                        yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
                     }
 
                     lineNumber++;
@@ -4348,7 +4384,7 @@ namespace Xyglo
                         }
                         else
                         {
-                            yPosition += m_project.getFontManager().getLineHeight() * 1.5f;
+                            yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
                             line = "...";
                         }
 
@@ -4358,10 +4394,10 @@ namespace Xyglo
                              (lineNumber == m_fileSystemView.getHighlightIndex() ? m_highlightColour : (lineNumber == endShowing ? Color.White : dirColour)),
                              0,
                              lineOrigin,
-                             m_project.getFontManager().getTextScale() * 1.5f,
+                             m_project.getFontManager().getTextScale() /* * 1.5f */,
                              0, 0);
 
-                        yPosition += m_project.getFontManager().getLineHeight() * 1.5f;
+                        yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
                     }
 
                     lineNumber++;
@@ -4378,7 +4414,7 @@ namespace Xyglo
                         }
                         else
                         {
-                            yPosition += m_project.getFontManager().getLineHeight() * 1.5f;
+                            yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
                             line = "...";
                         }
 
@@ -4388,10 +4424,10 @@ namespace Xyglo
                                                  (lineNumber == m_fileSystemView.getHighlightIndex() ? m_highlightColour : (lineNumber == endShowing ? Color.White : m_itemColour)),
                                                  0,
                                                  lineOrigin,
-                                                 m_project.getFontManager().getTextScale() * 1.5f,
+                                                 m_project.getFontManager().getTextScale() /* * 1.5f */,
                                                  0, 0);
 
-                        yPosition += m_project.getFontManager().getLineHeight() * 1.5f;
+                        yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
                     }
                     lineNumber++;
                 }
@@ -4407,7 +4443,7 @@ namespace Xyglo
                                          Color.LightGoldenrodYellow,
                                          0,
                                          lineOrigin,
-                                         m_project.getFontManager().getTextScale() * 1.5f,
+                                         m_project.getFontManager().getTextScale() /* * 1.5f */,
                                          0,
                                          0);
             }
@@ -4602,6 +4638,10 @@ namespace Xyglo
 
                     // Only do syntax highlighting when we're not greyed out
                     //
+                    
+
+                    // !!! Could be performance problem here
+
                     if (highlights.Count > 0 && bufferColour != m_greyedColour)
                     {
                         highlights.Sort();
@@ -4706,7 +4746,14 @@ namespace Xyglo
                 m_temporaryMessageStartTime = m_gameTime.TotalGameTime.TotalSeconds + m_textScroller.Width / speed;
             }
 
-            int xPosition = (int)((m_gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime) * - 120.0f);
+            // xPosition holds the scrolling position of the text in the temporary message window
+            int xPosition = 0;
+            float delayScroll = 0.7f; // delay the scrolling by this amount so we can read it before it starts moving
+
+            if (m_gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime > delayScroll)
+            {
+                xPosition = (int)((m_gameTime.TotalGameTime.TotalSeconds - delayScroll - m_temporaryMessageStartTime) * -120.0f);
+            }
             
             // Draw to the render target
             //
@@ -5501,5 +5548,117 @@ namespace Xyglo
             //}
             m_spriteBatch.End();
         }
+
+        //protected override void Initialize()
+        //{
+
+        //}
+
+        private void friendlierDragEnter(object sender, System.Windows.Forms.DragEventArgs e)
+        {
+            Logger.logMsg("Friendlier::friendlierDragEnter() - dragging entered " + e.Data.GetType().ToString());
+
+
+            //if (!e.Data.GetDataPresent(typeof(System.Windows.Forms.DataObject)))
+            if (e.Data.GetType() != typeof(System.Windows.Forms.DataObject))
+            {
+                e.Effect = System.Windows.Forms.DragDropEffects.None;
+                return;
+            }
+
+            // Effect is to "link" to this project
+            //
+            e.Effect = System.Windows.Forms.DragDropEffects.Link;
+        }
+
+        private void friendlierDragDrop(object sender, System.Windows.Forms.DragEventArgs e)
+        {
+            Logger.logMsg("Friendlier::friendlierDragEnter() - drop event fired of type " + e.Data.ToString());
+
+            if (e.Data.GetType() == typeof(System.Windows.Forms.DataObject))
+            {
+                System.Windows.Forms.DataObject obj = (System.Windows.Forms.DataObject)e.Data.GetData(typeof(System.Windows.Forms.DataObject));
+                string [] formats = e.Data.GetFormats();
+                string[] files = (string[])e.Data.GetData(System.Windows.Forms.DataFormats.FileDrop);
+
+                //int filesAdded = 0;
+                //int dirsAdded = 0;
+
+                List<string> filesAdded = new List<string>();
+                List<string> dirsAdded = new List<string>();
+
+                foreach (string newFile in files)
+                {
+                    // Is this a directory or a file?
+                    //
+                    if (Directory.Exists(newFile))
+                    {
+                        Logger.logMsg("Adding directory = " + newFile);
+                        dirsAdded.Add(newFile);
+                    }
+                    else
+                    {
+                        Logger.logMsg("Adding file " + newFile);
+                        addNewFileBuffer(newFile);
+                        filesAdded.Add(newFile);
+                    }
+                }
+
+                // Build an intelligible temporary message after we've done this work
+                //
+                string message = "";
+
+                if (filesAdded.Count > 0)
+                {
+                    message = filesAdded.Count + " file";
+
+                    if (filesAdded.Count > 1)
+                    {
+                        message += "s";
+                    }
+
+                    message += " added ";
+
+                    foreach(string fi in filesAdded)
+                    {
+                        message += " " + fi;
+                    }
+                }
+
+                if (dirsAdded.Count > 0)
+                {
+                    if (message != "")
+                    {
+                        message += ", ";
+                    }
+
+                    message += dirsAdded.Count + " ";
+
+                    if (dirsAdded.Count == 1)
+                    {
+                        message += "directory";
+                    }
+                    else
+                    {
+                        message += "directories";
+                    }
+
+                    message += " added";
+
+                    foreach (string di in dirsAdded)
+                    {
+                        message += " " + di;
+                    }
+                }
+
+                // Set the temporary message if we've generated one
+                //
+                if (message != "")
+                {
+                    setTemporaryMessage(message, 5);
+                }
+            }
+        }
+
     }
 }

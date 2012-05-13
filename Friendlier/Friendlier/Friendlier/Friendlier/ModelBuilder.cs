@@ -31,7 +31,7 @@ namespace Xyglo
         /// <summary>
         /// Graph created by a TreeBuilder
         /// </summary>
-        protected TreeBuilderGraph m_treeBuilderGraph;
+        //protected TreeBuilderGraph m_treeBuilderGraph;
 
         /// <summary>
         /// Define field of view for the X axis
@@ -119,13 +119,10 @@ namespace Xyglo
 
         // --------------------------------- CONSTRUCTORS -------------------------------
         /// <summary>
-        /// Constructor accepts a TreeBuilderGraph
+        /// Default Constructor
         /// </summary>
-        /// <param name="tbg"></param>
-        public ModelBuilder(TreeBuilderGraph tbg)
+        public ModelBuilder()
         {
-            m_treeBuilderGraph = tbg;
-
             // Start with some depth in the buffer
             //
             m_startZ = -2.0f;
@@ -138,9 +135,9 @@ namespace Xyglo
         /// <summary>
         /// Do the build
         /// </summary>
-        public Dictionary<string, ModelItem> build(Vector3 startPosition)
+        public Dictionary<string, ModelItem> build(TreeBuilderGraph tbg, Vector3 startPosition)
         {
-            Logger.logMsg("ModelBuilder::build() - building model from tree with " + m_treeBuilderGraph.Vertices.Count<string>() + " vertices");
+            Logger.logMsg("ModelBuilder::build() - building model from tree with " + tbg.Vertices.Count<string>() + " vertices");
 
             // Store the model position and set up some initial conditions
             //
@@ -156,7 +153,7 @@ namespace Xyglo
             // Firstly build up our vertex maps and levels - this will help us define the
             // number of 
             //
-            buildLevels();
+            buildLevels(tbg);
 
             // Find the max width of the levels like this
             //
@@ -209,7 +206,7 @@ namespace Xyglo
         /// First pass through the tree we build up the number of vertex targets and
         /// the vertices living at each level.
         /// </summary>
-        protected void buildLevels()
+        protected void buildLevels(TreeBuilderGraph tbg)
         {
             // Clear down our target dictionaries
             //
@@ -225,9 +222,9 @@ namespace Xyglo
             // For every vertex, find the edges and increment the number of them in
             // the dictionary.
             //
-            foreach (string vertex in m_treeBuilderGraph.TopologicalSort<string, Edge<string>>())
+            foreach (string vertex in tbg.TopologicalSort<string, Edge<string>>())
             {
-                List<Edge<string>> edges = getEdgeTargets(vertex);
+                List<Edge<string>> edges = getEdgeTargets(tbg, vertex);
 
                 // When we have no edges we are at the root - level 0
                 //
@@ -241,9 +238,10 @@ namespace Xyglo
                     m_rootString = vertex;
                 }
 
-                // For all the leaf nodes we place we add them to the string and increment this
+                // For all the leaf nodes other than the root we place we add them to the string and
+                // increment this.
                 //
-                if (m_treeBuilderGraph.Degree(vertex) == 1)
+                if (tbg.Degree(vertex) == 1 && vertex != "")
                 {
                     m_returnString += vertex + "\n";
                     m_leafNodesPlaced++;
@@ -322,12 +320,12 @@ namespace Xyglo
         /// </summary>
         /// <param name="vertex"></param>
         /// <returns></returns>
-        protected List<Edge<string>> getEdgeTargets(string vertex)
+        protected List<Edge<string>> getEdgeTargets(TreeBuilderGraph tbg, string vertex)
         {
             List<Edge<string>> rL = new List<Edge<string>>();
 
             //var bfs = new BreadthFirstSearchAlgorithm<string, Edge<string>>(m_treeBuilderGraph);
-            var dfs = new DepthFirstSearchAlgorithm<string, Edge<string>>(m_treeBuilderGraph);
+            var dfs = new DepthFirstSearchAlgorithm<string, Edge<string>>(tbg);
             var observer = new VertexPredecessorRecorderObserver<string, Edge<string>>(); 
 
             using (observer.Attach(dfs)) // attach, detach to dfs events
@@ -355,7 +353,7 @@ namespace Xyglo
         /// Best place a node for the given Z value
         /// </summary>
         /// <param name="zLayer"></param>
-        protected bool bestPlace(string vertex)
+        protected bool bestPlace(TreeBuilderGraph tbg, string vertex)
         {
             Logger.logMsg("ModelBuilder::bestPlace() - placing vertex " + vertex);
 
@@ -365,9 +363,9 @@ namespace Xyglo
 
             ModelCodeFragment mcf = new ModelCodeFragment(vertex, placePosition);
 
-            Logger.logMsg("ModelBuilder::bestPlace() - has got " + getEdgeTargets(vertex).Count + " connections");
+            Logger.logMsg("ModelBuilder::bestPlace() - has got " + getEdgeTargets(tbg, vertex).Count + " connections");
 
-            List<Edge<string>> edgeTargets = getEdgeTargets(vertex);
+            List<Edge<string>> edgeTargets = getEdgeTargets(tbg, vertex);
 
             // If we have no targets from a given vertex then we're at a root 
             if (edgeTargets.Count == 0)
@@ -383,7 +381,7 @@ namespace Xyglo
 
             // Degree is how many connections this node has
             //
-            int degree = m_treeBuilderGraph.Degree(vertex);
+            int degree = tbg.Degree(vertex);
             
             // Isolated vertices
             //
@@ -554,7 +552,12 @@ namespace Xyglo
             {
                 // Build return string with a root if specified
                 //
-                string returnString = m_rootString + @"\" + rS[selected];
+                string returnString = rS[selected];
+
+                if (m_rootString != "")
+                {
+                    returnString = m_rootString + @"\" + returnString;
+                }
 
                 // Ensure we remove any double slashes in the path
                 //
@@ -564,6 +567,5 @@ namespace Xyglo
             Logger.logMsg("ModelBuilder::getSelectedModelString() - can't get return string item for id " + selected);
             return "";
         }
-
     }
 }

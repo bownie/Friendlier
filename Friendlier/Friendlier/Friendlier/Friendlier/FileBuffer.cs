@@ -535,7 +535,7 @@ namespace Xyglo
         /// <param name="insertPosition"></param>
         /// <param name="text"></param>
         /// <returns></returns>
-        public FilePosition insertText(FilePosition insertPosition, string text)
+        public FilePosition insertText(SyntaxManager syntaxManager, FilePosition insertPosition, string text)
         {
             if (m_readOnly)
             {
@@ -548,6 +548,16 @@ namespace Xyglo
             // Ensure we are neat and tidy
             //
             tidyUndoStack(command);
+
+            // If we have a closing brace then we need to reformat
+            //
+            if (text == "}")
+            {
+                ReformatTextCommand reformatCommand = new ReformatTextCommand("Auto Reformat", this, syntaxManager, insertPosition, insertPosition);
+                fp = reformatCommand.doCommand();
+                tidyUndoStack(reformatCommand);
+            }
+
 
             return fp;
         }
