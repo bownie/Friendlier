@@ -9,7 +9,7 @@ namespace Xyglo
     /// <summary>
     /// Define a line and character position in a file
     /// </summary>
-    public struct FilePosition : ICloneable
+    public struct FilePosition : ICloneable, IComparable
     {
         public FilePosition(int x, int y)
         {
@@ -54,6 +54,30 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Implement for IComparable
+        /// </summary>
+        /// <param name="x"></param>
+        /// <returns></returns>
+        int IComparable.CompareTo(object x)
+        {
+            FilePosition h1 = (FilePosition)x;
+
+            if (h1.Y <= this.Y && h1.X < this.X)
+            {
+                return -1;
+            }
+            else if (h1.Y == this.Y && h1.X == this.X)
+            {
+                return 0;
+            }
+            else // Greater than
+            {
+                return 1;
+            }
+        }
+
+
+        /// <summary>
         /// Less than operator
         /// </summary>
         /// <param name="a"></param>
@@ -64,6 +88,12 @@ namespace Xyglo
             return (a.Y < b.Y || (a.Y == b.Y && a.X < b.X));
         }
 
+        /// <summary>
+        /// Greater than
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
         public static bool operator >(FilePosition a, FilePosition b)
         {
             return (a.Y > b.Y || (a.Y == b.Y && a.X > b.X));

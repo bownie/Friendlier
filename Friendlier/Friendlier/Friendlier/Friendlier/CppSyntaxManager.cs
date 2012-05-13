@@ -130,7 +130,7 @@ namespace Xyglo
 
             // Remove the range we're going to update
             //
-            fileBuffer.m_highlightList.RemoveRange(startLine, fileBuffer.m_highlightList.Count - startLine);
+            fileBuffer.clearHighlights();
 
             int xPosition = 0;
             int lastXPosition = 0;
@@ -162,7 +162,8 @@ namespace Xyglo
                         if (endOfComment != -1) // end comment and continue
                         {
                             Highlight newHighlight = new Highlight(i, xPosition, endOfComment + 1, line.Substring(xPosition, endOfComment), SyntaxManager.m_commentColour);
-                            fileBuffer.m_highlightList.Add(newHighlight);
+                            //fileBuffer.m_highlightList.Add(newHighlight);
+                            fileBuffer.setHighlight(newHighlight);
                             xPosition = endOfComment + 1;
                             inMLComment = false;
                         }
@@ -171,7 +172,8 @@ namespace Xyglo
                             // Insert comment to end of line and don't unset inMLComment as we're still in it
                             //
                             Highlight newHighlight = new Highlight(i, xPosition, line.Length - xPosition, line.Substring(xPosition, line.Length - xPosition), SyntaxManager.m_commentColour);
-                            fileBuffer.m_highlightList.Add(newHighlight);
+                            //fileBuffer.m_highlightList.Add(newHighlight);
+                            fileBuffer.setHighlight(newHighlight);
                             xPosition = line.Length;
                         }
                     }
@@ -186,7 +188,8 @@ namespace Xyglo
                             // Insert highlight if this is only thing on line
                             //
                             Highlight newHighlight = new Highlight(i, foundPosition, 2, line.Substring(xPosition, 2), SyntaxManager.m_commentColour);
-                            fileBuffer.m_highlightList.Add(newHighlight);
+                            //fileBuffer.m_highlightList.Add(newHighlight);
+                            fileBuffer.setHighlight(newHighlight);
 
                             // Move past comment start
                             //
@@ -201,7 +204,8 @@ namespace Xyglo
                             {
                                 // Create a highlight for a #define
                                 Highlight newHighlight = new Highlight(i, 0, line.Length, line, SyntaxManager.m_defineColour);
-                                fileBuffer.m_highlightList.Add(newHighlight);
+                                //fileBuffer.m_highlightList.Add(newHighlight);
+                                fileBuffer.setHighlight(newHighlight);
 
                                 // And exit this loop
                                 xPosition = line.Length;
@@ -209,7 +213,8 @@ namespace Xyglo
                             else if ((foundPosition = line.IndexOf("//")) != -1)
                             {
                                 Highlight newHighlight = new Highlight(i, foundPosition, line.Length - foundPosition, line.Substring(foundPosition, line.Length - foundPosition), SyntaxManager.m_commentColour);
-                                fileBuffer.m_highlightList.Add(newHighlight);
+                                //fileBuffer.m_highlightList.Add(newHighlight);
+                                fileBuffer.setHighlight(newHighlight);
                             }
 
                             // Now process any other characters ensuring that we're still within the string

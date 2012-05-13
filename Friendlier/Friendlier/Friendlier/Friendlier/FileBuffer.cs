@@ -89,8 +89,20 @@ namespace Xyglo
         /// from this class.  We persist this information to avoid having to regenerate it every time we
         /// load the file.
         /// </summary>
+        //[DataMember]
+        //protected List<Highlight> m_highlightList = new List<Highlight>();
+
+        /// <summary>
+        /// Dictionary of highlight information, these are unique by FilePosition key
+        /// </summary>
         [DataMember]
-        public List<Highlight> m_highlightList = new List<Highlight>();
+        protected Dictionary<FilePosition, Highlight> m_highlightDictionary = new Dictionary<FilePosition, Highlight>();
+
+        /// <summary>
+        /// Sortedlist of 
+        /// </summary>
+        [DataMember]
+        protected SortedList<FilePosition, Highlight> m_highlightSortedList = new SortedList<FilePosition, Highlight>();
 
         /// <summary>
         /// List of highlights we're going to return to the drawFileBuffer in the main loop
@@ -729,8 +741,10 @@ namespace Xyglo
         /// <returns></returns>
         public List<Highlight> getHighlighting(int line)
         {
+
             m_returnLineList.Clear();
 
+/*
             // Find all highlighting for this line
             //
             m_returnLineList = m_highlightList.FindAll(
@@ -743,9 +757,32 @@ namespace Xyglo
             // Ensure it's sorted
             //
             m_returnLineList.Sort();
-
+            
             // Return 
             //
+            return m_returnLineList;
+             * */
+
+            //var thing = m_highlightDictionary.Where(item => item.Key.Y == line);
+            /*
+            // Attempt with Dictionary
+            //
+            List<KeyValuePair<FilePosition, Highlight>> list = m_highlightDictionary.ToList();
+            foreach(KeyValuePair<FilePosition, Highlight> item in list)
+            {
+                if (item.Key.Y == line)
+                {
+                    m_returnLineList.Add(item.Value);
+                }
+            }
+             * */
+
+            List<KeyValuePair<FilePosition, Highlight>> subList = m_highlightSortedList.Where(item => item.Key.Y == line).ToList();
+            foreach (KeyValuePair<FilePosition, Highlight> item in subList)
+            {
+                    m_returnLineList.Add(item.Value);
+            }
+
             return m_returnLineList;
         }
 
@@ -758,6 +795,7 @@ namespace Xyglo
         {
             m_returnLineList.Clear();
 
+            /*
             // Find all highlighting for this line
             //
             m_returnLineList = m_highlightList.FindAll(
@@ -770,6 +808,7 @@ namespace Xyglo
             // Ensure it's sorted
             //
             m_returnLineList.Sort();
+            */
 
             // Return 
             //
@@ -801,6 +840,42 @@ namespace Xyglo
         public DateTime getLastFetchSystemTime()
         {
             return m_lastFetchSystemTime;
+        }
+
+        /// <summary>
+        /// Clear the highlight dictionary
+        /// </summary>
+        public void clearHighlights()
+        {
+            //m_highlightDictionary.Clear();
+            m_highlightSortedList.Clear();
+        }
+
+        /// <summary>
+        /// Set a highlight at a line
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="highlight"></param>
+        public void setHighlight(Highlight highlight)
+        {
+            /*
+            if (m_highlightDictionary.ContainsKey(highlight.m_startHighlight))
+            {
+                m_highlightDictionary[highlight.m_startHighlight] = highlight;
+            }
+            else
+            {
+                m_highlightDictionary.Add(highlight.m_startHighlight, highlight);
+            }
+             * */
+            if (m_highlightSortedList.ContainsKey(highlight.m_startHighlight))
+            {
+                m_highlightSortedList[highlight.m_startHighlight] = highlight;
+            }
+            else
+            {
+                m_highlightSortedList.Add(highlight.m_startHighlight, highlight);
+            }
         }
     }
 }

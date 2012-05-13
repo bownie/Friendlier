@@ -127,6 +127,7 @@
     <Reference Include="WindowsBase" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BraceDepth.cs" />
     <Compile Include="BufferView.cs" />
     <Compile Include="Command.cs" />
     <Compile Include="CppSyntaxManager.cs" />
@@ -137,8 +138,10 @@
     <Compile Include="FileSystemObject.cs" />
     <Compile Include="FileSystemView.cs" />
     <Compile Include="FontManager.cs" />
+    <Compile Include="Highlight.cs" />
     <Compile Include="InsertTextCommand.cs" />
     <Compile Include="KinectWorker.cs" />
+    <Compile Include="ReformatTextCommand.cs" />
     <Compile Include="User.cs" />
     <Compile Include="XygloKinectHelper.cs" />
     <Compile Include="XygloKinectManager.cs" />
