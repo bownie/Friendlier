@@ -763,14 +763,23 @@ namespace Xyglo
             string line = m_fileBuffer.getLine(m_cursorPosition.Y);
 
             int pos = 0;
-            while (pos < line.Length)
+            while (pos < m_cursorPosition.X)
             {
-                if (line[pos] != ' ')
+                if (!Char.IsWhiteSpace(line[pos]))
                 {
                     break;
                 }
                 pos++;
             }
+
+            // If from the start of line to cursor position is white space then send to beginning of line (second
+            // tap on the home button).
+            //
+            if (pos == m_cursorPosition.X)
+            {
+                pos = 0;
+            }
+
             return new FilePosition(pos, m_cursorPosition.Y);
         }
 

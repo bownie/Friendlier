@@ -115,6 +115,29 @@ namespace Xyglo
         /// </summary>
         static public Color m_paranthesisColour = Color.Blue;
 
+        /// <summary>
+        /// For a given line number return the indent of it - we use this when the previous line has been
+        /// a curly brace (say) and we want to work out what the indent of the next line should be based
+        /// on context.
+        /// </summary>
+        /// <param name="line"></param>
+        /// <returns></returns>
+        public int testIndentDepth(FileBuffer fileBuffer, int line)
+        {
+            if (line >= fileBuffer.getLineCount()) return -1;
+
+            string checkLine = fileBuffer.getLine(line);
+
+            for (int i = 0; i < checkLine.Length; i++)
+            {
+                if (!Char.IsWhiteSpace(checkLine[i]))
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
 
         /// <summary>
         /// Get an existing indent depth for a given x and y coordinate (integer)

@@ -249,7 +249,10 @@ namespace Xyglo
                 }
             }
 
-            syntaxManager.updateHighlighting(this);
+
+            // We don't want to do this every time we load a file - it should persist the highlight anyway
+            //
+            //syntaxManager.updateHighlighting(this);
 
         }
 

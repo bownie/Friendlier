@@ -2,7 +2,7 @@
 ; Friendlier NSIS Installer
 ;
 ; Richard Bown
-; February 2012
+; May 2012
 ;-------------------------------
 
 ; ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Client" Install IntOp $8 $0 & 1
@@ -21,13 +21,13 @@
 !include Sections.nsh
 
 ; The name of the installer
-Name "Friendlier-win32-alpha-1"
-Caption "Friendlier Windows32 Alpha Build 1"
+Name "Friendlier-win32-alpha-2"
+Caption "Friendlier Windows32 Alpha Build 2"
 
 !define ICON "Xyglo.ico"
 !define COMPANY "Xyglo"
 !define SOFTWARE "Friendlier"
-!define VERSION "1.0.0"
+!define VERSION "1.0.0 Alpha 2"
 
 !insertmacro MUI_PAGE_LICENSE "Licence.txt"
 !insertmacro MUI_LANGUAGE "English"
@@ -40,7 +40,7 @@ Caption "Friendlier Windows32 Alpha Build 1"
 !define XNAInstaller "xnafx40_redist.msi"
 
 ; The file to write
-OutFile "friendlier-win32-alpha-1.exe"
+OutFile "friendlier-win32-alpha-2.exe"
 
 ; The default installation directory
 ;
@@ -155,10 +155,14 @@ Section "Friendlier"
     File "Friendlier\Friendlier\bin\x86\Release\Friendlier.exe"
 	File /r "Friendlier\Friendlier\bin\x86\Release\Content"
 
-	; Include the third party installers
+	; QuickGraph
 	;
-	;File ${NETINSTALLER}
-	;File ${XNAINSTALLER}
+	File "Quickgraph\QuickGraph.dll"
+	File "Quickgraph\QuickGraph.Graphviz.dll"
+
+	; What else?
+	; Kinect?
+
 
     File "Xyglo.ico"
 
@@ -179,8 +183,8 @@ Section "Friendlier"
 	;
 	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "User Email" "none"
 	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "User Organisation" "none"
-	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Product Name" ${SOFTWARE}
-	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Product Version" ${VERSION}
+	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Product Name" "${SOFTWARE}"
+	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Product Version" "${VERSION}"
 	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Licence Key" "nonel"
 
 

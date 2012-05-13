@@ -99,6 +99,8 @@ namespace Xyglo
         }
 
 
+
+
         /// <summary>
         /// Regenerate the highlightList by parsing the entire file
         /// </summary>
@@ -227,8 +229,16 @@ namespace Xyglo
                                     //
                                     if (testBraceDepth(xPosition, i) == -1)
                                     {
-                                        int existingDepth = getIndentDepth(xPosition, i);
-                                        int newDepth = existingDepth + 2;
+                                        // Test the indent depth on the next line
+                                        //
+                                        int newDepth = testIndentDepth(fileBuffer, i + 1);
+
+                                        // If it's not set then we just estimate it based on previous values plus '2'
+                                        if (newDepth == -1)
+                                        {
+                                            newDepth = getIndentDepth(xPosition, i) + 2;
+                                        }
+
                                         BraceDepth bd = new BraceDepth(xPosition, i, newDepth);
                                         m_bracePositions.Add(bd, newDepth);
                                     }
