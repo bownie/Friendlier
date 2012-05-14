@@ -8,10 +8,12 @@ USE CASES
 TODO
 ----
 
+- Paging on File Management
+- Elegant long lines File Management
+- Elegant long line Config
+- brace matching
 - remember last directory indent
 - indenting [PARTLY WORKING]
-- brace matching
-- Sortable collections - FileBuffers, BufferViews, Highlights
 - Bloom highlight?
 - Depth buffer for kinect improved
 - improve search
@@ -44,6 +46,8 @@ http://autobuildversion.codeplex.com/
 
 ALPHA 2 DONE
 ------------
+- Sortable collections - FileBuffers, BufferViews, Highlights [DONE]
+- Drag and Drop files - current directory files only [DONE]
 - Some basic text highlighting and indenting [DONE]
 - some way of seeing/modifying/deleting files in project / visualisation of project contents  [DONE]
 - f-keys for zooming etc is unnatural [CHANGED to CURSOR plus ALT SHIFT] 
@@ -69,7 +73,7 @@ BUGs and OTHER TODOS
 --------------------
 - search highlight all occurences on the scrollbar
 - compare directories - smart compare 
-- drag and drop file and directory insertion
+- drag and drop directory insertion
 - file browser remembers last directory positions
 - coloured and textured backgrounds for editing windows
 - animations and intro

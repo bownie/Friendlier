@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+#if GOT_KINECT
 using Microsoft.Kinect;
+#endif
 
 namespace Xyglo
 {
@@ -13,6 +15,7 @@ namespace Xyglo
 
     public class XygloKinectManager
     {
+#if GOT_KINECT
         XygloKinectHelper m_kinectHelper;
 
         KinectSensor m_kinectSensor;
@@ -363,5 +366,6 @@ namespace Xyglo
                 }
             }
         }
+#endif //GOT_KINECT
     }
 }

@@ -854,17 +854,10 @@ namespace Xyglo
                 Logger.logMsg("Project::loadFiles() - loading " + fb.getFilepath(), true);
                 fb.loadFile(m_syntaxManager);
                 Logger.logMsg("Project::loadFiles() - completed loading " + fb.getFilepath(), true);
-            }
 
-            // Generate the highlighting for all the FileBuffers
-            //
-            Logger.logMsg("Project::loadFiles() - generating highlighting for available BufferViews", true);
-
-            foreach (BufferView bv in m_bufferViews)
-            {
-                m_syntaxManager.updateHighlighting(bv.getFileBuffer());
+                Logger.logMsg("Project::loadFiles() - generating highlighting for " + fb.getFilepath(), true);
+                m_syntaxManager.updateHighlighting(fb);
             }
-//            m_syntaxManager.generateHighlighting();
 
             Logger.logMsg("Project::loadFiles() - completed generating highlighting for BufferViews", true);
 
@@ -882,16 +875,42 @@ namespace Xyglo
         /// </summary>
         public void connectFloatingWorld()
         {
+            List<BufferView> removeList = new List<BufferView>();
+
             // Fix our BufferViews
             //
             foreach(BufferView bv in m_bufferViews)
             {
                 if (bv.getFileBuffer() == null)
                 {
-                    bv.setFileBuffer(m_fileBuffers[bv.getFileBufferIndex()]);
+                    if (bv.getFileBufferIndex() > m_fileBuffers.Count)
+                    {
+                        Logger.logMsg(
+                            "Project::connectFloatingWorld() - got out of scope FileBuffer reference - removing BufferView");
+                        removeList.Add(bv);
+                    }
+                    else
+                    {
+                        bv.setFileBuffer(m_fileBuffers[bv.getFileBufferIndex()]);
+                    }
+                    
                 }
 
                 bv.setFontManager(m_fontManager);
+            }
+
+            // Remove the BufferViews which are no longer valid
+            //
+            foreach(BufferView bv in removeList)
+            {
+                m_bufferViews.Remove(bv);
+            }
+
+            // Ensure that the current BufferView is valid
+            //
+            if (m_selectedViewId < 0 || m_selectedViewId >= m_bufferViews.Count)
+            {
+                m_selectedViewId = 0;
             }
 
             // Fix our FileBuffers
@@ -900,6 +919,8 @@ namespace Xyglo
             {
                 fb.initialiseAfterDeseralising();
             }
+
+
         }
 
         /// <summary>
@@ -1410,6 +1431,153 @@ namespace Xyglo
         {
             m_tab = tabString;
         }
+
+        /// <summary>
+        /// This might do as good a job as any complex algorithm
+        /// </summary>
+        /// <param name="root"></param>
+        /// <param name="fileName"></param>
+        /// <param name="maxLength"></param>
+        /// <returns></returns>
+        public string estimateFileStringTruncation(string root, string fileName, int maxLength)
+        {
+            string rs = root + fileName;
+
+            int halfLength = (maxLength / 2) - 2;
+
+            if (halfLength > 0)
+            {
+                rs = rs.Substring(0, halfLength) + "..." + rs.Substring(rs.Length - halfLength, halfLength);
+            }
+
+            return rs;
+        }
+
+        /// <summary>
+        /// Build a sensible length file string from the passed arguments - to ensure that 
+        /// the string fits on a page
+        /// </summary>
+        /// <param name="root"></param>
+        /// <param name="fileName"></param>
+        /// <param name="maxLength"></param>
+        /// <returns></returns>
+        public string buildFileString(string root, string fileName, int maxLength)
+        {
+            if (root.Length + fileName.Length < maxLength)
+            {
+                return root + fileName;
+            }
+            else
+            {
+                string tryRoot = root;
+                string tryFile = fileName;
+                int lastLength = tryRoot.Length + tryFile.Length;
+
+                while (lastLength > maxLength)
+                {
+                    if (tryRoot.Length > fileName.Length)
+                    {
+                        string newPath = truncateTrailingDirectory(tryRoot);
+
+                        if (newPath != tryRoot)
+                        {
+                            tryRoot = newPath + "...";
+                        }
+                    }
+                    else // fileName is longer
+                    {
+                        string newFile = truncateLeadingDirectory(tryFile);
+
+                        if (newFile != tryFile)
+                        {
+                            tryFile = "..." + newFile;
+                        }
+                    }
+
+                    if (tryRoot.Length + tryFile.Length < lastLength)
+                    {
+                        lastLength = tryRoot.Length + tryFile.Length;
+                    }
+                    else
+                    {
+                        // Do something radical
+                        //
+                        string umm = "???";
+                    }
+                }
+
+                return tryRoot + tryFile;
+
+            }
+
+        }
+
+        /// <summary>
+        /// Truncate the trailing directory from a path
+        /// </summary>
+        /// <param name="dirPath"></param>
+        /// <returns></returns>
+        public string truncateTrailingDirectory(string dirPath)
+        {
+            int forwardSlashes = dirPath.Count(item => item == '/');
+            int backSlashes = dirPath.Count(item => item == '\\');
+
+            // First we try with forward slashes
+            //
+            if (forwardSlashes > 0)
+            {
+                int lastSlash = dirPath.LastIndexOf('/');
+
+                if (lastSlash > 0)
+                {
+                    return dirPath.Substring(0, lastSlash - 1);
+                }
+            }
+            else if (backSlashes > 0) // try backslashes
+            {
+                int lastSlash = dirPath.LastIndexOf('\\');
+
+                if (lastSlash > 0)
+                {
+                    return dirPath.Substring(0, lastSlash - 1);
+                }
+            }
+
+            return dirPath;
+        }
+
+        /// <summary>
+        /// Truncate a leading directory
+        /// </summary>
+        /// <param name="dirPath"></param>
+        /// <returns></returns>
+        public string truncateLeadingDirectory(string dirPath)
+        {
+            int forwardSlashes = dirPath.Count(item => item == '/');
+            int backSlashes = dirPath.Count(item => item == '\\');
+
+            if (forwardSlashes > 0)
+            {
+                int firstSlash = dirPath.IndexOf('/');
+
+                if (firstSlash > 0)
+                {
+                    return dirPath.Substring(firstSlash + 1, dirPath.Length - (firstSlash + 1));
+                }
+            }
+            else if (backSlashes > 0) // try backslashes
+            {
+                int firstSlash = dirPath.IndexOf('\\');
+
+                if (firstSlash > 0)
+                {
+                    return dirPath.Substring(firstSlash + 1, dirPath.Length - (firstSlash + 1));
+                }
+            }
+
+            return dirPath;
+        }
+
 
     }
 

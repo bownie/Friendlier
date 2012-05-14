@@ -212,6 +212,18 @@ namespace Xyglo
             return false;
         }
 
+
+        /// <summary>
+        /// Generate the highlighting for this FileBuffer
+        /// </summary>
+        /// <param name="syntaxmanager"></param>
+        public void generateHighlighting(SyntaxManager syntaxManager)
+        {
+            // We don't want to do this every time we load a file - it should persist the highlight anyway
+            //
+            syntaxManager.updateHighlighting(this);
+        }
+
         /// <summary>
         /// Load this file - passing a syntax manager to do the necessary syntax processing for it.
         /// </summary>
@@ -248,12 +260,6 @@ namespace Xyglo
                     m_lines.Add(line);
                 }
             }
-
-
-            // We don't want to do this every time we load a file - it should persist the highlight anyway
-            //
-            //syntaxManager.updateHighlighting(this);
-
         }
 
         /// <summary>
@@ -746,39 +752,6 @@ namespace Xyglo
         {
 
             m_returnLineList.Clear();
-
-/*
-            // Find all highlighting for this line
-            //
-            m_returnLineList = m_highlightList.FindAll(
-            delegate(Highlight h)
-            {
-                return h.m_startHighlight.Y == line;
-            }
-            );
-
-            // Ensure it's sorted
-            //
-            m_returnLineList.Sort();
-            
-            // Return 
-            //
-            return m_returnLineList;
-             * */
-
-            //var thing = m_highlightDictionary.Where(item => item.Key.Y == line);
-            /*
-            // Attempt with Dictionary
-            //
-            List<KeyValuePair<FilePosition, Highlight>> list = m_highlightDictionary.ToList();
-            foreach(KeyValuePair<FilePosition, Highlight> item in list)
-            {
-                if (item.Key.Y == line)
-                {
-                    m_returnLineList.Add(item.Value);
-                }
-            }
-             * */
 
             List<KeyValuePair<FilePosition, Highlight>> subList = m_highlightSortedList.Where(item => item.Key.Y == line).ToList();
             foreach (KeyValuePair<FilePosition, Highlight> item in subList)

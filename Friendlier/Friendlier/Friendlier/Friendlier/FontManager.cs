@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Xyglo
@@ -51,20 +47,24 @@ namespace Xyglo
                 m_fullScreenFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_fullScreen");
                 Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_fullScreen");
 
-                m_overlayFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_overlay");
-                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_overlay");
+                m_overlayFontSmallScreen = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_overlaySmallScreen");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_overlaySmallScreen");
+
+                m_overlayFontBigScreen = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_overlayBigScreen");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_overlayBigScreen");
 
                 // Set default characters
                 //
                 m_smallWindowFont.DefaultCharacter = ' ';
                 m_windowFont.DefaultCharacter = ' ';
                 m_fullScreenFont.DefaultCharacter = ' ';
-                m_overlayFont.DefaultCharacter = ' ';
+                m_overlayFontSmallScreen.DefaultCharacter = ' ';
+                m_overlayFontBigScreen.DefaultCharacter = ' ';
 
             }
             catch (Exception e)
             {
-                Console.WriteLine("Failed to load font : " + e.ToString());
+                Console.WriteLine("Failed to load font : " + e);
             }
         }
 
@@ -89,9 +89,14 @@ namespace Xyglo
         protected SpriteFont m_fullScreenFont;
 
         /// <summary>
-        /// SpriteFont
+        /// Overlay font is the font used for HUD - small screen is just a smaller size
         /// </summary>
-        protected SpriteFont m_overlayFont;
+        protected SpriteFont m_overlayFontSmallScreen;
+
+        /// <summary>
+        /// Overlay font is the font used for HUD
+        /// </summary>
+        protected SpriteFont m_overlayFontBigScreen;
 
         /// <summary>
         /// The aspect ratio of our screen
@@ -104,7 +109,30 @@ namespace Xyglo
         /// <returns></returns>
         public SpriteFont getOverlayFont()
         {
-            return m_overlayFont;
+            return (m_isSmallScreen == true ? m_overlayFontSmallScreen : m_overlayFontBigScreen);
+        }
+
+        /// <summary>
+        /// Is the screen we're attached to small or big (decides Overlay Font size)
+        /// </summary>
+        protected bool m_isSmallScreen = false;
+
+        /// <summary>
+        /// Are we on a small screen regards overlay font size?
+        /// </summary>
+        /// <returns></returns>
+        public bool isSmallScreen()
+        {
+            return m_isSmallScreen;
+        }
+
+        /// <summary>
+        /// Set the small screen variable
+        /// </summary>
+        /// <param name="smallScreen"></param>
+        public void setSmallScreen(bool smallScreen)
+        {
+            m_isSmallScreen = smallScreen;
         }
 
         /// <summary>
@@ -196,21 +224,30 @@ namespace Xyglo
 
 
         /// <summary>
-        /// Get the Line height of the selected font
+        /// Get the Line spacing of the selected font - gap plus font height
         /// </summary>
         /// <returns></returns>
-        public float getLineHeight()
+        public float getLineSpacing()
         {
-            return getTextScale() * getFont().LineSpacing;
+            return getTextScale() * getFont().LineSpacing; //* 1.12f; // Kludge for Nuclex issue 
             //return getTextScale() * getFont().MeasureString("X").Y;
         }
 
         /// <summary>
-        /// Get the line height of a specific font type
+        /// Character height
+        /// </summary>
+        /// <returns></returns>
+        public float getCharHeight()
+        {
+            return getTextScale() * getFont().MeasureString("X").Y;
+        }
+
+        /// <summary>
+        /// Get the line height of a specific font type - gap plus font height
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public float getLineHeight(FontType type)
+        public float getLineSpacing(FontType type)
         {
             switch (type)
             {
@@ -227,7 +264,7 @@ namespace Xyglo
                     //return getTextScale() * m_fullScreenFont.MeasureString("X").Y;
 
                 case FontType.Overlay:
-                    return m_overlayFont.LineSpacing;
+                    return  getOverlayFont().LineSpacing;
                     //return m_overlayFont.MeasureString("X").Y;
 
                 default:
@@ -235,6 +272,11 @@ namespace Xyglo
             }
         }
 
+        /// <summary>
+        /// Get the width of a given font character
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
         public float getCharWidth(FontType type)
         {
             switch (type)
@@ -249,7 +291,7 @@ namespace Xyglo
                     return getTextScale() * m_fullScreenFont.MeasureString("X").X;
 
                 case FontType.Overlay:
-                    return m_overlayFont.MeasureString("X").X;
+                    return getOverlayFont().MeasureString("X").X;
 
                 default:
                     return 0.0f;
@@ -260,7 +302,7 @@ namespace Xyglo
         /// Line spacing - not the same as Line Height of course
         /// </summary>
         /// <returns></returns>
-        public float getLineSpacing()
+        public float getDefaultLineSpacing()
         {
             return (float)(getFont().LineSpacing);
         }
@@ -278,7 +320,7 @@ namespace Xyglo
                 case FontType.Small:
                 case FontType.Window:
                 case FontType.Full:
-                    return 8.0f / getLineSpacing() * m_aspectRatio;
+                    return 8.0f / getDefaultLineSpacing() * m_aspectRatio;
 
                 default:
                     return 0.0f;

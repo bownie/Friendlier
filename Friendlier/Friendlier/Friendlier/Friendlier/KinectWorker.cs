@@ -14,13 +14,14 @@ namespace Xyglo
     /// </summary>
     public class KinectWorker
     {
-        XygloKinectManager m_kinectManager;
+        XygloKinectManager m_kinectManager = null;
 
         /// <summary>
         /// Initialise the performance counters
         /// </summary>
         public void initialise()
         {
+#if GOT_KINECT
             // Generate a kinect manager
             //
             m_kinectManager = new XygloKinectManager();
@@ -29,6 +30,7 @@ namespace Xyglo
             {
                 Logger.logMsg("Friendlier::initialiseProject() - no kinect device found");
             }
+#endif
         }
 
         /// <summary>
@@ -48,8 +50,9 @@ namespace Xyglo
                 Thread.Sleep(50); // sleep for 10ms
             }
 
+#if GOT_KINECT
             m_kinectManager.close();
-
+#endif
             Console.WriteLine("KinectWorker::startWorking() - terminating gracefully");
         }
 
@@ -69,6 +72,7 @@ namespace Xyglo
         /// </summary>
         protected void processDepthInformation()
         {
+#if GOT_KINECT
             if (m_kinectManager.getDepthValue() != 0)
             {
                 if (m_initialDepthPosition == 0)
@@ -102,6 +106,7 @@ namespace Xyglo
                 }
                  * */
             }
+#endif // GOT_KINECT
         }
 
         /// <summary>

@@ -7,7 +7,6 @@
 #endregion
 
 using System;
-using System.Text;
 using System.IO;
 using System.Collections.Generic;
 using System.Threading;
@@ -15,8 +14,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Diagnostics;
-using System.Management;
-using Microsoft.VisualBasic;
 
 namespace Xyglo
 {
@@ -94,7 +91,7 @@ namespace Xyglo
         /// <summary>
         /// Are we spinning?
         /// </summary>
-        bool spinning = false;
+        bool m_spinning = false;
 
         /// <summary>
         /// Current project
@@ -104,32 +101,32 @@ namespace Xyglo
         /// <summary>
         /// Last keyboard state so that we can compare with current
         /// </summary>
-        KeyboardState m_lastKeyboardState;
+        protected KeyboardState m_lastKeyboardState;
 
         /// <summary>
         /// Which key has been held down most recently?
         /// </summary>
-        Keys m_heldKey;
+        protected Keys m_heldKey;
 
         /// <summary>
         /// When did we start holding down a key?
         /// </summary>
-        double m_heldDownStartTime = 0;
+        protected double m_heldDownStartTime = 0;
 
         /// <summary>
         /// Is either Shift key being held?
         /// </summary>
-        bool m_shiftDown = false;
+        protected bool m_shiftDown = false;
 
         /// <summary>
         /// Is either Control key being held down?
         /// </summary>
-        bool m_ctrlDown = false;
+        protected bool m_ctrlDown = false;
 
         /// <summary>
         /// Is either Alt key being held down?
         /// </summary>
-        bool m_altDown = false;
+        protected bool m_altDown = false;
 
         /// <summary>
         /// Use this to store number when we've got ALT down - to select a new BufferView
@@ -139,12 +136,12 @@ namespace Xyglo
         /// <summary>
         /// The position where the project model will be viewable
         /// </summary>
-        Vector3 m_projectPosition = Vector3.Zero;
+        protected Vector3 m_projectPosition = Vector3.Zero;
 
         /// <summary>
         /// Confirmation state 
         /// </summary>
-        enum ConfirmState
+        public enum ConfirmState
         {
             None,
             FileSave,
@@ -154,27 +151,27 @@ namespace Xyglo
         /// <summary>
         /// Turn on and off file save confirmation
         /// </summary>
-        bool m_confirmFileSave = false;
+        protected bool m_confirmFileSave = false;
 
         /// <summary>
         /// Confirmation state - expecting Y/N
         /// </summary>
-        ConfirmState m_confirmState = ConfirmState.None;
+        public ConfirmState m_confirmState = ConfirmState.None;
 
         /// <summary>
         /// A flat texture we use for drawing coloured blobs like highlighting and cursors
         /// </summary>
-        Texture2D m_flatTexture;
+        protected Texture2D m_flatTexture;
 
         /// <summary>
         /// A rendertarget for the text scroller
         /// </summary>
-        RenderTarget2D m_textScroller;
+        protected RenderTarget2D m_textScroller;
 
         /// <summary>
         /// A texture we can render a text string to and scroll
         /// </summary>
-        Texture2D m_textScrollTexture;
+        protected Texture2D m_textScrollTexture;
 
         /*
         /// <summary>
@@ -591,6 +588,11 @@ namespace Xyglo
                 }
             }
 
+
+
+            // Defaults
+            //
+            m_project.getFontManager().setSmallScreen(true);
             int windowWidth = 640;
             int windowHeight = 480;
 
@@ -598,10 +600,12 @@ namespace Xyglo
             {
                 windowWidth = 960;
                 windowHeight = 768;
+                m_project.getFontManager().setSmallScreen(false);
             } else if (maxWidth >= 1280)
             {
                 windowWidth = 800;
                 windowHeight = 500;
+                //m_project.getFontManager().
             }
             else if (maxWidth >= 1024)
             {
@@ -688,7 +692,7 @@ namespace Xyglo
             foreach (BufferView bv in m_project.getBufferViews())
             {
                 bv.setCharWidth(m_project.getFontManager().getCharWidth());
-                bv.setLineHeight(m_project.getFontManager().getLineHeight());
+                bv.setLineHeight(m_project.getFontManager().getLineSpacing());
             }*/
 
             // Now do some jiggery pokery to make sure positioning is correct and that
@@ -769,7 +773,7 @@ namespace Xyglo
 
             // Set-up the single FileSystemView we have
             //
-            m_fileSystemView = new FileSystemView(m_filePath, new Vector3(-800.0f, 0f, 0f), m_project.getFontManager().getLineHeight(), m_project.getFontManager().getCharWidth());
+            m_fileSystemView = new FileSystemView(m_filePath, new Vector3(-800.0f, 0f, 0f), m_project.getFontManager().getLineSpacing(), m_project.getFontManager().getCharWidth());
 
             // Tree builder and model builder
             //
@@ -921,7 +925,7 @@ namespace Xyglo
             // Log these sizes 
             //
             Logger.logMsg("Friendlier:setSpriteFont() - Font getCharWidth = " + m_project.getFontManager().getCharWidth());
-            Logger.logMsg("Friendlier:setSpriteFont() - Font getLineHeight = " + m_project.getFontManager().getLineHeight());
+            Logger.logMsg("Friendlier:setSpriteFont() - Font getCharHeight = " + m_project.getFontManager().getCharHeight());
             Logger.logMsg("Friendlier:setSpriteFont() - Font getLineSpacing = " + m_project.getFontManager().getLineSpacing());
             Logger.logMsg("Friendlier:setSpriteFont() - Font getTextScale = " + m_project.getFontManager().getTextScale());
 
@@ -931,7 +935,7 @@ namespace Xyglo
             foreach (BufferView bv in m_project.getBufferViews())
             {
                 bv.setCharWidth(m_project.getFontManager().getCharWidth());
-                bv.setLineHeight(m_project.getFontManager().getLineHeight());
+                bv.setLineHeight(m_project.getFontManager().getLineSpacing());
             }
              * */
 
@@ -1075,7 +1079,7 @@ namespace Xyglo
 
             // Set up the text scrolling texture
             //
-            m_textScroller = new RenderTarget2D(m_graphics.GraphicsDevice, width, Convert.ToInt16(m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay)));
+            m_textScroller = new RenderTarget2D(m_graphics.GraphicsDevice, width, Convert.ToInt16(m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay)));
         }
 
         /// <summary>
@@ -1139,7 +1143,7 @@ namespace Xyglo
                 foreach (BufferView bv in m_project.getBufferViews())
                 {
                     bv.setCharWidth(m_project.getFontManager().getCharWidth());
-                    bv.setLineHeight(m_project.getFontManager().getLineHeight());
+                    bv.setLineHeight(m_project.getFontManager().getLineSpacing());
                 }
             */
 
@@ -3314,7 +3318,7 @@ namespace Xyglo
                 newPos = getFreeBufferViewPosition(m_newPosition); // use the m_newPosition for the direction
             }
 
-            BufferView newBV = new BufferView(m_project.getFontManager(), newFB, newPos, 0, 20, m_project.getFontManager().getCharWidth(), m_project.getFontManager().getLineHeight(), fileIndex, readOnly);
+            BufferView newBV = new BufferView(m_project.getFontManager(), newFB, newPos, 0, 20, m_project.getFontManager().getCharWidth(), m_project.getFontManager().getLineSpacing(), fileIndex, readOnly);
             newBV.setTailing(tailFile);
             m_project.addBufferView(newBV);
 
@@ -3325,6 +3329,10 @@ namespace Xyglo
             // We've add a new file so regenerate the model
             //
             generateTreeModel();
+
+            // Now generate highlighting
+            //
+            newFB.generateHighlighting(m_project.getSyntaxManager());
 
             return newBV;
         }
@@ -3702,7 +3710,7 @@ namespace Xyglo
             
             // If spinning then spin around current position based on time.
             //
-            if (spinning)
+            if (m_spinning)
             {
                 float angle = (float)gameTime.TotalGameTime.TotalSeconds;
                 m_eye.X = (float)Math.Cos(angle * .5f) * 12f;
@@ -3844,7 +3852,7 @@ namespace Xyglo
 
         protected void drawKinectInformation()
         {
-            /*
+#if GOT_KINECT
             if (m_kinectManager.gotUser())
             {
                 string skeletonPosition = m_kinectManager.getSkeletonDetails();
@@ -3860,7 +3868,7 @@ namespace Xyglo
                 //m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), filePercentString, new Vector2((int)filePercentStringXPos, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
                 m_overlaySpriteBatch.End();
             }
-             * */
+#endif // GOT_KINECT
         }
 
 
@@ -3871,53 +3879,28 @@ namespace Xyglo
         {
             string text = "";
 
-            //int fixedWidth = 0;
-            //List<FileBuffer> sortList = m_project.getFileBuffers().Sort(delegate(FileBuffer fb1, FileBuffer fb2) { return fb1.getFilepath().CompareTo(fb2.getFilepath()); } );
-
-            /*
-            m_project.getFileBuffers().ForEach(delegate(FileBuffer fb)
-            {
-                text += fb.getFilepath() + "\n";
-            }
-            );
-
-            m_project.getFileBuffers().Sort(delegate(FileBuffer fb1, FileBuffer fb2)
-            {
-                return fb1.getFilepath().CompareTo(fb2.getFilepath());
-            }
-            );
-
-            text = "";
-            m_project.getFileBuffers().ForEach(delegate(FileBuffer fb)
-            {
-                text += fb.getFilepath() + "\n";
-            }
-            );
-            */
-
-            //text = m_modelBuilder.getRootString() + "\n";
-
-            // Create an indent string
+            // The maximum width of an entry in the file list
             //
-            /*
-             * string indentString = "";
-            for(int i = 0; i < m_modelBuilder.getRootString().Length; i++)
-            {
-                indentString += " ";
-            }
-             * */
+            int maxWidth = ((int)((float)m_project.getSelectedBufferView().getBufferShowWidth() * 0.9f));
 
-            //Logger.logMsg("RETURN STRING = " + m_modelBuilder.getReturnString() + "END");
-            //string[] rS = m_modelBuilder.getReturnString().Split('\n');
-            //Logger.logMsg("rS has " + rS.Length + " elements");
-
+            // This is very simply modelled at the moment
+            //
             foreach(string fileName in m_modelBuilder.getReturnString().Split('\n'))
             {
                 // Ignore the last split
                 //
                 if (fileName != "")
                 {
-                    text += m_modelBuilder.getRootString() + fileName + "\n";
+                    if ((m_modelBuilder.getRootString().Length + fileName.Length) < maxWidth)
+                    {
+                        text += m_modelBuilder.getRootString() + fileName + "\n";
+                    }
+                    else
+                    {
+                        //text += m_project.buildFileString(m_modelBuilder.getRootString(), fileName, maxWidth) + "\n";
+                        text += m_project.estimateFileStringTruncation(m_modelBuilder.getRootString(), fileName, maxWidth) + "\n";
+                    }
+
                 }
             }
 
@@ -3927,8 +3910,12 @@ namespace Xyglo
 
             // Some key help
             //
-            drawTextOverlay(10, m_project.getSelectedBufferView().getBufferShowLength() + 6, "[Delete] - remove file from project", Color.LightCoral);
+            string deleteText = "[Delete] - remove file from project";
 
+            FilePosition fp =
+                new FilePosition(m_project.getSelectedBufferView().getBufferShowWidth()/2 - deleteText.Length/2,
+                                 m_project.getSelectedBufferView().getBufferShowLength() + 9);
+            drawTextOverlay(fp, deleteText, Color.LightCoral);
         }
 
         /// <summary>
@@ -4048,7 +4035,7 @@ namespace Xyglo
 
             // Convert lineHeight back to normal size by dividing by m_textSize modifier
             //
-            float yPos = m_graphics.GraphicsDevice.Viewport.Height - (m_project.getFontManager().getLineHeight() / m_project.getFontManager().getTextScale());
+            float yPos = m_graphics.GraphicsDevice.Viewport.Height - (m_project.getFontManager().getLineSpacing() / m_project.getFontManager().getTextScale());
 
             // Debug eye position
             //
@@ -4128,9 +4115,9 @@ namespace Xyglo
             int linesHigh = 6;
 
             startPosition.X = startPosition.X + m_project.getSelectedBufferView().getVisibleWidth() + m_project.getFontManager().getCharWidth() * 8;
-            startPosition.Y = startPosition.Y + (m_project.getSelectedBufferView().getVisibleHeight() / 2) - (m_project.getFontManager().getLineHeight() * linesHigh / 2);
+            startPosition.Y = startPosition.Y + (m_project.getSelectedBufferView().getVisibleHeight() / 2) - (m_project.getFontManager().getLineSpacing() * linesHigh / 2);
 
-            float height = m_project.getFontManager().getLineHeight() * linesHigh;
+            float height = m_project.getFontManager().getLineSpacing() * linesHigh;
             float width = m_project.getFontManager().getCharWidth() / 2;
 
             // Only fetch some new samples when this timespan has elapsed
@@ -4241,7 +4228,7 @@ namespace Xyglo
             // Blinks rate
             //
             Vector3 v1 = m_project.getSelectedBufferView().getCursorCoordinates();
-            v1.Y += m_project.getSelectedBufferView().getLineHeight();
+            v1.Y += m_project.getSelectedBufferView().getLineSpacing();
 
             Vector3 v2 = m_project.getSelectedBufferView().getCursorCoordinates();
             v2.X += 1;
@@ -4286,7 +4273,7 @@ namespace Xyglo
 
             // Draw header line
             //
-            m_spriteBatch.DrawString(m_project.getFontManager().getFont(), line, new Vector2((int)startPosition.X, (int)(startPosition.Y - m_project.getSelectedBufferView().getLineHeight() * 3)), Color.White, 0, lineOrigin, m_project.getFontManager().getTextScale() /* * 2.0f */, 0, 0);
+            m_spriteBatch.DrawString(m_project.getFontManager().getFont(), line, new Vector2((int)startPosition.X, (int)(startPosition.Y - m_project.getSelectedBufferView().getLineSpacing() * 3)), Color.White, 0, lineOrigin, m_project.getFontManager().getTextScale() /* * 2.0f */, 0, 0);
 
             // If we're using this method to position a new window only then don't show the directory chooser part..
             //
@@ -4335,7 +4322,7 @@ namespace Xyglo
                         }
                         else
                         {
-                            yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
+                            yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
                             line = "...";
                         }
 
@@ -4348,7 +4335,7 @@ namespace Xyglo
                              m_project.getFontManager().getTextScale() /* * 1.5f */,
                              0, 0);
 
-                        yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
+                        yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
                     }
 
                     lineNumber++;
@@ -4371,7 +4358,7 @@ namespace Xyglo
                 line = m_fileSystemView.getPath() + m_saveFileName;
                 m_spriteBatch.DrawString(m_project.getFontManager().getFont(), line, new Vector2((int)startPosition.X, (int)startPosition.Y), (m_fileSystemView.getHighlightIndex() == 0 ? m_highlightColour : dirColour), 0, lineOrigin, m_project.getFontManager().getTextScale() * 2.0f, 0, 0);
 
-                yPosition += m_project.getFontManager().getLineHeight() * 3.0f;
+                yPosition += m_project.getFontManager().getLineSpacing() * 3.0f;
 
                 foreach (DirectoryInfo d in dirInfo)
                 {
@@ -4384,7 +4371,7 @@ namespace Xyglo
                         }
                         else
                         {
-                            yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
+                            yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
                             line = "...";
                         }
 
@@ -4397,7 +4384,7 @@ namespace Xyglo
                              m_project.getFontManager().getTextScale() /* * 1.5f */,
                              0, 0);
 
-                        yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
+                        yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
                     }
 
                     lineNumber++;
@@ -4414,7 +4401,7 @@ namespace Xyglo
                         }
                         else
                         {
-                            yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
+                            yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
                             line = "...";
                         }
 
@@ -4427,7 +4414,7 @@ namespace Xyglo
                                                  m_project.getFontManager().getTextScale() /* * 1.5f */,
                                                  0, 0);
 
-                        yPosition += m_project.getFontManager().getLineHeight() /* * 1.5f */;
+                        yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
                     }
                     lineNumber++;
                 }
@@ -4454,7 +4441,7 @@ namespace Xyglo
         /// file/buffer we want to see at the current cursor position with highlighting as required.
         /// </summary>
         /// <param name="view"></param>
-        /// <param name="file"></param>
+        /// <param name="gameTime"></param>
         protected void drawFileBuffer(BufferView view, GameTime gameTime)
         {
             Color bufferColour = view.getTextColour();
@@ -4506,7 +4493,7 @@ namespace Xyglo
             // Draw the lines in the visible buffer
             //
             //for (int i = 0; i < view.getBufferShowLength(); i++)
-            while (yPosition < m_project.getFontManager().getLineHeight() * view.getBufferShowLength())
+            while (yPosition < m_project.getFontManager().getLineSpacing() * view.getBufferShowLength())
             {
                 line = "~";
 
@@ -4549,7 +4536,7 @@ namespace Xyglo
                                             // Remove the part of the line written and increment
                                             //
                                             splitLine = splitLine.Substring(view.getBufferShowWidth(), splitLine.Length - view.getBufferShowWidth());
-                                            yPosition += m_project.getFontManager().getLineHeight();
+                                            yPosition += m_project.getFontManager().getLineSpacing();
 
                                             // Reset line here as we'll quit out at the next loop and be written below
                                             line = splitLine;
@@ -4579,7 +4566,7 @@ namespace Xyglo
                     
                 }
 
-                yPosition += m_project.getFontManager().getLineHeight();
+                yPosition += m_project.getFontManager().getLineSpacing();
                 i++;
             }
 #endif
@@ -4591,7 +4578,7 @@ namespace Xyglo
                 for (int i = 0; i < lines.Count; i++)
                 {
                     m_spriteBatch.DrawString(m_project.getFontManager().getFont(), lines[i], new Vector2((int)viewSpaceTextPosition.X, (int)viewSpaceTextPosition.Y + yPosition), bufferColour, 0, Vector2.Zero, m_project.getFontManager().getTextScale(), 0, 0);
-                    yPosition += m_project.getFontManager().getLineHeight();
+                    yPosition += m_project.getFontManager().getLineSpacing();
                 }
             }
             else
@@ -4682,7 +4669,7 @@ namespace Xyglo
                             0);
                     }
 
-                    yPosition += m_project.getFontManager().getLineHeight();
+                    yPosition += m_project.getFontManager().getLineSpacing();
                 }
             }
 
@@ -4775,7 +4762,7 @@ namespace Xyglo
         protected void drawScrollbar(BufferView view)
         {
             Vector3 sbPos = view.getPosition();
-            float height = view.getBufferShowLength() * m_project.getFontManager().getLineHeight();
+            float height = view.getBufferShowLength() * m_project.getFontManager().getLineSpacing();
 
             Rectangle sbBackGround = new Rectangle(Convert.ToInt16(sbPos.X - m_project.getFontManager().getTextScale() * 30.0f),
                                                    Convert.ToInt16(sbPos.Y),
@@ -5036,7 +5023,7 @@ namespace Xyglo
 
             // Modify by height of the screen to centralise
             //
-            yPos += (m_graphics.GraphicsDevice.Viewport.Height / 2) - (m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay) * ( endLine - m_textScreenPositionY ) / 2);
+            yPos += (m_graphics.GraphicsDevice.Viewport.Height / 2) - (m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * ( endLine - m_textScreenPositionY ) / 2);
 
             // Adjust xPos
             //
@@ -5064,27 +5051,48 @@ namespace Xyglo
                 }
                 */
 
-                yPos += m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay);
+                yPos += m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay);
             }
 
-            // Draw a page header
+            // Draw a page header if we need to
             //
-            yPos = m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay) * 3;
+            yPos = m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * 3;
 
             double dPages = Math.Ceiling((float)m_textScreenLength/(float)m_project.getSelectedBufferView().getBufferShowLength());
             double cPage = Math.Ceiling((float)(m_textScreenPositionY + 1)/((float)m_project.getSelectedBufferView().getBufferShowLength()));
-            string pageString = "---- Page " + cPage + " of " + dPages + " ----";
 
-            // 3 character adjustment below
-            //
-            xPos = (m_graphics.GraphicsDevice.Viewport.Width / 2) - ((pageString.Length + 3 )* m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2);
+            if (dPages > 1)
+            {
+                string pageString = "---- Page " + cPage + " of " + dPages + " ----";
+
+                // 3 character adjustment below
+                //
+                xPos = (m_graphics.GraphicsDevice.Viewport.Width / 2) - ((pageString.Length + 3) * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2);
+
+                // Always Always Always render a string on an integer - never on a float as it looks terrible
+                //
+                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), pageString, new Vector2((int)xPos, (int)yPos), Color.White);
+            }
+            m_overlaySpriteBatch.End();
+
+        }
+
+        /// <summary>
+        /// Draw some overlay text at a given position
+        /// </summary>
+        /// <param name="xPos"></param>
+        /// <param name="yPos"></param>
+        /// <param name="text"></param>
+        /// <param name="textColour"></param>
+        protected void drawTextOverlay(int xPos, int yPos, string text, Color textColour)
+        {
+            m_overlaySpriteBatch.Begin();
 
             // Always Always Always render a string on an integer - never on a float as it looks terrible
             //
-            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), pageString, new Vector2((int)xPos, (int)yPos), Color.White);
+            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), text, new Vector2(xPos, yPos), textColour);
 
             m_overlaySpriteBatch.End();
-
         }
 
         /// <summary>
@@ -5093,18 +5101,12 @@ namespace Xyglo
         /// <param name="screenPosition"></param>
         /// <param name="text"></param>
         /// <param name="textColour"></param>
-        protected void drawTextOverlay(int xRow, int yCol, string text, Color textColour)
+        protected void drawTextOverlay(FilePosition position, string text, Color textColour)
         {
-            int xPos = (int)((float)xRow * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay));
-            int yPos = (int)((float)yCol * m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay));
+            int xPos = (int)((float)position.X * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay));
+            int yPos = (int)((float)position.Y * m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay));
 
-            m_overlaySpriteBatch.Begin();
-
-            // Always Always Always render a string on an integer - never on a float as it looks terrible
-            //
-            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), text, new Vector2(xPos, yPos), textColour);
-
-            m_overlaySpriteBatch.End();
+            drawTextOverlay(xPos, yPos, text, textColour);
         }
 
 
@@ -5119,7 +5121,7 @@ namespace Xyglo
 
             // Starting positions
             //
-            float yPos = 5 * m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay);
+            float yPos = 5 * m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay);
             float xPos = 10 * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay);
 
             // Start the spritebatch
@@ -5131,10 +5133,10 @@ namespace Xyglo
                 string text = "Edit configuration item";
 
                 m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), text, new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
-                yPos += m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay) * 2;
+                yPos += m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * 2;
 
                 m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), m_project.getConfigurationItem(m_configPosition).Name, new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
-                yPos += m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay);
+                yPos += m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay);
 
 
                 m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), m_editConfigurationItemValue, new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
@@ -5144,7 +5146,7 @@ namespace Xyglo
                 string text = "External Build Information";
 
                 m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), text, new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
-                yPos += m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay) * 2;
+                yPos += m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * 2;
 
                 // Write all the configuration items out - if we're highlight one of them then change
                 // the colour.
@@ -5161,7 +5163,7 @@ namespace Xyglo
                     */
 
                     m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), item, new Vector2((int)xPos, (int)yPos), (i == m_configPosition ? m_highlightColour : m_itemColour), 0, Vector2.Zero, 1.0f, 0, 0);
-                    yPos += m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay);
+                    yPos += m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay);
                 }
             }
 
@@ -5330,7 +5332,7 @@ namespace Xyglo
             }
 
             string time = string.Format("{0:yyyyMMdd HH:mm:ss}", DateTime.Now);
-            string logBody = "INF:" + time + ":" + (string)e.Data;
+            string logBody = "INF:" + time + ":" + e.Data;
 
             // Lock log file for writing
             //
@@ -5504,7 +5506,7 @@ namespace Xyglo
                 }
             }
             int xPosition = -(int)((scale * maxLength * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2));
-            int yPosition = -(int)((m_bannerStringList.Count * scale * m_project.getFontManager().getLineHeight(FontManager.FontType.Overlay) / 2));
+            int yPosition = -(int)((m_bannerStringList.Count * scale * m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) / 2));
 
             // Add half the editing window width and height
             //
@@ -5571,6 +5573,11 @@ namespace Xyglo
             e.Effect = System.Windows.Forms.DragDropEffects.Link;
         }
 
+        /// <summary>
+        /// Drag and drop target function - do some file and directory adding
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void friendlierDragDrop(object sender, System.Windows.Forms.DragEventArgs e)
         {
             Logger.logMsg("Friendlier::friendlierDragEnter() - drop event fired of type " + e.Data.ToString());
@@ -5587,21 +5594,32 @@ namespace Xyglo
                 List<string> filesAdded = new List<string>();
                 List<string> dirsAdded = new List<string>();
 
+                BufferView newView = null;
+
                 foreach (string newFile in files)
                 {
+                    
                     // Is this a directory or a file?
                     //
                     if (Directory.Exists(newFile))
                     {
-                        Logger.logMsg("Adding directory = " + newFile);
+                        Logger.logMsg("Friendlier::friendlierDragDrop() - adding directory = " + newFile);
+                        addNewDirectory(newFile);
                         dirsAdded.Add(newFile);
                     }
                     else
                     {
-                        Logger.logMsg("Adding file " + newFile);
-                        addNewFileBuffer(newFile);
+                        Logger.logMsg("Friendlier::friendlierDragDrop() - adding file " + newFile);
+                        newView = addNewFileBuffer(newFile);
                         filesAdded.Add(newFile);
                     }
+                }
+
+                // Always set to the last added BufferView
+                //
+                if (newView != null)
+                {
+                    setActiveBuffer(newView);
                 }
 
                 // Build an intelligible temporary message after we've done this work
@@ -5658,6 +5676,15 @@ namespace Xyglo
                     setTemporaryMessage(message, 5);
                 }
             }
+        }
+
+        /// <summary>
+        /// Add directory full of files recursively
+        /// </summary>
+        /// <param name="dirPath"></param>
+        protected void addNewDirectory(string dirPath)
+        {
+            Logger.logMsg("Friendlier::addNewDirectory() - adding directory " + dirPath);
         }
 
     }

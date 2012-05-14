@@ -5,7 +5,9 @@ using System.Windows;
 //using System.Windows.Controls;
 //using System.Windows.Media;
 //using System.Windows.Shapes;
+#if GOT_KINECT
 using Microsoft.Kinect;
+#endif // GOT_KINECT
 //using ShapeGame.Utils;
 
 namespace Xyglo
@@ -14,6 +16,7 @@ namespace Xyglo
 
     public class User
     {
+#if GOT_KINECT
         private const double BoneSize = 0.01;
         private const double HeadSize = 0.075;
         private const double HandSize = 0.03;
@@ -163,5 +166,6 @@ namespace Xyglo
             }
         }
             * */
+#endif // GOT_KINECT
     }
 }

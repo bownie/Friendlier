@@ -68,8 +68,8 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Bitstream Vera Sans Mono_overlay.spritefont">
-      <Name>Bitstream Vera Sans Mono_overlay</Name>
+    <Compile Include="Bitstream Vera Sans Mono_overlaySmallScreen.spritefont">
+      <Name>Bitstream Vera Sans Mono_overlaySmallScreen</Name>
       <Importer>FontDescriptionImporter</Importer>
       <Processor>FontDescriptionProcessor</Processor>
       <SubType>Designer</SubType>
@@ -102,9 +102,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Nuclex_Bitstream Vera Sans Mono_overlay.spritefont">
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_overlaySmallScreen.spritefont">
       <SubType>Designer</SubType>
-      <Name>Nuclex_Bitstream Vera Sans Mono_overlay</Name>
+      <Name>Nuclex_Bitstream Vera Sans Mono_overlaySmallScreen</Name>
       <Importer>FontDescriptionImporter</Importer>
       <Processor>NuclexSpriteFontDescriptionProcessor</Processor>
       <ProcessorParameters_Hinter>AutoHinter</ProcessorParameters_Hinter>
@@ -117,6 +117,22 @@
       <Importer>FontDescriptionImporter</Importer>
       <Processor>NuclexSpriteFontDescriptionProcessor</Processor>
       <ProcessorParameters_Hinter>AutoHinter</ProcessorParameters_Hinter>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_overlayBigScreen.spritefont">
+      <SubType>Designer</SubType>
+      <Name>Nuclex_Bitstream Vera Sans Mono_overlayBigScreen</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>FontDescriptionProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Bitstream Vera Sans Mono_overlayBigScreen.spritefont">
+      <SubType>Designer</SubType>
+      <Name>Bitstream Vera Sans Mono_overlayBigScreen</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>FontDescriptionProcessor</Processor>
     </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\$(XnaFrameworkVersion)\Microsoft.Xna.GameStudio.ContentPipeline.targets" />

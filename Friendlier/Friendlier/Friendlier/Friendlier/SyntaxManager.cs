@@ -120,6 +120,7 @@ namespace Xyglo
         /// a curly brace (say) and we want to work out what the indent of the next line should be based
         /// on context.
         /// </summary>
+        /// <param name="fileBuffer"></param>
         /// <param name="line"></param>
         /// <returns></returns>
         public int testIndentDepth(FileBuffer fileBuffer, int line)

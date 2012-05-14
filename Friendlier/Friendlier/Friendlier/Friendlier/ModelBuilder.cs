@@ -303,6 +303,7 @@ namespace Xyglo
             }
 
             //foreach (Dictionary<string, int> thing in m_vertexTargets.Where(item => item.Value == 0).ToDictionary(Dictionary<string, int>))
+            /*
             foreach(string value in m_vertexTargets.Keys)
             {
                 if (m_vertexTargets[value] == 0)
@@ -310,7 +311,7 @@ namespace Xyglo
                     Logger.logMsg("GOT NODE = " + value);
                 }
             }
-
+            */
             //m_returnString += vertex + "\n";
         }
 

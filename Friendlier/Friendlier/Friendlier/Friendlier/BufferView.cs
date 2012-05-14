@@ -372,7 +372,7 @@ namespace Xyglo
 
             // Only calculate a position if we have the information necessary to do it
             //
-            if (m_fontManager.getCharWidth() != 0 && m_fontManager.getLineHeight() != 0)
+            if (m_fontManager.getCharWidth() != 0 && m_fontManager.getLineSpacing() != 0)
             {
                 m_position = rootBV.calculateRelativePosition(position);
             }
@@ -609,7 +609,7 @@ namespace Xyglo
         /// <returns></returns>
         public float getVisibleHeight()
         {
-            return (m_bufferShowLength * m_fontManager.getLineHeight());
+            return (m_bufferShowLength * m_fontManager.getLineSpacing());
         }
 
         /// <summary>
@@ -620,7 +620,7 @@ namespace Xyglo
             // Return the cursor coordinates taking into account paging using m_bufferShowStartY
             //
             m_cursorCoordinates.X = m_position.X + (m_cursorPosition.X - m_bufferShowStartX) * m_fontManager.getCharWidth();
-            m_cursorCoordinates.Y = m_position.Y + (m_cursorPosition.Y - m_bufferShowStartY) * m_fontManager.getLineHeight();
+            m_cursorCoordinates.Y = m_position.Y + (m_cursorPosition.Y - m_bufferShowStartY) * m_fontManager.getLineSpacing();
 
             return m_cursorCoordinates;
         }
@@ -755,6 +755,38 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Get the first non-space on a given line
+        /// </summary>
+        /// <param name="line"></param>
+        /// <returns></returns>
+        public int getFirstNonSpace(int lineNumber)
+        {
+            if (lineNumber < 0 || lineNumber >= m_fileBuffer.getLineCount())
+            {
+                return -1;
+            }
+
+            string line = m_fileBuffer.getLine(lineNumber);
+
+            int pos = 0;
+            while (pos < line.Length)
+            {
+                if (!Char.IsWhiteSpace(line[pos]))
+                {
+                    break;
+                }
+                pos++;
+            }
+
+            if (pos == line.Length)
+            {
+                return -1;
+            }
+
+            return pos;
+        }
+
+        /// <summary>
         /// Return the position of the first non space character on the current line
         /// </summary>
         /// <returns></returns>
@@ -845,9 +877,9 @@ namespace Xyglo
         /// Get the line height
         /// </summary>
         /// <returns></returns>
-        public float getLineHeight()
+        public float getLineSpacing()
         {
-            return m_fontManager.getLineHeight();
+            return m_fontManager.getLineSpacing();
         }
 
         /*
@@ -912,7 +944,7 @@ namespace Xyglo
         /// </summary>
         public void calculateMyRelativePosition()
         {
-            if (m_fontManager.getCharWidth() == 0 || m_fontManager.getLineHeight() == 0)
+            if (m_fontManager.getCharWidth() == 0 || m_fontManager.getLineSpacing() == 0)
             {
                 return;
             }
@@ -933,7 +965,7 @@ namespace Xyglo
         /// <returns></returns>
         public Vector3 calculateRelativePosition(BufferPosition position)
         {
-            if (m_fontManager.getLineHeight() == 0 || m_fontManager.getCharWidth() == 0)
+            if (m_fontManager.getLineSpacing() == 0 || m_fontManager.getCharWidth() == 0)
             {
                 throw new Exception("BufferView::calculateRelativePosition() - some of our basic settings are zero - cannot calculate");
             }
@@ -941,10 +973,10 @@ namespace Xyglo
             switch (position)
             {
                 case BufferPosition.Above:
-                    return m_position - (new Vector3(0.0f, (m_bufferShowLength + 10) * m_fontManager.getLineHeight(), 0.0f));
+                    return m_position - (new Vector3(0.0f, (m_bufferShowLength + 10) * m_fontManager.getLineSpacing(), 0.0f));
 
                 case BufferPosition.Below:
-                    return m_position + (new Vector3(0.0f, (m_bufferShowLength + 10) * m_fontManager.getLineHeight(), 0.0f));
+                    return m_position + (new Vector3(0.0f, (m_bufferShowLength + 10) * m_fontManager.getLineSpacing(), 0.0f));
 
                 case BufferPosition.Left:
                     return m_position - (new Vector3(m_fontManager.getCharWidth() * (m_bufferShowWidth + 15), 0.0f, 0.0f));
@@ -966,7 +998,7 @@ namespace Xyglo
             Vector3 rV = m_position;
             rV.Y = -rV.Y; // insert Y
             rV.X += m_fontManager.getCharWidth() * m_bufferShowWidth / 2;
-            rV.Y -= m_fontManager.getLineHeight() * m_bufferShowLength / 2;
+            rV.Y -= m_fontManager.getLineSpacing() * m_bufferShowLength / 2;
             rV.Z = 0.0f;
             return rV;
         }
@@ -980,7 +1012,7 @@ namespace Xyglo
             Vector3 rV = m_position;
             rV.Y = -rV.Y; // invert Y
             rV.X += m_fontManager.getCharWidth() * m_bufferShowWidth / 2;
-            rV.Y -= m_fontManager.getLineHeight() * m_bufferShowLength / 2;
+            rV.Y -= m_fontManager.getLineSpacing() * m_bufferShowLength / 2;
             rV.Z += 600.0f;
             return rV;
         }
@@ -1032,7 +1064,7 @@ namespace Xyglo
 
             rV.Y = -rV.Y; // invert Y
             rV.X += m_fontManager.getCharWidth() * m_bufferShowWidth / 2;
-            rV.Y -= m_fontManager.getLineHeight() * m_bufferShowLength / 2;
+            rV.Y -= m_fontManager.getLineSpacing() * m_bufferShowLength / 2;
             rV.Z = zoomLevel;
 
 #if QUADRANT_ZOOMING
@@ -1103,12 +1135,12 @@ namespace Xyglo
                 // Set start position
                 //
                 startPos.X = m_position.X + (m_highlightStart.X - m_bufferShowStartX) * m_fontManager.getCharWidth();
-                startPos.Y = m_position.Y + (m_highlightStart.Y - m_bufferShowStartY) * m_fontManager.getLineHeight();
+                startPos.Y = m_position.Y + (m_highlightStart.Y - m_bufferShowStartY) * m_fontManager.getLineSpacing();
 
                 // Set end position
                 //
                 endPos.X = m_position.X + (m_highlightEnd.X - m_bufferShowStartX) * m_fontManager.getCharWidth();
-                endPos.Y = m_position.Y + (m_highlightEnd.Y + 1 - m_bufferShowStartY) * m_fontManager.getLineHeight();
+                endPos.Y = m_position.Y + (m_highlightEnd.Y + 1 - m_bufferShowStartY) * m_fontManager.getLineSpacing();
 
                 // Adjust ends
                 //
@@ -1172,8 +1204,8 @@ namespace Xyglo
                         endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_fontManager.getCharWidth();
                     }
 
-                    startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_fontManager.getLineHeight();
-                    endPos.Y = m_position.Y + (i + 1 - m_bufferShowStartY) * m_fontManager.getLineHeight();
+                    startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_fontManager.getLineSpacing();
+                    endPos.Y = m_position.Y + (i + 1 - m_bufferShowStartY) * m_fontManager.getLineSpacing();
 
                     // If we have nothing highlighted in the line then indicate this with a
                     // half box line
@@ -1255,8 +1287,8 @@ namespace Xyglo
                         endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_fontManager.getCharWidth();
                     }
 
-                    startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_fontManager.getLineHeight();
-                    endPos.Y = m_position.Y + (i + 1 - m_bufferShowStartY) * m_fontManager.getLineHeight();
+                    startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_fontManager.getLineSpacing();
+                    endPos.Y = m_position.Y + (i + 1 - m_bufferShowStartY) * m_fontManager.getLineSpacing();
 
                     // If we have nothing highlighted in the line then indicate this with a negative
                     // half box line
@@ -1476,6 +1508,29 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Get the current implied indent level
+        /// </summary>
+        /// <returns></returns>
+        protected string getImpliedIndent(int line)
+        {
+            string rs = "";
+            int lineBefore = getFirstNonSpace(line);
+            int lineAfter = getFirstNonSpace(line + 1);
+
+            if (lineBefore != -1 && lineAfter != -1 && lineBefore == lineAfter)
+            {
+                // Build indent
+                //
+                for (int i = 0; i < lineBefore; i++)
+                {
+                    rs += " ";
+                }
+            }
+
+            return rs;
+        }
+
+        /// <summary>
         /// Insert a new line at the cursor
         /// </summary>
         public void insertNewLine(string autoindent, SyntaxManager syntaxManager)
@@ -1503,9 +1558,21 @@ namespace Xyglo
                     }
                 }*/
 
-                // Use the Syntax Manager to fetch the indent
+                // Use the Syntax Manager to fetch an indent
                 //
                 indent = syntaxManager.getIndent(m_cursorPosition);
+            }
+
+            // Test current line for previous and next line indent levels - if they're the
+            // same we should also use that level in preference to the one in SyntaxManager
+            //
+            string impliedIndent = getImpliedIndent(m_cursorPosition.Y);
+
+            // If the implied indent is different we prefer that
+            //
+            if (impliedIndent != "" && impliedIndent.Length > indent.Length)
+            {
+                indent = impliedIndent;
             }
 
             m_cursorPosition = m_fileBuffer.insertNewLine(m_cursorPosition, indent);
