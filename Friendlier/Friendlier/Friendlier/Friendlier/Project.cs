@@ -1578,6 +1578,59 @@ namespace Xyglo
             return dirPath;
         }
 
+        /// <summary>
+        /// Testing whether arrived in bounding sphere
+        /// </summary>
+        protected BoundingSphere m_testArrived = new BoundingSphere();
+
+        /// <summary>
+        /// Test result
+        /// </summary>
+        protected ContainmentType m_testResult;
+
+        /// <summary>
+        /// Search our active BufferViews and see if the current eye position is over anything new
+        /// </summary>
+        /// <param name="eyePosition"></param>
+        /// <returns></returns>
+        public BufferView testNearBufferView(Vector3 eyePosition)
+        {
+            Vector3 testPosition;
+            foreach (BufferView bv in m_bufferViews)
+            {
+                // Get the eye position from the BufferView but ignore the Z component
+                //
+                testPosition = bv.getEyePosition();
+                testPosition.Z = eyePosition.Z;
+
+                m_testArrived.Center = testPosition;
+                m_testArrived.Radius = 200.0f; // scale this by the bufferview sizes
+                m_testArrived.Contains(ref eyePosition, out m_testResult);
+
+                if (m_testResult == ContainmentType.Contains)
+                {
+                    return bv;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Check to see if a Ray passes through one of our BufferViews
+        /// </summary>
+        /// <param name="ray"></param>
+        /// <returns></returns>
+        public BufferView testRayIntersection(Ray ray)
+        {
+            foreach (BufferView bv in m_bufferViews)
+            {
+                float? intersection = ray.Intersects(bv.getBoundingBox());
+
+                if (intersection != null) return bv;
+            }
+            return null;
+        }
 
     }
 

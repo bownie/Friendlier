@@ -686,7 +686,7 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Set position that we're showing the BufferView from
+        /// Set position that we're showing the BufferView from.
         /// </summary>
         /// <param name="bss"></param>
         /// <returns></returns>
@@ -700,6 +700,10 @@ namespace Xyglo
             {
                 m_bufferShowStartY = bss;
             }
+
+            // Ensure that the cursor is still on the page
+            //
+            keepVisible();
         }
 
         /// <summary>
@@ -2124,6 +2128,15 @@ namespace Xyglo
             rP.X += getVisibleWidth();
             rP.Y += getVisibleHeight();
             return rP;
+        }
+
+        /// <summary>
+        /// Bounding box defined by getTopLeft() and getBottomRight() methods
+        /// </summary>
+        /// <returns></returns>
+        public BoundingBox getBoundingBox()
+        {
+            return new BoundingBox(getTopLeft(), getBottomRight());
         }
 
         /// <summary>

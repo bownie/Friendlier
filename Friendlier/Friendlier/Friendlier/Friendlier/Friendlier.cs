@@ -33,7 +33,8 @@ namespace Xyglo
         PositionScreenCopy, // where to position a copied FileBuffer/BufferView
         FindText,           // Enter some text to find
         ManageProject,      // View and edit the files in our project
-        SplashScreen        // What we see when we're arriving in the application
+        SplashScreen,       // What we see when we're arriving in the application
+        DiffPicker          // Mode for picking two files for differences checking
     };
 
 
@@ -339,7 +340,7 @@ namespace Xyglo
         /// <summary>
         /// Greyed out colour for background text
         /// </summary>
-        protected Color m_greyedColour = new Color(50, 50, 50, 50);
+        protected Color m_greyedColour = new Color(30, 30, 30, 50);
 
         /// <summary>
         /// User help string
@@ -1562,16 +1563,15 @@ namespace Xyglo
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
-
             // Set the cursor to something useful
             //
-            System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.IBeam;
+            //System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.IBeam;
 
             // Set the startup banner on the first pass through
             //
             if (m_gameTime == null)
             {
-                startBanner(gameTime, "Friendlier\nv1.0 alpha 1", 5);
+                startBanner(gameTime, VersionInformation.getProductName() + "\n" + VersionInformation.getProductVersion(), 5);
             }
 
             // Store gameTime
@@ -1588,8 +1588,34 @@ namespace Xyglo
             {
                 Logger.logMsg("Friendlier::Update() - mouse wheel value now = " + Mouse.GetState().ScrollWheelValue);
 
-                float newZoomLevel = m_zoomLevel + (m_zoomStep * ((m_lastMouseWheelValue - Mouse.GetState().ScrollWheelValue) / 120.0f));
-                setZoomLevel(newZoomLevel);
+                // If shift down then scroll current view - otherwise zoom in/out
+                //
+                if (m_shiftDown)
+                {
+                    int linesDown = -(int)((m_lastMouseWheelValue - Mouse.GetState().ScrollWheelValue) / 120.0f);
+
+                    if (linesDown < 0)
+                    {
+                        for (int i = 0; i < -linesDown; i++)
+                        {
+                            m_project.getSelectedBufferView().moveCursorDown(false);
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < linesDown; i++)
+                        {
+                            m_project.getSelectedBufferView().moveCursorUp(false);
+                        }
+                    }
+
+                    //m_project.getSelectedBufferView().setBufferShowStartY(m_project.getSelectedBufferView().getBufferShowStartY() + linesDown);
+                }
+                else
+                {
+                    float newZoomLevel = m_zoomLevel + (m_zoomStep * ((m_lastMouseWheelValue - Mouse.GetState().ScrollWheelValue) / 120.0f));
+                    setZoomLevel(newZoomLevel);
+                }
 
                 m_lastMouseWheelValue = Mouse.GetState().ScrollWheelValue;
             }
@@ -1622,7 +1648,7 @@ namespace Xyglo
                 // Depends where we are in the process here - check state
 
                 Vector3 newPosition = m_eye;
-                newPosition.Z = 500.0f;
+                //newPosition.Z = 500.0f;
 
                 switch (m_state)
                 {
@@ -2598,6 +2624,11 @@ namespace Xyglo
                     else if (checkKeyState(Keys.C, gameTime)) // Close current BufferView
                     {
                         closeActiveBuffer(gameTime);
+                    }
+                    else if (checkKeyState(Keys.D, gameTime))
+                    {
+                        m_state = FriendlierState.DiffPicker;
+                        setTemporaryMessage("Pick a BufferView to diff against", 10);
                     }
                     else if (checkKeyState(Keys.M, gameTime))
                     {
@@ -3581,8 +3612,8 @@ namespace Xyglo
             int mouseX = mouseState.X;
             int mouseY = mouseState.Y;
 
-            Vector3 nearsource = new Vector3((float)mouseX, (float)mouseY, 0f);
-            Vector3 farsource = new Vector3((float)mouseX, (float)mouseY, 1f);
+            Vector3 nearsource = new Vector3((float)mouseX, (float)mouseY, m_zoomLevel);
+            Vector3 farsource = new Vector3((float)mouseX, (float)mouseY, -m_zoomLevel);
 
             Matrix world = Matrix.CreateTranslation(0, 0, 0);
 
@@ -3591,6 +3622,7 @@ namespace Xyglo
             Vector3 farPoint = m_graphics.GraphicsDevice.Viewport.Unproject(farsource, m_projection, m_viewMatrix, world);
 
             // Create a ray from the near clip plane to the far clip plane.
+            //
             Vector3 direction = farPoint - nearPoint;
             direction.Normalize();
             Ray pickRay = new Ray(nearPoint, direction);
@@ -3610,26 +3642,51 @@ namespace Xyglo
         protected TimeSpan m_lastClickTime = TimeSpan.Zero;
 
         /// <summary>
+        /// Last position of the click
+        /// </summary>
+        protected Vector3 m_lastClickEyePosition = Vector3.Zero;
+
+        /// <summary>
         /// Handle mouse clicks
         /// </summary>
         /// <param name="gameTime"></param>
         public void checkMouseClick(GameTime gameTime)
         {
             MouseState mouseState = Mouse.GetState();
+
+            if (IsActive == false) return;
+
+            // Left button
+            //
             if (mouseState.LeftButton == ButtonState.Pressed)
             {
                 // Get the pick ray
                 //
                 Ray pickRay = GetPickRay();
+                int mouseX = mouseState.X;
+                int mouseY = mouseState.Y;
 
                 if (m_lastMouseState.LeftButton == ButtonState.Released)
                 {
-                    m_lastClickPosition = pickRay.Position;
+                    //m_lastClickPosition = pickRay.Position;
+
+                    m_lastClickPosition.X = mouseX;
+                    m_lastClickPosition.Y = mouseY;
+                    m_lastClickPosition.Z = 0;
+
                     m_lastClickVector = pickRay.Direction;
                     m_lastClickTime = gameTime.TotalGameTime;
+
+                    m_lastClickEyePosition = m_eye;// m_project.getSelectedBufferView().getEyePosition(m_zoomLevel);
+
+                    Logger.logMsg("Friender::checkMouseClick() - mouse clicked");
                 }
                 else
                 {
+                    // Set cursor to a hand
+                    //
+                    System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.Hand;
+
                     // We are dragging - work out the rate
                     //
                     double deltaX = pickRay.Position.X - m_lastClickPosition.X;
@@ -3640,42 +3697,75 @@ namespace Xyglo
                     double dragVector = Math.Sqrt(deltaX * deltaX + deltaY * deltaY);
                     double dragAngle = Math.Atan2(deltaY, deltaX);
 
-                    //Logger.logMsg("Friendlier::checkMouseClick() - Pick Ray X=" + pickRay.Position.X + ", Y=" + pickRay.Position.Y + ", Z=" + pickRay.Position.Z);
+                    Vector3 nowPosition = Vector3.Zero;
+                    nowPosition.X = mouseState.X;
+                    nowPosition.Y = mouseState.Y;
+                    nowPosition.Z = 0;
 
+                    Vector3 diffPosition = (nowPosition - m_lastClickPosition);
+                    diffPosition.Z = 0;
 
-                    //Logger.logMsg("Friendlier::checkMouseClick() - dragVector = " + dragVector);
-                    //Logger.logMsg("Friendlier::checkMouseClick() - dragAngle = " + dragAngle);
-                }
+                    Logger.logMsg("Friendlier::checkMouseClick() - mouse dragged: X = " + diffPosition.X + ", Y = " + diffPosition.Y);
+                     
+                    m_eye.X = m_lastClickEyePosition.X - diffPosition.X * 1.4f;
+                    m_eye.Y = m_lastClickEyePosition.Y + diffPosition.Y * 1.4f;
 
-                /*
-                //Nullable<float> result = pickRay.Intersects(triangleBB);
-                int selectedIndex = -1;
-                float selectedDistance = float.MaxValue;
-                for (int i = 0; i < worldObjects.Length; i++)
-                {
-                    worldObjects[i].texture2D = sphereTexture;
-                    BoundingSphere sphere = worldObjects[i].model.Meshes[0].BoundingSphere;
-                    sphere.Center = worldObjects[i].position;
-                    Nullable<float> result = pickRay.Intersects(sphere);
-                    if (result.HasValue == true)
+                    // If shift isn't down then we pan with the eye movement
+                    //
+                    if (!m_shiftDown)
                     {
-                        if (result.Value < selectedDistance)
-                        {
-                            selectedIndex = i;
-                            selectedDistance = result.Value;
-                        }
+                        m_target.X = m_eye.X;
+                        m_target.Y = m_eye.Y;
                     }
                 }
-                if (selectedIndex > -1)
-                {
-                    worldObjects[selectedIndex].texture2D = selectedTexture;
-                }
-                */
+
             } else if (mouseState.LeftButton == ButtonState.Released)
             {
                 if (m_lastMouseState.LeftButton == ButtonState.Pressed) // Have just released
                 {
-                    m_lastClickPosition = Vector3.Zero;
+                    if ((gameTime.TotalGameTime - m_lastClickTime).TotalSeconds < 0.15f)
+                    {
+                        Logger.logMsg("Friendlier::checkMouseClick() - quick click");
+
+                        // Convert mouse position to cursor position
+                        //
+                        Logger.logMsg("MOUSE X = " + mouseState.X + ", Y = " + mouseState.Y);
+
+                        BufferView testBV = m_project.testRayIntersection(GetPickRay());
+
+                        if (testBV != null)
+                        {
+                            Logger.logMsg("RAY INTERSECTS A BV");
+                        }
+                    }
+                    else
+                    {
+                        Logger.logMsg("Friendlier::checkMouseClick() - mouse released");
+
+                        // At this point test to see which bufferview centre we're nearest and if we're near a
+                        // different one then switch to that.
+                        //
+                        BufferView newView = m_project.testNearBufferView(m_eye);
+
+                        if (newView != null)
+                        {
+                            Logger.logMsg("Friendlier::checkMouseClick() - switching to new buffer view");
+                            setActiveBuffer(newView);
+                        }
+                        else
+                        {
+                            // Flyback to our existing view
+                            //
+                            //m_eye = m_lastClickEyePosition;
+                            //m_target.X = m_lastClickEyePosition.X;
+                            //m_target.Y = m_lastClickEyePosition.Y;
+                            flyToPosition(m_lastClickEyePosition);
+                        }
+
+                        // Set default cursor back
+                        //
+                        System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.Default;
+                    }
                 }
             }
 
@@ -3750,17 +3840,17 @@ namespace Xyglo
 
             // These modes make quality differences so watch the options
             //
-            if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
-            {
+            //if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
+            //{
                 //m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
                 m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
                 //m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, m_basicEffect);
                 
-            }
-            else
-            {
-                m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Additive, SamplerState.LinearClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-            }
+            //}
+            //else
+            //{
+                //m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Additive, SamplerState.LinearClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+            //}
 
             // In the manage project mode we zoom off into the distance
             //
@@ -4481,98 +4571,12 @@ namespace Xyglo
                 }
             }
 
-            // Pre-render any wrapped code so we know how many lines we need to show.
+            // We do tailiing and read only files here
             //
-
-#if WRAP_ATTEMPT
-            // i is a line counter for reading from the file - because we can wrap rows we
-            // need to keep it separate from yPosition
-            // 
-            int i = 0;
-
-            // Draw the lines in the visible buffer
-            //
-            //for (int i = 0; i < view.getBufferShowLength(); i++)
-            while (yPosition < m_project.getFontManager().getLineSpacing() * view.getBufferShowLength())
-            {
-                line = "~";
-
-                if (view.getFileBuffer() != null)
-                {
-                    if (i + bufPos < view.getFileBuffer().getLineCount() && view.getFileBuffer().getLineCount() != 0)
-                    {
-                        // Fetch the line
-                        //
-                        fetchLine = view.getFileBuffer().getLine(i + bufPos);
-
-                        //Logger.logMsg("FETCHLINE = " + fetchLine);
-
-                        // Now ensure that we're only seeing the segment of the line that the cursor is in
-                        // as it could be beyond the length of the window.
-                        //
-                        if (fetchLine.Length > view.getBufferShowStartX())
-                        {
-                            if (view.isReadOnly()) // wrap long lines
-                            {
-                                if (fetchLine.Length < view.getBufferShowWidth())
-                                {
-                                    m_spriteBatch.DrawString(m_project.getFontManager().getFont(), fetchLine, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), bufferColour, 0, lineOrigin, m_project.getFontManager().getTextScale() * 1.0f, 0, 0);
-                                }
-                                else
-                                {
-                                    string splitLine = fetchLine;
-
-                                    while (splitLine.Length >= view.getBufferShowWidth())
-                                    {
-                                        // Split on window width and draw
-                                        //
-                                        line = splitLine.Substring(0, Math.Min(view.getBufferShowWidth(), splitLine.Length));
-                                        m_spriteBatch.DrawString(m_project.getFontManager().getFont(), line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), bufferColour, 0, lineOrigin, m_project.getFontManager().getTextScale() * 1.0f, 0, 0);
-
-                                        // If the line is still wrapping then cut off the piece we've just printed and go around again
-                                        //
-                                        if (splitLine.Length >= view.getBufferShowWidth())
-                                        {
-                                            // Remove the part of the line written and increment
-                                            //
-                                            splitLine = splitLine.Substring(view.getBufferShowWidth(), splitLine.Length - view.getBufferShowWidth());
-                                            yPosition += m_project.getFontManager().getLineSpacing();
-
-                                            // Reset line here as we'll quit out at the next loop and be written below
-                                            line = splitLine;
-                                        }
-                                    }
-                                }
-                            }
-                            else // only display a subset of the line if it's over the visible width
-                            {
-                                line = fetchLine.Substring(view.getBufferShowStartX(), Math.Min(fetchLine.Length - view.getBufferShowStartX(), view.getBufferShowWidth()));
-
-                                // Wrap if read only
-                                //
-                                if (fetchLine.Length - view.getBufferShowStartX() > view.getBufferShowWidth())
-                                {
-                                    line += "  [>]";
-                                }
-                            }
-                        }
-                        else
-                        {
-                            line = "";
-                        }
-
-                        m_spriteBatch.DrawString(m_project.getFontManager().getFont(), line, new Vector2(viewSpaceTextPosition.X, viewSpaceTextPosition.Y + yPosition), bufferColour, 0, lineOrigin, m_project.getFontManager().getTextScale() * 1.0f, 0, 0);
-                    }
-                    
-                }
-
-                yPosition += m_project.getFontManager().getLineSpacing();
-                i++;
-            }
-#endif
-
             if (view.isTailing() && view.isReadOnly())
             {
+                // We let the view do the hard work with the wrapped lines
+                //
                 List<string> lines = view.getWrappedEndofBuffer();
 
                 for (int i = 0; i < lines.Count; i++)
@@ -4583,10 +4587,6 @@ namespace Xyglo
             }
             else
             {
-                // Get a whole highlight list
-                //
-                //List<Highlight> highlightList = view.getVisibleHighlighting();
-
                 for (int i = 0; i < view.getBufferShowLength(); i++)
                 {
                     line = "~";
@@ -4625,10 +4625,8 @@ namespace Xyglo
 
                     // Only do syntax highlighting when we're not greyed out
                     //
-                    
-
-                    // !!! Could be performance problem here
-
+                    // !!! Could be performance problem here with highlights
+                    //
                     if (highlights.Count > 0 && bufferColour != m_greyedColour)
                     {
                         highlights.Sort();
@@ -4672,8 +4670,6 @@ namespace Xyglo
                     yPosition += m_project.getFontManager().getLineSpacing();
                 }
             }
-
-            //Logger.logMsg("TEXT SCALE = " + m_project.getFontManager().getTextScale());
 
             // Draw overlaid ID on this window if we're far enough away to use it
             //
@@ -4942,7 +4938,9 @@ namespace Xyglo
             //
             string text = "";
 
-            text += "Current file path  : " + m_project.getSelectedBufferView().getFileBuffer().getFilepath() + "\n";
+            string truncFileName = m_project.estimateFileStringTruncation("", m_project.getSelectedBufferView().getFileBuffer().getFilepath(), 75);
+
+            text += truncFileName + "\n\n";
             text += "File status        : " + (m_project.getSelectedBufferView().getFileBuffer().isWriteable() ? "Writeable " : "Read Only") + "\n";
             text += "File lines         : " + m_project.getSelectedBufferView().getFileBuffer().getLineCount() + "\n";
             text += "File created       : " + m_project.getSelectedBufferView().getFileBuffer().getCreationSystemTime().ToString() +"\n";
@@ -4967,7 +4965,7 @@ namespace Xyglo
             
             // Draw screen of a fixed width
             //
-            drawTextScreen(gameTime, text, 60);
+            drawTextScreen(gameTime, text, 75);
         }
 
         /// <summary>

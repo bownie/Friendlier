@@ -110,6 +110,7 @@
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Speech" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml">
       <Private>False</Private>
@@ -131,6 +132,7 @@
     <Compile Include="Command.cs" />
     <Compile Include="CppSyntaxManager.cs" />
     <Compile Include="DeleteTextCommand.cs" />
+    <Compile Include="DiffMatchPatch.cs" />
     <Compile Include="FileBuffer.cs" />
     <Compile Include="FilePosition.cs" />
     <Compile Include="FileSystemFile.cs" />
@@ -165,6 +167,7 @@
     <Compile Include="VersionInformation.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="ACKNOWLEDGEMENTS.txt" />
     <Content Include="TODO.txt" />
     <Content Include="xyglo.ico" />
     <Content Include="Xyglo.png" />

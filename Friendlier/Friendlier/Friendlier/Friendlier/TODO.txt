@@ -5,6 +5,16 @@ USE CASES
 - The journalist - writing a story, researching
 
 
+
+-- BUILD and USABILITY FEATURES
+
+- click and drag with mouse to change windows [DONE]
+- mouse highlight/identify bufferview and position from mouse
+- click on error lines to open files and zap to line
+- project management (adding, changing projects)
+
+
+
 TODO
 ----
 

@@ -25,7 +25,7 @@ namespace Xyglo
         /// <summary>
         /// Version of this software
         /// </summary>
-        static private string m_version = "1.0.0 Alpha 1";
+        static private string m_version = "1.0.0 Alpha 2b";
 
         /// <summary>
         /// Email to report bugs at
