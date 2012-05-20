@@ -485,7 +485,7 @@ namespace Xyglo
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
         /// <summary>
-        /// Default constructor
+        /// f constructor
         /// </summary>
         public Friendlier()
         {
@@ -3613,13 +3613,15 @@ namespace Xyglo
             int mouseY = mouseState.Y;
 
             Vector3 nearsource = new Vector3((float)mouseX, (float)mouseY, m_zoomLevel);
-            Vector3 farsource = new Vector3((float)mouseX, (float)mouseY, -m_zoomLevel);
+            Vector3 farsource = new Vector3((float)mouseX, (float)mouseY, 0);
 
-            Matrix world = Matrix.CreateTranslation(0, 0, 0);
-
+            Matrix world = Matrix.CreateScale(1, -1, 1); //Matrix.CreateTranslation(0, 0, 0);
+            
             Vector3 nearPoint = m_graphics.GraphicsDevice.Viewport.Unproject(nearsource, m_projection, m_viewMatrix, world);
-
             Vector3 farPoint = m_graphics.GraphicsDevice.Viewport.Unproject(farsource, m_projection, m_viewMatrix, world);
+
+            //farPoint.X = nearPoint.X;
+            //farPoint.Y = nearPoint.Y;
 
             // Create a ray from the near clip plane to the far clip plane.
             //
@@ -3706,9 +3708,10 @@ namespace Xyglo
                     diffPosition.Z = 0;
 
                     Logger.logMsg("Friendlier::checkMouseClick() - mouse dragged: X = " + diffPosition.X + ", Y = " + diffPosition.Y);
-                     
-                    m_eye.X = m_lastClickEyePosition.X - diffPosition.X * 1.4f;
-                    m_eye.Y = m_lastClickEyePosition.Y + diffPosition.Y * 1.4f;
+
+                    float multiplier = m_zoomLevel / m_zoomLevel;
+                    m_eye.X = m_lastClickEyePosition.X - diffPosition.X * multiplier;
+                    m_eye.Y = m_lastClickEyePosition.Y + diffPosition.Y * multiplier;
 
                     // If shift isn't down then we pan with the eye movement
                     //
@@ -3731,11 +3734,20 @@ namespace Xyglo
                         //
                         Logger.logMsg("MOUSE X = " + mouseState.X + ", Y = " + mouseState.Y);
 
-                        BufferView testBV = m_project.testRayIntersection(GetPickRay());
+                        Pair<BufferView, FilePosition> testFind = m_project.testRayIntersection(GetPickRay());
 
-                        if (testBV != null)
+                        if (testFind.First != null && testFind.Second != null)
                         {
-                            Logger.logMsg("RAY INTERSECTS A BV");
+                            BufferView bv = (BufferView)testFind.First;
+                            FilePosition fp = (FilePosition)testFind.Second;
+
+                            if (bv.testCursorPosition(fp))
+                            {
+                                setActiveBuffer(bv);
+                                
+                                bv.mouseCursorTo(m_shiftDown, fp);
+                                //Logger.logMsg("RAY INTERSECTS A BV");
+                            }
                         }
                     }
                     else
@@ -3814,7 +3826,6 @@ namespace Xyglo
             // http://www.toymaker.info/Games/XNA/html/xna_camera.html
             // 
             m_viewMatrix = Matrix.CreateLookAt(m_eye, m_target, Vector3.Up);
-
             m_projection = Matrix.CreateTranslation(-0.5f, -0.5f, 0) * Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 10000f);
 
             m_basicEffect.World = Matrix.CreateScale(1, -1, 1); // *Matrix.CreateTranslation(textPosition);
@@ -3872,8 +3883,10 @@ namespace Xyglo
                 //
                 if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen || m_state == FriendlierState.PositionScreenOpen || m_state == FriendlierState.PositionScreenNew || m_state == FriendlierState.PositionScreenCopy)
                 {
-                    drawDirectoryChooser(gameTime);
                     m_spriteBatch.End();
+
+                    drawDirectoryChooser(gameTime);
+                    
                 }
                 else if (m_state == FriendlierState.Help)
                 {
@@ -4021,7 +4034,7 @@ namespace Xyglo
             // Set our colour according to the state of Friendlier
             //
             Color overlayColour = Color.White;
-            if (m_state != FriendlierState.TextEditing && m_state != FriendlierState.FindText)
+            if (m_state != FriendlierState.TextEditing && m_state != FriendlierState.FindText && m_state != FriendlierState.DiffPicker)
             {
                 overlayColour = m_greyedColour; 
             }
@@ -4343,7 +4356,12 @@ namespace Xyglo
             Vector2 lineOrigin = new Vector2();
             float yPosition = 0.0f;
 
-            Vector3 startPosition = m_project.getSelectedBufferView().getPosition();
+            // We are showing this in the OverlayFont
+            //
+            Vector3 startPosition = new Vector3((float)m_project.getFontManager().getOverlayFont().MeasureString("X").X * 20,
+                                                (float)m_project.getFontManager().getOverlayFont().LineSpacing * 8,
+                                                0.0f);
+
 
             if (m_state == FriendlierState.FileOpen)
             {
@@ -4361,9 +4379,13 @@ namespace Xyglo
                 line = "Unknown FriendlierState...";
             }
 
+            // Overlay batch
+            //
+            m_overlaySpriteBatch.Begin();
+
             // Draw header line
             //
-            m_spriteBatch.DrawString(m_project.getFontManager().getFont(), line, new Vector2((int)startPosition.X, (int)(startPosition.Y - m_project.getSelectedBufferView().getLineSpacing() * 3)), Color.White, 0, lineOrigin, m_project.getFontManager().getTextScale() /* * 2.0f */, 0, 0);
+            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), line, new Vector2((int)startPosition.X, (int)(startPosition.Y - m_project.getSelectedBufferView().getLineSpacing() * 3)), Color.White, 0, lineOrigin, 1.0f, 0, 0);
 
             // If we're using this method to position a new window only then don't show the directory chooser part..
             //
@@ -4412,20 +4434,20 @@ namespace Xyglo
                         }
                         else
                         {
-                            yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
+                            yPosition += m_project.getFontManager().getOverlayFont().LineSpacing /* * 1.5f */;
                             line = "...";
                         }
 
-                        m_spriteBatch.DrawString(m_project.getFontManager().getFont(),
+                        m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(),
                              line,
                              new Vector2((int)startPosition.X, (int)(startPosition.Y + yPosition)),
                              (lineNumber == m_fileSystemView.getHighlightIndex() ? m_highlightColour : (lineNumber == endShowing ? Color.White : dirColour)),
                              0,
                              lineOrigin,
-                             m_project.getFontManager().getTextScale() /* * 1.5f */,
+                             1.0f,
                              0, 0);
 
-                        yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
+                        yPosition += m_project.getFontManager().getOverlayFont().LineSpacing /* * 1.5f */;
                     }
 
                     lineNumber++;
@@ -4446,9 +4468,9 @@ namespace Xyglo
 #endif
 
                 line = m_fileSystemView.getPath() + m_saveFileName;
-                m_spriteBatch.DrawString(m_project.getFontManager().getFont(), line, new Vector2((int)startPosition.X, (int)startPosition.Y), (m_fileSystemView.getHighlightIndex() == 0 ? m_highlightColour : dirColour), 0, lineOrigin, m_project.getFontManager().getTextScale() * 2.0f, 0, 0);
+                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), line, new Vector2((int)startPosition.X, (int)startPosition.Y), (m_fileSystemView.getHighlightIndex() == 0 ? m_highlightColour : dirColour), 0, lineOrigin, m_project.getFontManager().getTextScale() * 2.0f, 0, 0);
 
-                yPosition += m_project.getFontManager().getLineSpacing() * 3.0f;
+                yPosition += m_project.getFontManager().getOverlayFont().LineSpacing * 3.0f;
 
                 foreach (DirectoryInfo d in dirInfo)
                 {
@@ -4461,20 +4483,20 @@ namespace Xyglo
                         }
                         else
                         {
-                            yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
+                            yPosition += m_project.getFontManager().getOverlayFont().LineSpacing;
                             line = "...";
                         }
 
-                        m_spriteBatch.DrawString(m_project.getFontManager().getFont(),
+                        m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(),
                              line,
                              new Vector2(startPosition.X, startPosition.Y + yPosition),
                              (lineNumber == m_fileSystemView.getHighlightIndex() ? m_highlightColour : (lineNumber == endShowing ? Color.White : dirColour)),
                              0,
                              lineOrigin,
-                             m_project.getFontManager().getTextScale() /* * 1.5f */,
+                             1.0f,
                              0, 0);
 
-                        yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
+                        yPosition += m_project.getFontManager().getOverlayFont().LineSpacing;
                     }
 
                     lineNumber++;
@@ -4491,20 +4513,20 @@ namespace Xyglo
                         }
                         else
                         {
-                            yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
+                            yPosition += m_project.getFontManager().getLineSpacing();
                             line = "...";
                         }
 
-                        m_spriteBatch.DrawString(m_project.getFontManager().getFont(),
+                        m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(),
                                                  line,
                                                  new Vector2((int)startPosition.X, (int)(startPosition.Y + yPosition)),
                                                  (lineNumber == m_fileSystemView.getHighlightIndex() ? m_highlightColour : (lineNumber == endShowing ? Color.White : m_itemColour)),
                                                  0,
                                                  lineOrigin,
-                                                 m_project.getFontManager().getTextScale() /* * 1.5f */,
+                                                 1.0f,
                                                  0, 0);
 
-                        yPosition += m_project.getFontManager().getLineSpacing() /* * 1.5f */;
+                        yPosition += m_project.getFontManager().getOverlayFont().LineSpacing/* * 1.5f */;
                     }
                     lineNumber++;
                 }
@@ -4514,16 +4536,20 @@ namespace Xyglo
             {
                 // Add any temporary message on to the end of the message
                 //
-                m_spriteBatch.DrawString(m_project.getFontManager().getFont(),
+                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(),
                                          m_temporaryMessage,
                                          new Vector2((int)startPosition.X, (int)(startPosition.Y - 30.0f)),
                                          Color.LightGoldenrodYellow,
                                          0,
                                          lineOrigin,
-                                         m_project.getFontManager().getTextScale() /* * 1.5f */,
+                                         1.0f,
                                          0,
                                          0);
             }
+
+            // Close the SpriteBatch
+            //
+            m_overlaySpriteBatch.End();
         }
 
         /// <summary>
@@ -4536,7 +4562,7 @@ namespace Xyglo
         {
             Color bufferColour = view.getTextColour();
 
-            if (m_state != FriendlierState.TextEditing && m_state != FriendlierState.FindText)
+            if (m_state != FriendlierState.TextEditing && m_state != FriendlierState.FindText && m_state != FriendlierState.DiffPicker)
             {
                 bufferColour = m_greyedColour;
             }
@@ -4640,7 +4666,6 @@ namespace Xyglo
                         // Step through the 
                         //while(j < line.Length)
                         //{
-
                             m_spriteBatch.DrawString(
                                 m_project.getFontManager().getFont(),
                                 line,

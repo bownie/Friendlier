@@ -142,6 +142,7 @@
     <Compile Include="Highlight.cs" />
     <Compile Include="InsertTextCommand.cs" />
     <Compile Include="KinectWorker.cs" />
+    <Compile Include="Pair.cs" />
     <Compile Include="ReformatTextCommand.cs" />
     <Compile Include="User.cs" />
     <Compile Include="XygloKinectHelper.cs" />

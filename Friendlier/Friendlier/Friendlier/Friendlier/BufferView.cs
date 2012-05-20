@@ -522,6 +522,34 @@ namespace Xyglo
             return m_highlightEnd;
         }
 
+        public void mouseCursorTo(bool shiftDown, FilePosition endPosition)
+        {
+            if (shiftDown)
+            {
+                if (m_highlightStart == m_highlightEnd)
+                {
+                    m_highlightStart = m_cursorPosition;
+                    m_highlightEnd = endPosition;
+                }
+                else // Existing highlight
+                {
+                    if (endPosition > m_highlightEnd)
+                    {
+                        m_highlightEnd = endPosition;
+                    }
+                    else
+                    {
+                        m_highlightStart = endPosition;
+                    }
+                }
+            }
+            else
+            {
+                noHighlight();
+            }
+
+            m_cursorPosition = endPosition;
+        }
         /// <summary>
         /// Set end point of the highlight
         /// </summary>
@@ -828,6 +856,24 @@ namespace Xyglo
             return (m_highlightStart != m_highlightEnd);
         }
 
+        /// <summary>
+        /// Is a given FilePosition valid in this BufferView?  i.e. is there any text there?
+        /// </summary>
+        /// <param name="fp"></param>
+        public bool testCursorPosition(FilePosition fp)
+        {
+            if (fp.Y >= 0 && fp.Y < m_fileBuffer.getLineCount())
+            {
+                string line = m_fileBuffer.getLine(fp.Y);
+
+                if (fp.X <= line.Length)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
         /// <summary>
         /// Set the cursor position in this view
         /// </summary>

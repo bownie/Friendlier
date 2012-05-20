@@ -1621,17 +1621,84 @@ namespace Xyglo
         /// </summary>
         /// <param name="ray"></param>
         /// <returns></returns>
-        public BufferView testRayIntersection(Ray ray)
+        public Pair<BufferView, FilePosition> testRayIntersection(Ray ray)
         {
+#if TEST_RAY
+            // Some test code
+            //
+            //Ray testRay = new Ray(new Vector3(0, 0, 500), new Vector3(0, 0, -1));
+            //Plane newPlane = new Plane(new Vector3(0, 0, 0), new Vector3(1, 0, 0), new Vector3(0, 1, 0));
+            //float? testIntersects = testRay.Intersects(newPlane);
+
+            if (testIntersects != null)
+            {
+                Logger.logMsg("Got intersect");
+            }
+
+            float? planeIntersection = ray.Intersects(newPlane);
+
+            if (planeIntersection != null)
+            {
+                Logger.logMsg("Got PLANE intersect");
+            }
+
+#endif // TEST_RAY
+
+            // Return BufferView
+            //
+            BufferView rBV = null;
+            FilePosition rFP = new FilePosition();
+
+            // Hypotenuse of our ray - distance to where ray hits the bounding box of the BufferView
+            //
+            float? hyp = null;
+
             foreach (BufferView bv in m_bufferViews)
             {
-                float? intersection = ray.Intersects(bv.getBoundingBox());
+                float? testBB = bv.getBoundingBox().Intersects(ray);
 
-                if (intersection != null) return bv;
+                BoundingBox bb = bv.getBoundingBox();
+                if (bb.Max.Z == bb.Min.Z)
+                {
+                    bb.Max.Z++;
+                }
+                hyp = ray.Intersects(bb);
+
+                if (hyp != null)
+                {
+                    rBV = bv;
+                    break;
+                }
             }
-            return null;
-        }
 
+            // If we've found one then work out where abouts on the BufferView we're clicking
+            //
+            if (rBV != null && hyp != null)
+            {
+                Vector3 intersectPos = new Vector3();
+
+                double dHyp = (double)hyp; // convert this here
+
+                intersectPos.X = (float)(ray.Position.X + dHyp * (Math.Atan((double)(-ray.Direction.X) / (double)(ray.Direction.Z))));
+                intersectPos.Y = (float)(ray.Position.Y + dHyp * (Math.Atan((double)(-ray.Direction.Y) / (double)(ray.Direction.Z))));
+                intersectPos.Z = 0.0f;
+
+                // Now convert the bufferview screen position to a cursor position.
+                // Firstly remove the BufferView positional offset.
+                //
+                intersectPos.X -= rBV.getTopLeft().X;
+                intersectPos.Y -= rBV.getTopLeft().Y;
+
+                // This leaves the relative position within the BufferView adjusting for offsets
+                //
+                rFP.X = (int)(intersectPos.X / getFontManager().getCharWidth()) + rBV.getBufferShowStartX();
+                rFP.Y = (int)(intersectPos.Y / getFontManager().getLineSpacing()) + rBV.getBufferShowStartY();
+
+                Logger.logMsg("Project::testRayIntersection() - got FilePosition of X = " + rFP.X + ", Y = " + rFP.Y);
+            }
+
+            return new Pair<BufferView, FilePosition>(rBV, rFP);
+        }
     }
 
     /// <summary>

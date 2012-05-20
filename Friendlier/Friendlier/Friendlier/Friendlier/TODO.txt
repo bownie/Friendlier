@@ -9,7 +9,7 @@ USE CASES
 -- BUILD and USABILITY FEATURES
 
 - click and drag with mouse to change windows [DONE]
-- mouse highlight/identify bufferview and position from mouse
+- mouse highlight/identify bufferview and position from mouse [DONE]
 - click on error lines to open files and zap to line
 - project management (adding, changing projects)
 
@@ -17,7 +17,8 @@ USE CASES
 
 TODO
 ----
-
+- handle Tabs in files elegantly
+- autorepeat is broken
 - Paging on File Management
 - Elegant long lines File Management
 - Elegant long line Config
