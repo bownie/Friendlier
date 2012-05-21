@@ -318,6 +318,12 @@ namespace Xyglo
         protected Vector3 m_vFly;
 
         /// <summary>
+        /// If our target position is not centred below our eye then we also have a vector here we need to
+        /// modify.
+        /// </summary>
+        protected Vector3 m_vFlyTarget;
+
+        /// <summary>
         /// How many steps between eye start and eye end fly position
         /// </summary>
         protected int m_flySteps = 15;
@@ -657,9 +663,11 @@ namespace Xyglo
             //
             //FontManager.initialise(Content, "Lucida Sans Typewriter");
             //FontManager.initialise(Content, "Sax Mono");
-            m_project.initialiseFonts(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio, "Nuclex");
             //m_project.initialiseFonts(Content, "Proggy Clean", GraphicsDevice.Viewport.AspectRatio, "Nuclex");
             //m_project.getFontManager().initialise(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio);
+
+            m_project.initialiseFonts(Content, "Bitstream Vera Sans Mono", GraphicsDevice.Viewport.AspectRatio, "Nuclex");
+            
 
             // We need to do this to connect up all the BufferViews, FileBuffers and the other components
             // such as FontManager etc.
@@ -1605,7 +1613,7 @@ namespace Xyglo
                     {
                         for (int i = 0; i < linesDown; i++)
                         {
-                            m_project.getSelectedBufferView().moveCursorUp(false);
+                            m_project.getSelectedBufferView().moveCursorUp(m_project, false);
                         }
                     }
 
@@ -1900,7 +1908,7 @@ namespace Xyglo
                     }
                     else
                     {
-                        m_project.getSelectedBufferView().moveCursorUp(false);
+                        m_project.getSelectedBufferView().moveCursorUp(m_project, false);
 
                         if (m_shiftDown)
                         {
@@ -2020,19 +2028,7 @@ namespace Xyglo
                     }
                     else
                     {
-                        m_project.getSelectedBufferView().moveCursorLeft();
-                        /*
-                        if (m_project.getSelectedBufferView().getCursorPosition().X > 0)
-                        {
-                            FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
-                            fp.X--;
-                            m_project.getSelectedBufferView().setCursorPosition(fp);
-                        }
-                        else
-                        {
-                            m_project.getSelectedBufferView().moveCursorUp(true);
-                        }
-                        */
+                        m_project.getSelectedBufferView().moveCursorLeft(m_project);
                     }
 
                     if (m_shiftDown)
@@ -2065,25 +2061,7 @@ namespace Xyglo
                     }
                     else
                     {
-                        m_project.getSelectedBufferView().moveCursorRight();
-                        /*
-                        if (m_project.getSelectedBufferView().getCursorPosition().X < m_project.getSelectedBufferView().getBufferShowWidth())
-                        {
-                            FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
-
-                            if (m_project.getSelectedBufferView().getFileBuffer().getLineCount() > 0)
-                            {
-                                if (fp.X < m_project.getSelectedBufferView().getFileBuffer().getLine(fp.Y).Length)
-                                {
-                                    fp.X++;
-                                    m_project.getSelectedBufferView().setCursorPosition(fp);
-                                }
-                            }
-                        }
-                        else
-                        {
-                            m_project.getSelectedBufferView().moveCursorDown(true);
-                        }*/
+                        m_project.getSelectedBufferView().moveCursorRight(m_project);
                     }
 
                     if (m_shiftDown)
@@ -2099,7 +2077,13 @@ namespace Xyglo
             else if (checkKeyState(Keys.End, gameTime))
             {
                 FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
-                fp.X = m_project.getSelectedBufferView().getFileBuffer().getLine(fp.Y).Length;
+
+                // Set X and allow for tabs
+                //
+                if (m_project.getSelectedBufferView().getCursorCoordinates().Y < m_project.getSelectedBufferView().getFileBuffer().getLineCount())
+                {
+                    fp.X = m_project.getSelectedBufferView().getFileBuffer().getLine(fp.Y).Replace("\t", m_project.getTab()).Length;
+                }
                 m_project.getSelectedBufferView().setCursorPosition(fp);
 
                 // Change the X offset if the row is longer than the visible width
@@ -2124,7 +2108,7 @@ namespace Xyglo
             {
                 // Reset the cursor to zero
                 //
-                FilePosition fp = m_project.getSelectedBufferView().getFirstNonSpace();
+                FilePosition fp = m_project.getSelectedBufferView().getFirstNonSpace(m_project);
 
                 m_project.getSelectedBufferView().setCursorPosition(fp);
 
@@ -2212,7 +2196,7 @@ namespace Xyglo
             {
                 if (m_state == FriendlierState.TextEditing)
                 {
-                    m_project.getSelectedBufferView().pageDown();
+                    m_project.getSelectedBufferView().pageDown(m_project);
 
                     if (m_shiftDown)
                     {
@@ -2228,7 +2212,7 @@ namespace Xyglo
             {
                 if (m_state == FriendlierState.TextEditing)
                 {
-                    m_project.getSelectedBufferView().pageUp();
+                    m_project.getSelectedBufferView().pageUp(m_project);
 
                     if (m_shiftDown)
                     {
@@ -2253,7 +2237,7 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.Tab, gameTime)) // Insert a tab space
             {
-                m_project.getSelectedBufferView().insertText(m_project.getTab(), m_project.getSyntaxManager());
+                m_project.getSelectedBufferView().insertText(m_project, "\t");
             }
             else if (checkKeyState(Keys.Delete, gameTime) || checkKeyState(Keys.Back, gameTime))
             {
@@ -2486,7 +2470,7 @@ namespace Xyglo
                             }
                             else
                             {
-                                m_project.getSelectedBufferView().insertText(System.Windows.Forms.Clipboard.GetText(), m_project.getSyntaxManager());
+                                m_project.getSelectedBufferView().insertText(m_project, System.Windows.Forms.Clipboard.GetText());
                             }
                         }
                     }
@@ -2699,6 +2683,35 @@ namespace Xyglo
                                 }
                             }
 
+                            /*
+                            //if (m_heldKey != keyDown)
+                            if (testKey)
+                            {
+                                if (m_heldDownStartTime > 0)
+                                // Reset this
+                                //
+                                m_heldDownStartTime = 0.0f;
+                            }
+
+                            // Always set this to whatever is held down
+                            //
+                            m_heldKey = keyDown;
+
+                            if (m_heldDownStartTime == 0.0f)
+                            {
+                                // Store when we last processed a key for the first time
+                                //
+                                m_heldDownStartTime = gameTime.TotalGameTime.TotalSeconds;
+                            }
+                            else
+                            {
+                                if (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime > m_repeatHoldTime)
+                                {
+                                    testKey = true;
+                                }
+                            }
+                            */
+
                             // Test to see if we've already processed this key - if not then we can print it out
                             //
                             if (testKey)
@@ -2796,7 +2809,7 @@ namespace Xyglo
                                             Logger.logMsg("Friendlier::Update() - couldn't get AUTOINDENT from config - " + e.Message);
                                         }
 
-                                        m_project.getSelectedBufferView().insertNewLine(indent, m_project.getSyntaxManager());
+                                        m_project.getSelectedBufferView().insertNewLine(m_project, indent);
 
                                         //fp = m_activeBufferView.getFileBuffer().insertNewLine(m_activeBufferView.getCursorPosition());
 
@@ -3156,7 +3169,7 @@ namespace Xyglo
                                             }
                                             else
                                             {
-                                                m_project.getSelectedBufferView().insertText(key, m_project.getSyntaxManager());
+                                                m_project.getSelectedBufferView().insertText(m_project, key);
                                             }
                                         }
                                     }
@@ -3496,6 +3509,13 @@ namespace Xyglo
                     if (m_changingPositionLastGameTime == TimeSpan.Zero)
                     {
                         m_vFly = (m_newEyePosition - m_eye) / m_flySteps;
+
+                        // Also set up the target modification vector thus
+                        //
+                        Vector3 tempTarget = m_newEyePosition;
+                        tempTarget.Z = 0.0f;
+                        m_vFlyTarget = (tempTarget - m_target) / m_flySteps;
+
                         //m_vFly.Normalize();
                         m_changingPositionLastGameTime = gameTime.TotalGameTime;
                     }
@@ -3518,8 +3538,11 @@ namespace Xyglo
                     if (gameTime.TotalGameTime - m_changingPositionLastGameTime > m_movementPause)
                     {
                         m_eye += m_vFly;
-                        m_target.X += m_vFly.X;
-                        m_target.Y += m_vFly.Y;
+
+                        // modify target by the other vector
+                        //
+                        m_target.X += m_vFlyTarget.X;
+                        m_target.Y += m_vFlyTarget.Y;
                         m_changingPositionLastGameTime = gameTime.TotalGameTime;
                         //m_view = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
 #if DEBUG_FLYING
@@ -3550,6 +3573,12 @@ namespace Xyglo
             }
         }
 
+
+        /// <summary>
+        /// Time for key auto-repeat holding
+        /// </summary>
+        double m_repeatHoldTime = 0.6; // seconds
+
         /// <summary>
         /// Gets a single key click - but also repeats if it's still held down after a while
         /// </summary>
@@ -3565,8 +3594,6 @@ namespace Xyglo
                 check == Keys.LeftAlt || check == Keys.RightAlt)
                 return false;
 
-            double repeatHold = 0.6; // number of seconds to wait before repeating a key
-
             // Is the checked key down?
             //
             if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(check))
@@ -3581,9 +3608,9 @@ namespace Xyglo
                 // Check to see if the key has been held down for a while - for file selection menus
                 // (see the m_state clause) we make the repeat interval smaller.
                 //
-                if (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime > repeatHold ||
+                if (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime > m_repeatHoldTime ||
                     (m_state != FriendlierState.TextEditing &&
-                    (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime  > repeatHold / 2)))
+                    (gameTime.TotalGameTime.TotalSeconds - m_heldDownStartTime > m_repeatHoldTime / 2)))
                 {
                     return true;
                 }
@@ -3667,6 +3694,9 @@ namespace Xyglo
                 Ray pickRay = GetPickRay();
                 int mouseX = mouseState.X;
                 int mouseY = mouseState.Y;
+
+                Logger.logMsg("MOUSE X = " + mouseX + ",Y = " + mouseY);
+                
 
                 if (m_lastMouseState.LeftButton == ButtonState.Released)
                 {
@@ -4117,7 +4147,7 @@ namespace Xyglo
                     // If the temporary message is going to be too long for the space we have then
                     // we need to change the scroll space to for it.
                     //
-                    int availableWidth = (int)(positionStringXPos - ((fileName.Length + 1) * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay)));
+                    int availableWidth = (int)(positionStringXPos - ((fileName.Length + 2) * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay)));
                     if (availableWidth > m_textScroller.Width)
                     {
                         setTextScrollerWidth(availableWidth);
@@ -4391,6 +4421,7 @@ namespace Xyglo
             //
             if (m_state == FriendlierState.PositionScreenNew || m_state == FriendlierState.PositionScreenCopy)
             {
+                m_overlaySpriteBatch.End();
                 return;
             }
 
@@ -4566,6 +4597,12 @@ namespace Xyglo
             {
                 bufferColour = m_greyedColour;
             }
+            
+            //if (view != m_project.getSelectedBufferView())
+            //{
+                // Take down the alpha of the non selected buffer views to draw a visual distinction
+                //bufferColour.A -= 180;
+            //}
 
             float yPosition = 0.0f;
 
@@ -4619,9 +4656,9 @@ namespace Xyglo
 
                     if (i + bufPos < view.getFileBuffer().getLineCount() && view.getFileBuffer().getLineCount() != 0)
                     {
-                        // Fetch the line
+                        // Fetch the line and convert any tabs to relevant spaces
                         //
-                        fetchLine = view.getFileBuffer().getLine(i + bufPos);
+                        fetchLine = view.getFileBuffer().getLine(i + bufPos).Replace("\t", m_project.getTab());
 
                         if (fetchLine.Length - view.getBufferShowStartX() > view.getBufferShowWidth())
                         {
@@ -4870,7 +4907,7 @@ namespace Xyglo
         /// </summary>
         void drawHighlight(GameTime gameTime)
         {
-            List<BoundingBox> bb = m_project.getSelectedBufferView().computeHighlight();
+            List<BoundingBox> bb = m_project.getSelectedBufferView().computeHighlight(m_project);
 
             // Draw the bounding boxes
             //
@@ -5226,7 +5263,7 @@ namespace Xyglo
                     //
                     if (!File.Exists(commandList[0]))
                     {
-                        setTemporaryMessage("Build command not found : \"" + commandList[0] + "\"", gameTime, 2);
+                        setTemporaryMessage("Build command not found : \"" + commandList[0] + "\"", gameTime, 5);
                     }
                     else
                     {
@@ -5235,6 +5272,7 @@ namespace Xyglo
                         string buildStdErrLog = m_project.getConfigurationValue("BUILDSTDERRLOG");
 
                         // Check the build directory
+                        //
                         if (!Directory.Exists(buildDir))
                         {
                             setTemporaryMessage("Build directory doesn't exist : \"" + buildDir + "\"", gameTime, 2);

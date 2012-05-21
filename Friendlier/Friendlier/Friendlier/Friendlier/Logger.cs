@@ -17,6 +17,7 @@ namespace Xyglo
         /// <param name="showTime"></param>
         public static void logMsg(string message, bool showTime = false)
         {
+            /*
             if (showTime)
             {
                 //Console.WriteLine(String.Format("{0:s}", DateTime.Now) + " - " + message);
@@ -26,6 +27,7 @@ namespace Xyglo
             {
                 Console.WriteLine(message);
             }
+             * */
         }
     }
 }

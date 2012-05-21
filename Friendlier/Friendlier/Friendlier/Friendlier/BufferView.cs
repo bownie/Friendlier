@@ -656,7 +656,7 @@ namespace Xyglo
         /// <summary>
         /// Page up the BufferView
         /// </summary>
-        public void pageUp()
+        public void pageUp(Project project)
         {
             // Do nothing if tailing
             //
@@ -681,12 +681,18 @@ namespace Xyglo
             {
                 m_cursorPosition.Y = 0;
             }
+
+            string line = m_fileBuffer.getLine(m_cursorPosition.Y).Replace("\t", project.getTab());
+            if (m_cursorPosition.X > line.Length)
+            {
+                m_cursorPosition.X = line.Length;
+            }
         }
 
         /// <summary>
         /// Page down the BufferView
         /// </summary>
-        public void pageDown()
+        public void pageDown(Project project)
         {
             // Do nothing if tailing
             //
@@ -711,6 +717,13 @@ namespace Xyglo
             {
                 m_cursorPosition.Y = m_fileBuffer.getLineCount() - 1;
             }
+
+            string line = m_fileBuffer.getLine(m_cursorPosition.Y).Replace("\t", project.getTab());
+            if (m_cursorPosition.X > line.Length)
+            {
+                m_cursorPosition.X = line.Length;
+            }
+
         }
 
         /// <summary>
@@ -791,14 +804,14 @@ namespace Xyglo
         /// </summary>
         /// <param name="line"></param>
         /// <returns></returns>
-        public int getFirstNonSpace(int lineNumber)
+        public int getFirstNonSpace(Project project, int lineNumber)
         {
             if (lineNumber < 0 || lineNumber >= m_fileBuffer.getLineCount())
             {
                 return -1;
             }
 
-            string line = m_fileBuffer.getLine(lineNumber);
+            string line = m_fileBuffer.getLine(lineNumber).Replace("\t", project.getTab());
 
             int pos = 0;
             while (pos < line.Length)
@@ -822,9 +835,9 @@ namespace Xyglo
         /// Return the position of the first non space character on the current line
         /// </summary>
         /// <returns></returns>
-        public FilePosition getFirstNonSpace()
+        public FilePosition getFirstNonSpace(Project project)
         {
-            string line = m_fileBuffer.getLine(m_cursorPosition.Y);
+            string line = m_fileBuffer.getLine(m_cursorPosition.Y).Replace("\t", project.getTab());
 
             int pos = 0;
             while (pos < m_cursorPosition.X)
@@ -1160,7 +1173,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="highlightStart"></param>
         /// <param name="highlightEnd"></param>
-        public List<BoundingBox> computeHighlight()
+        public List<BoundingBox> computeHighlight(Project project)
         {
             List<BoundingBox> bb = new List<BoundingBox>();
 
@@ -1241,7 +1254,7 @@ namespace Xyglo
                         {
                             startPos.X = m_position.X + m_highlightStart.X * m_fontManager.getCharWidth();
                         }
-                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_fontManager.getCharWidth();
+                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth();
                     }
                     else if (i == m_highlightEnd.Y)
                     {
@@ -1251,7 +1264,7 @@ namespace Xyglo
                     else
                     {
                         startPos.X = m_position.X;
-                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_fontManager.getCharWidth();
+                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth();
                     }
 
                     startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_fontManager.getLineSpacing();
@@ -1316,7 +1329,7 @@ namespace Xyglo
                         {
                             startPos.X = m_position.X + m_cursorPosition.X * m_fontManager.getCharWidth();
                         }
-                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_fontManager.getCharWidth();
+                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth();
                     }
                     else if (i == maxStart)
                     {
@@ -1324,7 +1337,7 @@ namespace Xyglo
 
                         if (fullLineAtEnd)
                         {
-                            endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_fontManager.getCharWidth();
+                            endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth();
                         }
                         else
                         {
@@ -1334,7 +1347,7 @@ namespace Xyglo
                     else
                     {
                         startPos.X = m_position.X;
-                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Length * m_fontManager.getCharWidth();
+                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth();
                     }
 
                     startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_fontManager.getLineSpacing();
@@ -1371,7 +1384,7 @@ namespace Xyglo
         /// When moving up the cursor on this BufferView  
         /// </summary>
         /// <param name="leftCursor"></param>
-        public void moveCursorUp(bool leftCursor)
+        public void moveCursorUp(Project project, bool leftCursor)
         {
             // Do nothing if tailing
             //
@@ -1392,7 +1405,7 @@ namespace Xyglo
                     m_cursorPosition.Y = m_bufferShowStartY;
                 }
 
-                string line = m_fileBuffer.getLine(m_cursorPosition.Y);
+                string line = m_fileBuffer.getLine(m_cursorPosition.Y).Replace("\t", project.getTab());
                 if (leftCursor || m_cursorPosition.X > line.Length)
                 {
                     m_cursorPosition.X = line.Length;
@@ -1544,13 +1557,13 @@ namespace Xyglo
         /// Insert some text into the BufferView
         /// </summary>
         /// <param name="text"></param>
-        public void insertText(string text, SyntaxManager syntaxManager)
+        public void insertText(Project project, string text)
         {
-            m_cursorPosition = m_fileBuffer.insertText(syntaxManager, m_cursorPosition, text);
+            m_cursorPosition = m_fileBuffer.insertText(project.getSyntaxManager(), getRealFilePosition(project), text);
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
+            project.getSyntaxManager().updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
 
             // Keep visible
             //
@@ -1561,11 +1574,11 @@ namespace Xyglo
         /// Get the current implied indent level
         /// </summary>
         /// <returns></returns>
-        protected string getImpliedIndent(int line)
+        protected string getImpliedIndent(Project project, int line)
         {
             string rs = "";
-            int lineBefore = getFirstNonSpace(line);
-            int lineAfter = getFirstNonSpace(line + 1);
+            int lineBefore = getFirstNonSpace(project, line);
+            int lineAfter = getFirstNonSpace(project, line + 1);
 
             if (lineBefore != -1 && lineAfter != -1 && lineBefore == lineAfter)
             {
@@ -1583,7 +1596,7 @@ namespace Xyglo
         /// <summary>
         /// Insert a new line at the cursor
         /// </summary>
-        public void insertNewLine(string autoindent, SyntaxManager syntaxManager)
+        public void insertNewLine(Project project, string autoindent)
         {
             // Define an indent
             //
@@ -1610,13 +1623,13 @@ namespace Xyglo
 
                 // Use the Syntax Manager to fetch an indent
                 //
-                indent = syntaxManager.getIndent(m_cursorPosition);
+                indent = project.getSyntaxManager().getIndent(m_cursorPosition);
             }
 
             // Test current line for previous and next line indent levels - if they're the
             // same we should also use that level in preference to the one in SyntaxManager
             //
-            string impliedIndent = getImpliedIndent(m_cursorPosition.Y);
+            string impliedIndent = getImpliedIndent(project, m_cursorPosition.Y);
 
             // If the implied indent is different we prefer that
             //
@@ -1629,7 +1642,7 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
+            project.getSyntaxManager().updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
 
             keepVisible();
         }
@@ -2017,13 +2030,51 @@ namespace Xyglo
         }
 
 
+        /// <summary>
+        /// Get the real position in the file of the X cursor compensating for any tabs
+        /// </summary>
+        /// <param name="project"></param>
+        /// <returns></returns>
+        protected int getRealFilePositionX(Project project)
+        {
+            // Only fetch the line if we have one to fetch
+            //
+            if (m_cursorPosition.Y == 0 || m_cursorPosition.Y >= m_fileBuffer.getLineCount())
+            {
+                return m_cursorPosition.X;
+            }
+
+            string line = m_fileBuffer.getLine(m_cursorPosition.Y);
+            string subLine = line.Substring(0, Math.Min(m_cursorPosition.X, line.Length));
+
+            // Number of tabs
+            //
+            int numTabs = subLine.Where(item => item == '\t').Count();
+
+            // Remove the width of the tabs from the position
+            //
+            return m_cursorPosition.X - (numTabs * (project.getTab().Length - 1));
+        }
+
+        /// <summary>
+        /// Compensate for any tabs when converting from screen position to file position
+        /// </summary>
+        protected FilePosition getRealFilePosition(Project project)
+        {
+            int x = getRealFilePositionX(project);
+            int y = m_cursorPosition.Y;
+
+            
+
+            return new FilePosition(x, y);
+        }
 
         /// <summary>
         /// Move the cursor right - taking into account end of lines, not fitting on screen, wrapping
         /// etc. etc.
         /// </summary>
         /// <param name="steps"></param>
-        public void moveCursorRight(int steps = 1)
+        public void moveCursorRight(Project project, int steps = 1)
         {
             // Test for empty file firstly
             //
@@ -2034,9 +2085,21 @@ namespace Xyglo
 
             string line = m_fileBuffer.getLine(m_cursorPosition.Y);
 
-            if (m_cursorPosition.X + steps < line.Length)
+            int preLength = line.Length;
+
+            // We always need total number of tabs in the line to allow for adjustments
+            //
+            int lineLength = line.Replace("\t", project.getTab()).Length;
+
+            // Add numTabs to the line.Length for all calculations
+            //
+            if (m_cursorPosition.X + steps <= lineLength)
             {
-                m_cursorPosition.X += steps;
+                int numTabs = line.Substring(getRealFilePositionX(project), steps).Where(item => item == '\t').Count();
+
+                // Adjust movement by number of tabs we've found
+                //
+                m_cursorPosition.X += (steps - numTabs) + (numTabs * project.getTab().Length);
 
                 // Incremement the buffer show start position if we're going over the visible end
                 // of the line.
@@ -2056,7 +2119,7 @@ namespace Xyglo
         /// Move the cursor left a number of steps
         /// </summary>
         /// <param name="steps"></param>
-        public void moveCursorLeft(int steps = 1)
+        public void moveCursorLeft(Project project, int steps = 1)
         {
             // Test for empty file firstly
             //
@@ -2066,6 +2129,17 @@ namespace Xyglo
             }
 
             string line = m_fileBuffer.getLine(m_cursorPosition.Y);
+
+            if (m_cursorPosition.X - steps > 0 && m_cursorPosition.X + steps < line.Length)
+            {
+                // Get number of tabs within our movement string
+                //
+                int numTabs = line.Substring(m_cursorPosition.X - steps, steps).Where(item => item == '\t').Count();
+
+                // Add extra tab steps in here
+                //
+                steps += numTabs;
+            }
 
             if (m_cursorPosition.X > 0)
             {
@@ -2081,7 +2155,7 @@ namespace Xyglo
                 {
                     if (m_cursorPosition.Y > 0) // reduce the line we're on if we can
                     {
-                        moveCursorUp(true);
+                        moveCursorUp(project, true);
                         //m_cursorPosition.Y--;
                         //m_cursorPosition.X = m_fileBuffer.getLine(m_cursorPosition.Y).Length;
                     }

@@ -5,20 +5,27 @@ USE CASES
 - The journalist - writing a story, researching
 
 
+BUILD and USABILITY FEATURES
+----------------------------
 
--- BUILD and USABILITY FEATURES
 
-- click and drag with mouse to change windows [DONE]
-- mouse highlight/identify bufferview and position from mouse [DONE]
 - click on error lines to open files and zap to line
 - project management (adding, changing projects)
 
+RECENTLY DONE
+-------------
+
+- click and drag with mouse to change windows [DONE]
+- mouse highlight/identify bufferview and position from mouse [DONE]
+- tip/spin select target and animate nicely [DONE]
+- LineSpacing issue [KLUDGED IN FRIENDLIER - still outstanding in Nuclex]
 
 
 TODO
 ----
-- handle Tabs in files elegantly
-- autorepeat is broken
+- autorepeat is broken [FIXING]
+- handle Tabs in files elegantly [FIXING]
+- refactor the keyboard code as it's a mess
 - Paging on File Management
 - Elegant long lines File Management
 - Elegant long line Config

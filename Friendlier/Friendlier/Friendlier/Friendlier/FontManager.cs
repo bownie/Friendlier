@@ -13,9 +13,56 @@ namespace Xyglo
             Overlay
         }
 
+        /// <summary>
+        /// Current font state selected - not sure if we use this at the moment
+        /// </summary>
         protected FontType m_state;
 
+        /// <summary>
+        /// The font processor we're using
+        /// </summary>
+        protected string m_processor = "";
+
+        /// <summary>
+        /// The content manager
+        /// </summary>
         protected Microsoft.Xna.Framework.Content.ContentManager m_contentManager;
+
+        /// <summary>
+        /// Our Font Family
+        /// </summary>
+        protected string m_fontFamily;
+
+        /// <summary>
+        /// SpriteFont
+        /// </summary>
+        protected SpriteFont m_smallWindowFont;
+
+        /// <summary>
+        /// SpriteFont
+        /// </summary>
+        protected SpriteFont m_windowFont;
+
+        /// <summary>
+        /// SpriteFont
+        /// </summary>
+        protected SpriteFont m_fullScreenFont;
+
+        /// <summary>
+        /// Overlay font is the font used for HUD - small screen is just a smaller size
+        /// </summary>
+        protected SpriteFont m_overlayFontSmallScreen;
+
+        /// <summary>
+        /// Overlay font is the font used for HUD
+        /// </summary>
+        protected SpriteFont m_overlayFontBigScreen;
+
+        /// <summary>
+        /// The aspect ratio of our screen
+        /// </summary>
+        protected float m_aspectRatio;
+
 
         /// <summary>
         /// Initialise the font manager with some basic details
@@ -28,6 +75,7 @@ namespace Xyglo
             m_fontFamily = fontFamily;
             m_contentManager = contentManager;
             m_aspectRatio = aspectRatio;
+            m_processor = processor;
 
             // If we have passed a processor then append this to the name
             if (processor != "")
@@ -67,41 +115,6 @@ namespace Xyglo
                 Console.WriteLine("Failed to load font : " + e);
             }
         }
-
-        /// <summary>
-        /// Our Font Family
-        /// </summary>
-        protected string m_fontFamily;
-
-        /// <summary>
-        /// SpriteFont
-        /// </summary>
-        protected SpriteFont m_smallWindowFont;
-
-        /// <summary>
-        /// SpriteFont
-        /// </summary>
-        protected SpriteFont m_windowFont;
-
-        /// <summary>
-        /// SpriteFont
-        /// </summary>
-        protected SpriteFont m_fullScreenFont;
-
-        /// <summary>
-        /// Overlay font is the font used for HUD - small screen is just a smaller size
-        /// </summary>
-        protected SpriteFont m_overlayFontSmallScreen;
-
-        /// <summary>
-        /// Overlay font is the font used for HUD
-        /// </summary>
-        protected SpriteFont m_overlayFontBigScreen;
-
-        /// <summary>
-        /// The aspect ratio of our screen
-        /// </summary>
-        protected float m_aspectRatio;
 
         /// <summary>
         /// Return the overlay font
@@ -229,7 +242,12 @@ namespace Xyglo
         /// <returns></returns>
         public float getLineSpacing()
         {
-            return getTextScale() * getFont().LineSpacing; //* 1.12f; // Kludge for Nuclex issue 
+            if (m_processor.ToLower() == "nuclex")
+            {
+                return getTextScale() * getFont().LineSpacing * 1.12f; // Kludge for Nuclex issue 
+            }
+
+            return getTextScale() * getFont().LineSpacing;
             //return getTextScale() * getFont().MeasureString("X").Y;
         }
 

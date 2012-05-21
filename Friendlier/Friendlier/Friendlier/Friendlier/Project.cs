@@ -1443,6 +1443,11 @@ namespace Xyglo
         {
             string rs = root + fileName;
 
+            if (rs.Length < maxLength)
+            {
+                return rs;
+
+            }
             int halfLength = (maxLength / 2) - 2;
 
             if (halfLength > 0)
