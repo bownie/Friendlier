@@ -9,12 +9,13 @@ namespace Xyglo
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class DeleteTextCommand : Command
     {
-        public DeleteTextCommand(string name, FileBuffer buffer, FilePosition start, FilePosition end)
+        public DeleteTextCommand(Project project, string name, FileBuffer buffer, FilePosition start, FilePosition end)
         {
             m_name = name;
             m_fileBuffer = buffer;
             m_startPos = start;
             m_endPos = end;
+            m_project = project;
 
             // Correct start and end positions
             //

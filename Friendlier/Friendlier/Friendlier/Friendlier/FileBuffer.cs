@@ -500,7 +500,7 @@ namespace Xyglo
         /// <param name="startSelection"></param>
         /// <param name="endSelection"></param>
         /// <returns></returns>
-        public FilePosition deleteSelection(FilePosition startSelection, FilePosition endSelection)
+        public FilePosition deleteSelection(Project project, FilePosition startSelection, FilePosition endSelection)
         {
             if (m_readOnly)
             {
@@ -511,7 +511,7 @@ namespace Xyglo
 
             try
             {
-                DeleteTextCommand command = new DeleteTextCommand("Delete Selection", this, startSelection, endSelection);
+                DeleteTextCommand command = new DeleteTextCommand(project, "Delete Selection", this, startSelection, endSelection);
                 fp = command.doCommand();
 
                 // Ensure we are neat and tidy
@@ -556,14 +556,14 @@ namespace Xyglo
         /// <param name="insertPosition"></param>
         /// <param name="text"></param>
         /// <returns></returns>
-        public FilePosition insertText(SyntaxManager syntaxManager, FilePosition insertPosition, string text)
+        public FilePosition insertText(Project project, FilePosition insertPosition, string text)
         {
             if (m_readOnly)
             {
                 return insertPosition;
             }
 
-            InsertTextCommand command = new InsertTextCommand("Insert Text", this, insertPosition, text);
+            InsertTextCommand command = new InsertTextCommand(project, "Insert Text", this, insertPosition, text);
             FilePosition fp = command.doCommand();
 
             // Ensure we are neat and tidy
@@ -574,7 +574,7 @@ namespace Xyglo
             //
             if (text == "}")
             {
-                ReformatTextCommand reformatCommand = new ReformatTextCommand("Auto Reformat", this, syntaxManager, insertPosition, insertPosition);
+                ReformatTextCommand reformatCommand = new ReformatTextCommand(project, "Auto Reformat", this, insertPosition, insertPosition);
                 fp = reformatCommand.doCommand();
                 tidyUndoStack(reformatCommand);
             }
@@ -587,9 +587,9 @@ namespace Xyglo
         /// Insert a new line
         /// </summary>
         /// <param name="insertPosition"></param>
-        public FilePosition insertNewLine(FilePosition insertPosition, string indent)
+        public FilePosition insertNewLine(Project project, FilePosition insertPosition, string indent)
         {
-            InsertTextCommand command = new InsertTextCommand("Insert new line", this, insertPosition, true, indent);
+            InsertTextCommand command = new InsertTextCommand(project, "Insert new line", this, insertPosition, true, indent);
             FilePosition fp = command.doCommand();
 
             // Ensure we are neat and tidy

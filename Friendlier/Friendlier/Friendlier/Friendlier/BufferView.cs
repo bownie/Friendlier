@@ -800,6 +800,29 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Return the text of the current line we are on
+        /// </summary>
+        /// <returns></returns>
+        public string getCurrentLine()
+        {
+            string rs = "";
+
+            if (m_fileBuffer != null)
+            {
+                try
+                {
+                    rs = m_fileBuffer.getLine(m_cursorPosition.Y);
+                }
+                catch (Exception e)
+                {
+                    Logger.logMsg("BufferView::getCurrentLine() - can't get line " + m_cursorPosition.Y);
+                }
+            }
+
+            return rs;
+        }
+
+        /// <summary>
         /// Get the first non-space on a given line
         /// </summary>
         /// <param name="line"></param>
@@ -1470,9 +1493,9 @@ namespace Xyglo
         /// <summary>
         /// Once we have a highlighted section we can delete it with this method
         /// </summary>
-        public void deleteCurrentSelection(SyntaxManager syntaxManager)
+        public void deleteCurrentSelection(Project project)
         {
-            m_fileBuffer.deleteSelection(m_highlightStart, m_highlightEnd);
+            m_fileBuffer.deleteSelection(project, m_highlightStart, m_highlightEnd);
 
             if (m_highlightStart < m_highlightEnd)
             {
@@ -1485,7 +1508,7 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */ );
+            project.getSyntaxManager().updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */ );
 
             // Cancel our highlight
             //
@@ -1495,13 +1518,13 @@ namespace Xyglo
         /// <summary>
         /// Delete a single character at the cursor
         /// </summary>
-        public void deleteSingle(SyntaxManager syntaxManager)
+        public void deleteSingle(Project project)
         {
-            m_fileBuffer.deleteSelection(m_cursorPosition, m_cursorPosition);
+            m_fileBuffer.deleteSelection(project, m_cursorPosition, m_cursorPosition);
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y*/);
+            project. getSyntaxManager().updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y*/);
         }
 
         /// <summary>
@@ -1559,7 +1582,7 @@ namespace Xyglo
         /// <param name="text"></param>
         public void insertText(Project project, string text)
         {
-            m_cursorPosition = m_fileBuffer.insertText(project.getSyntaxManager(), getRealFilePosition(project), text);
+            m_cursorPosition = m_fileBuffer.insertText(project, getRealFilePosition(project), text);
 
             // Update the syntax highlighting
             //
@@ -1638,7 +1661,7 @@ namespace Xyglo
                 indent = impliedIndent;
             }
 
-            m_cursorPosition = m_fileBuffer.insertNewLine(m_cursorPosition, indent);
+            m_cursorPosition = m_fileBuffer.insertNewLine(project, getRealFilePosition(project), indent);
 
             // Update the syntax highlighting
             //
@@ -2035,7 +2058,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="project"></param>
         /// <returns></returns>
-        protected int getRealFilePositionX(Project project)
+        public int getRealFilePositionX(Project project)
         {
             // Only fetch the line if we have one to fetch
             //
@@ -2059,7 +2082,7 @@ namespace Xyglo
         /// <summary>
         /// Compensate for any tabs when converting from screen position to file position
         /// </summary>
-        protected FilePosition getRealFilePosition(Project project)
+        public FilePosition getRealFilePosition(Project project)
         {
             int x = getRealFilePositionX(project);
             int y = m_cursorPosition.Y;

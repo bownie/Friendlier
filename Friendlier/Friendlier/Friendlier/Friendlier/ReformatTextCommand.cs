@@ -19,13 +19,13 @@ namespace Xyglo
         /// <param name="buffer"></param>
         /// <param name="insertPosition"></param>
         /// <param name="text"></param>
-        public ReformatTextCommand(string name, FileBuffer buffer, SyntaxManager syntaxManager, FilePosition? startPosition = null, FilePosition? endPosition = null)
+        public ReformatTextCommand(Project project, string name, FileBuffer buffer, FilePosition? startPosition = null, FilePosition? endPosition = null)
         {
             m_name = name;
             m_fileBuffer = buffer;
             m_startPos = startPosition ?? new FilePosition(0, 0);
             m_endPos= endPosition ?? new FilePosition(0, 0);
-            m_syntaxManager = syntaxManager;
+            m_project = project;
         }
 
         /// <summary>
@@ -91,11 +91,6 @@ namespace Xyglo
         /// The FileBuffer we're working on
         /// </summary>
         FileBuffer m_fileBuffer;
-
-        /// <summary>
-        /// Keep a local copy of the syntax manager associated with this command
-        /// </summary>
-        SyntaxManager m_syntaxManager;
 
     }
 }

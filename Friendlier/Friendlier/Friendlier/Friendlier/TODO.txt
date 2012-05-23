@@ -25,6 +25,7 @@ TODO
 ----
 - autorepeat is broken [FIXING]
 - handle Tabs in files elegantly [FIXING]
+- undo bug when repeating (Dummys appearing)
 - refactor the keyboard code as it's a mess
 - Paging on File Management
 - Elegant long lines File Management

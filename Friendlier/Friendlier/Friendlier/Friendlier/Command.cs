@@ -79,6 +79,11 @@ namespace Xyglo
         public abstract void Dispose();
 
         /// <summary>
+        /// Store our project pointer in the command for things like tab spaces etc
+        /// </summary>
+        protected Project m_project;
+
+        /// <summary>
         /// Use this to order end points in selections
         /// </summary>
         public void positionOrder()

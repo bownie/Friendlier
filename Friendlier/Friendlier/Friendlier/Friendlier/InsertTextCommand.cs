@@ -19,11 +19,12 @@ namespace Xyglo
         /// <param name="buffer"></param>
         /// <param name="insertPosition"></param>
         /// <param name="text"></param>
-        public InsertTextCommand(string name, FileBuffer buffer, FilePosition insertPosition, string text)
+        public InsertTextCommand(Project project, string name, FileBuffer buffer, FilePosition insertPosition, string text)
         {
             m_name = name;
             m_fileBuffer = buffer;
             m_startPos = insertPosition;
+            m_project = project;
 
             if (text != null && text.Split(m_splitCharacter).Count() > 1)
             {
@@ -47,13 +48,14 @@ namespace Xyglo
         /// <param name="buffer"></param>
         /// <param name="insertPosition"></param>
         /// <param name="newLine"></param>
-        public InsertTextCommand(string name, FileBuffer buffer, FilePosition insertPosition, bool newLine = true, string indent = "")
+        public InsertTextCommand(Project project, string name, FileBuffer buffer, FilePosition insertPosition, bool newLine = true, string indent = "")
         {
             m_name = name;
             m_fileBuffer = buffer;
             m_startPos = insertPosition;
             m_newLine = newLine;
             m_indent = indent;
+            m_project = project;
         }
 
         /// <summary>
@@ -68,6 +70,8 @@ namespace Xyglo
             // Store the initial cursor position locally
             //
             FilePosition fp = m_startPos;
+
+            //Logger.logMsg("START FP.X = " + fp.X);
 
             // Fetch the line if it's available
             //
@@ -135,7 +139,7 @@ namespace Xyglo
                             }
                         }
 
-                        fp.X = m_snippet.m_lines.Last<string>().Length;
+                        fp.X = m_snippet.m_lines.Last<string>().Replace("\t", m_project.getTab()).Length;
                     }
                 }
                 else
@@ -160,7 +164,7 @@ namespace Xyglo
                     }
                     else
                     {
-                        fp.X = m_indent.Length;
+                        fp.X = m_indent.Replace("\t", m_project.getTab()).Length;
                     }
 
                     fp.Y++; // Increment Y
@@ -179,7 +183,10 @@ namespace Xyglo
                 if (m_snippet.m_lines.Count() == 1)
                 {
                     m_fileBuffer.setLine(m_startPos.Y, firstLine + m_snippet.m_lines[0] + secondLine);
-                    fp.X += m_snippet.m_lines[0].Length;
+
+                    // Set absolute X position and adjust for tabs
+                    //
+                    fp.X = (firstLine + m_snippet.m_lines[0]).Replace("\t", m_project.getTab()).Length;
                 }
                 else
                 {
@@ -196,12 +203,14 @@ namespace Xyglo
                     }
 
 
-                    fp.X = m_snippet.m_lines.Last<string>().Length;
+                    fp.X = m_snippet.m_lines.Last<string>().Replace("\t", m_project.getTab()).Length;
 
                     // Append the end
                     m_fileBuffer.appendToLine(m_startPos.Y + m_snippet.m_lines.Count(), secondLine);
                 }
             }
+
+            //Logger.logMsg("END FP.X = " + fp.X);
 
             return fp;
         }

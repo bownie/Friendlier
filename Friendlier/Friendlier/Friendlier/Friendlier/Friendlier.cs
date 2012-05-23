@@ -2080,7 +2080,7 @@ namespace Xyglo
 
                 // Set X and allow for tabs
                 //
-                if (m_project.getSelectedBufferView().getCursorCoordinates().Y < m_project.getSelectedBufferView().getFileBuffer().getLineCount())
+                if (fp.Y < m_project.getSelectedBufferView().getFileBuffer().getLineCount())
                 {
                     fp.X = m_project.getSelectedBufferView().getFileBuffer().getLine(fp.Y).Replace("\t", m_project.getTab()).Length;
                 }
@@ -2297,34 +2297,46 @@ namespace Xyglo
                     // All the clever stuff with the cursor is done at the BufferView level and it also
                     // calls the command in the FileBuffer.
                     //
-                    m_project.getSelectedBufferView().deleteCurrentSelection(m_project.getSyntaxManager());
+                    m_project.getSelectedBufferView().deleteCurrentSelection(m_project);
                 }
                 else // delete at cursor
                 {
                     if (checkKeyState(Keys.Delete, gameTime))
                     {
-                        m_project.getSelectedBufferView().deleteSingle(m_project.getSyntaxManager());
+                        m_project.getSelectedBufferView().deleteSingle(m_project);
                     }
                     else if (checkKeyState(Keys.Back, gameTime))
                     {
-                        FilePosition fp = m_project.getSelectedBufferView().getCursorPosition();
+                        // Start with a file position from the screen position
+                        //
+                        FilePosition fp = m_project.getSelectedBufferView().getRealFilePosition(m_project);
+
+                        // Get the character before the current one and backspace accordingly 
 
                         if (fp.X > 0)
                         {
+                            string fetchLine = m_project.getSelectedBufferView().getCurrentLine();
+
                             // Decrement and set X
                             //
                             fp.X--;
-                            m_project.getSelectedBufferView().setCursorPosition(fp);
-                            m_project.getSelectedBufferView().deleteSingle(m_project.getSyntaxManager());
+
+                            // Now convert back to a screen position
+                            fp.X = fetchLine.Substring(0, fp.X).Replace("\t", m_project.getTab()).Length;
+                            
                         }
                         else if (fp.Y > 0)
                         {
                             fp.Y -= 1;
-                            fp.X = m_project.getSelectedBufferView().getFileBuffer().getLine(Convert.ToInt16(fp.Y)).Length;
-                            m_project.getSelectedBufferView().setCursorPosition(fp);
 
-                            m_project.getSelectedBufferView().deleteSingle(m_project.getSyntaxManager());
+                            // Don't forget to do tab conversions here too
+                            //
+                            fp.X = m_project.getSelectedBufferView().getFileBuffer().getLine(Convert.ToInt16(fp.Y)).Replace("\t", m_project.getTab()).Length;
                         }
+
+                        m_project.getSelectedBufferView().setCursorPosition(fp);
+
+                        m_project.getSelectedBufferView().deleteSingle(m_project);
                     }
                 }
             }
@@ -2455,7 +2467,7 @@ namespace Xyglo
                         Logger.logMsg("Friendler::update() - cut");
 
                         System.Windows.Forms.Clipboard.SetText(m_project.getSelectedBufferView().getSelection().getClipboardString());
-                        m_project.getSelectedBufferView().deleteCurrentSelection(m_project.getSyntaxManager());
+                        m_project.getSelectedBufferView().deleteCurrentSelection(m_project);
                     }
                     else if (checkKeyState(Keys.V, gameTime)) // Paste
                     {
@@ -4597,12 +4609,20 @@ namespace Xyglo
             {
                 bufferColour = m_greyedColour;
             }
-            
-            //if (view != m_project.getSelectedBufferView())
-            //{
-                // Take down the alpha of the non selected buffer views to draw a visual distinction
-                //bufferColour.A -= 180;
-            //}
+
+            // How dark should our non-highlighted BufferViews be?
+            //
+            float greyDivisor = 2.0f;
+
+            // Take down the colours and alpha of the non selected buffer views to draw a visual distinction
+            //
+            if (view != m_project.getSelectedBufferView())
+            {
+                bufferColour.R = (byte)(bufferColour.R / greyDivisor);
+                bufferColour.G = (byte)(bufferColour.G / greyDivisor);
+                bufferColour.B = (byte)(bufferColour.B / greyDivisor);
+                bufferColour.A = (byte)(bufferColour.A / greyDivisor);
+            }
 
             float yPosition = 0.0f;
 
@@ -4614,6 +4634,7 @@ namespace Xyglo
             // This is default empty line character
             string line, fetchLine;
             int bufPos = view.getBufferShowStartY();
+            Color highlightColour;
 
             // If we are tailing a file then let's look at the last X lines of it only
             //
@@ -4694,6 +4715,21 @@ namespace Xyglo
                     {
                         highlights.Sort();
 
+                        // Sort out the colour
+                        //
+                        highlightColour = highlights[0].m_colour;
+
+                        // If not active view then temper colour
+                        //
+                        if (view != m_project.getSelectedBufferView())
+                        {
+                            highlightColour.R = (byte)(highlightColour.R / greyDivisor);
+                            highlightColour.G = (byte)(highlightColour.G / greyDivisor);
+                            highlightColour.B = (byte)(highlightColour.B / greyDivisor);
+                            highlightColour.A = (byte)(highlightColour.A / greyDivisor);
+
+                        }
+
                         // Need to print the line by section with some unhighlighted
                         //
 
@@ -4707,7 +4743,7 @@ namespace Xyglo
                                 m_project.getFontManager().getFont(),
                                 line,
                                 new Vector2((int)viewSpaceTextPosition.X, (int)(viewSpaceTextPosition.Y + yPosition)),
-                                highlights[0].m_colour,
+                                highlightColour,
                                 0,
                                 Vector2.Zero,
                                 m_project.getFontManager().getTextScale(),
