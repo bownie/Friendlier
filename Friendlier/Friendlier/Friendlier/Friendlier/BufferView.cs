@@ -97,7 +97,7 @@ namespace Xyglo
         /// The BufferView remembers its own highlight positions
         /// </summary>
         [DataMember]
-        protected FilePosition m_highlightStart;
+        protected ScreenPosition m_highlightStart;
 
         /// <summary>
         /// Store the BufferViewPosition relative to another
@@ -109,13 +109,13 @@ namespace Xyglo
         /// The BufferView remembers its own highlight positions
         /// </summary>
         [DataMember]
-        protected FilePosition m_highlightEnd;
+        protected ScreenPosition m_highlightEnd;
 
         /// <summary>
         /// Where we set the highlight to when there isn't one
         /// </summary>
         [XmlIgnore]
-        static public FilePosition NoHighlightPosition = new FilePosition(-1, -1);
+        static public ScreenPosition NoHighlightPosition = new ScreenPosition(-1, -1);
 
         [DataMember]
         protected int m_bufferShowStartX = 0;
@@ -142,7 +142,7 @@ namespace Xyglo
         /// Current cursor coordinates in this BufferView
         /// </summary>
         [DataMember]
-        protected FilePosition m_cursorPosition;
+        protected ScreenPosition m_cursorPosition;
 
         /// <summary>
         /// The position in the buffer at which this view is locked
@@ -185,21 +185,6 @@ namespace Xyglo
         /// </summary>
         [DataMember]
         protected Color m_readOnlyColour = Color.LightYellow;
-
-        /// <summary>
-        /// Width of a single character in the font that we're displaying in
-        /// </summary>
-        ///
-        /*
-        [DataMember]
-        protected float m_charWidth;
-
-        /// <summary>
-        /// Height of a line in the font we're displaying in
-        /// </summary>
-        [DataMember]
-        protected float m_lineHeight; // { get { return value;}  }
-        */
 
         /// <summary>
         /// Is this a non-editable BufferView?
@@ -264,20 +249,6 @@ namespace Xyglo
             m_fontManager = fontManager;
         }
        
-        /*
-        /// <summary>
-        /// Specify just two element
-        /// </summary>
-        /// <param name="charWidth"></param>
-        /// <param name="lineHeight"></param>
-        public BufferView(float charWidth, float lineHeight, bool readOnly = false)
-        {
-            m_charWidth = charWidth;
-            m_lineHeight = lineHeight;
-            m_readOnly = readOnly;
-        }
-        */
-
         /// <summary>
         /// Specify a root BufferView and an absolute position
         /// </summary>
@@ -290,8 +261,6 @@ namespace Xyglo
             m_bufferShowStartX = rootBV.m_bufferShowStartX;
             m_bufferShowLength = rootBV.m_bufferShowLength;
             m_bufferShowWidth = rootBV.m_bufferShowWidth;
-            //m_charWidth = rootBV.m_charWidth;
-            //m_lineHeight = rootBV.m_lineHeight;
             m_position = position;
             m_fileBufferIndex = rootBV.m_fileBufferIndex;
             m_readOnly = rootBV.m_readOnly;
@@ -314,8 +283,6 @@ namespace Xyglo
             m_bufferShowStartY = bufferShowStartY;
             m_bufferShowStartX = 0;
             m_bufferShowLength = bufferShowLength;
-            //m_charWidth = charWidth;
-            //m_lineHeight = lineHeight;
             m_fileBufferIndex = fileIndex;
             m_readOnly = readOnly;
             m_fontManager = fontManager;
@@ -354,8 +321,6 @@ namespace Xyglo
             m_bufferShowWidth = rootBV.m_bufferShowWidth;
             m_bufferShowStartX = rootBV.m_bufferShowStartX;
             m_bufferShowStartY = rootBV.m_bufferShowStartY;
-            //m_charWidth = rootBV.m_charWidth;
-            //m_lineHeight = rootBV.m_lineHeight;
 
             // Store the orientation from another bufferview
             //
@@ -498,7 +463,7 @@ namespace Xyglo
         /// Get the start of the highlight
         /// </summary>
         /// <returns></returns>
-        public FilePosition getHighlightStart()
+        public ScreenPosition getHighlightStart()
         {
             return m_highlightStart;
         }
@@ -507,7 +472,7 @@ namespace Xyglo
         /// Set beginning of the highlight
         /// </summary>
         /// <param name="fp"></param>
-        protected void setHighlightStart(FilePosition fp)
+        protected void setHighlightStart(ScreenPosition fp)
         {
             m_highlightStart = fp;
             Logger.logMsg("BufferView::setHighlightStart() - starting at X = " + fp.X + ", Y = " + fp.Y);
@@ -517,12 +482,12 @@ namespace Xyglo
         /// Get end point of the highlight
         /// </summary>
         /// <returns></returns>
-        public FilePosition getHighlightEnd()
+        public ScreenPosition getHighlightEnd()
         {
             return m_highlightEnd;
         }
 
-        public void mouseCursorTo(bool shiftDown, FilePosition endPosition)
+        public void mouseCursorTo(bool shiftDown, ScreenPosition endPosition)
         {
             if (shiftDown)
             {
@@ -554,7 +519,7 @@ namespace Xyglo
         /// Set end point of the highlight
         /// </summary>
         /// <param name="fp"></param>
-        protected void setHighlightEnd(FilePosition fp)
+        protected void setHighlightEnd(ScreenPosition fp)
         {
             m_highlightEnd = fp;
             Logger.logMsg("BufferView::setHighlightEnd() - ending at X = " + fp.X + ", Y = " + fp.Y);
@@ -660,10 +625,10 @@ namespace Xyglo
         {
             // Do nothing if tailing
             //
-            if (m_tailing)
-            {
-                return;
-            }
+            //if (m_tailing)
+            //{
+                //return;
+            //}
 
             // Page up the BufferView position
             //
@@ -696,10 +661,10 @@ namespace Xyglo
         {
             // Do nothing if tailing
             //
-            if (m_tailing)
-            {
-                return;
-            }
+            //if (m_tailing)
+            //{
+//                return;
+            //}
 
             // Page down the buffer view position
             m_bufferShowStartY += m_bufferShowLength;
@@ -785,7 +750,7 @@ namespace Xyglo
         /// Get the current cursor position relative to the page value (m_bufferShowStartY)
         /// </summary>
         /// <returns></returns>
-        public FilePosition getRelativeCursorPosition()
+        public ScreenPosition getRelativeCursorPosition()
         {
             return m_cursorPosition;
         }
@@ -794,7 +759,7 @@ namespace Xyglo
         /// Cursor position is position in the FileBuffer - not in the visible BufferView
         /// </summary>
         /// <returns></returns>
-        public FilePosition getCursorPosition()
+        public ScreenPosition getCursorPosition()
         {
             return m_cursorPosition;
         }
@@ -815,7 +780,7 @@ namespace Xyglo
                 }
                 catch (Exception e)
                 {
-                    Logger.logMsg("BufferView::getCurrentLine() - can't get line " + m_cursorPosition.Y);
+                    Logger.logMsg("BufferView::getCurrentLine() - can't get line " + m_cursorPosition.Y + "(" + e.Message + ")");
                 }
             }
 
@@ -858,7 +823,7 @@ namespace Xyglo
         /// Return the position of the first non space character on the current line
         /// </summary>
         /// <returns></returns>
-        public FilePosition getFirstNonSpace(Project project)
+        public ScreenPosition getFirstNonSpace(Project project)
         {
             string line = m_fileBuffer.getLine(m_cursorPosition.Y).Replace("\t", project.getTab());
 
@@ -880,7 +845,7 @@ namespace Xyglo
                 pos = 0;
             }
 
-            return new FilePosition(pos, m_cursorPosition.Y);
+            return new ScreenPosition(pos, m_cursorPosition.Y);
         }
 
         /// <summary>
@@ -896,7 +861,7 @@ namespace Xyglo
         /// Is a given FilePosition valid in this BufferView?  i.e. is there any text there?
         /// </summary>
         /// <param name="fp"></param>
-        public bool testCursorPosition(FilePosition fp)
+        public bool testCursorPosition(ScreenPosition fp)
         {
             if (fp.Y >= 0 && fp.Y < m_fileBuffer.getLineCount())
             {
@@ -914,7 +879,7 @@ namespace Xyglo
         /// Set the cursor position in this view
         /// </summary>
         /// <param name="fp"></param>
-        public void setCursorPosition(FilePosition fp)
+        public void setCursorPosition(ScreenPosition fp)
         {
             // Do nothing if tailing
             //
@@ -1411,10 +1376,10 @@ namespace Xyglo
         {
             // Do nothing if tailing
             //
-            if (m_tailing)
-            {
-                return;
-            }
+//            if (m_tailing)
+            //{
+              //  return;
+            //}
 
             if (m_cursorPosition.Y > 0)
             {
@@ -1455,10 +1420,10 @@ namespace Xyglo
         {
             // Do nothing if tailing
             //
-            if (m_tailing)
-            {
-                return;
-            }
+            //if (m_tailing)
+            //{
+                //return;
+            //}
 
             if (m_cursorPosition.Y + 1 < m_fileBuffer.getLineCount())
             {
@@ -1495,7 +1460,7 @@ namespace Xyglo
         /// </summary>
         public void deleteCurrentSelection(Project project)
         {
-            m_fileBuffer.deleteSelection(project, m_highlightStart, m_highlightEnd);
+            m_fileBuffer.deleteSelection(project, screenToFilePosition(project, m_highlightStart), screenToFilePosition(project, m_highlightEnd), m_highlightStart, m_highlightEnd);
 
             if (m_highlightStart < m_highlightEnd)
             {
@@ -1520,7 +1485,7 @@ namespace Xyglo
         /// </summary>
         public void deleteSingle(Project project)
         {
-            m_fileBuffer.deleteSelection(project, m_cursorPosition, m_cursorPosition);
+            m_fileBuffer.deleteSelection(project, screenToFilePosition(project, m_cursorPosition), screenToFilePosition(project, m_cursorPosition), m_highlightStart, m_highlightEnd);
 
             // Update the syntax highlighting
             //
@@ -1531,9 +1496,9 @@ namespace Xyglo
         /// Replace a highlighted selection with some text (can be multi-line)
         /// </summary>
         /// <param name="text"></param>
-        public void replaceCurrentSelection(string text)
+        public void replaceCurrentSelection(Project project, string text)
         {
-            m_cursorPosition = m_fileBuffer.replaceText(m_highlightStart, m_highlightEnd, text);
+            m_cursorPosition = m_fileBuffer.replaceText(project, screenToFilePosition(project, m_highlightStart), screenToFilePosition(project, m_highlightEnd), text, m_highlightStart, m_highlightEnd);
 
             if (m_cursorPosition.Y < m_bufferShowStartY)
             {
@@ -1577,12 +1542,14 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Insert some text into the BufferView
+        /// Insert some text into the BufferView - we translate the screen position into a file position
+        /// when we generate the command but it returns a screen position (as we pass in the project to 
+        /// work out tab spaces).
         /// </summary>
         /// <param name="text"></param>
         public void insertText(Project project, string text)
         {
-            m_cursorPosition = m_fileBuffer.insertText(project, getRealFilePosition(project), text);
+            m_cursorPosition = m_fileBuffer.insertText(project, screenToFilePosition(project), m_highlightStart, m_highlightEnd, text);
 
             // Update the syntax highlighting
             //
@@ -1644,9 +1611,17 @@ namespace Xyglo
                     }
                 }*/
 
-                // Use the Syntax Manager to fetch an indent
-                //
-                indent = project.getSyntaxManager().getIndent(m_cursorPosition);
+
+                try
+                {
+                    // Use the Syntax Manager to fetch an indent
+                    //
+                    indent = project.getSyntaxManager().getIndent(screenToFilePosition(project, m_cursorPosition));
+                }
+                catch (Exception)
+                {
+                    Logger.logMsg("BufferView::insertNewLine() - failed to get the indent");
+                }
             }
 
             // Test current line for previous and next line indent levels - if they're the
@@ -1661,7 +1636,8 @@ namespace Xyglo
                 indent = impliedIndent;
             }
 
-            m_cursorPosition = m_fileBuffer.insertNewLine(project, getRealFilePosition(project), indent);
+            FilePosition fP = screenToFilePosition(project);
+            m_cursorPosition = m_fileBuffer.insertNewLine(project, fP, m_highlightStart, m_highlightEnd, indent);
 
             // Update the syntax highlighting
             //
@@ -1679,8 +1655,8 @@ namespace Xyglo
         {
             TextSnippet rS = new TextSnippet();
 
-            FilePosition shiftStart = m_highlightStart;
-            FilePosition shiftEnd = m_highlightEnd;
+            ScreenPosition shiftStart = m_highlightStart;
+            ScreenPosition shiftEnd = m_highlightEnd;
 
             // Swap the end points if start is greater than end.
             //
@@ -1821,7 +1797,7 @@ namespace Xyglo
         /// </summary>
         public void wordJumpCursorLeft()
         {
-            FilePosition fp = m_cursorPosition;
+            ScreenPosition fp = m_cursorPosition;
             string line = m_fileBuffer.getLine(fp.Y);
 
             if (fp.X > 0)
@@ -1846,7 +1822,7 @@ namespace Xyglo
         /// </summary>
         public void wordJumpCursorRight()
         {
-            FilePosition fp = m_cursorPosition;
+            ScreenPosition fp = m_cursorPosition;
             string line = m_fileBuffer.getLine(fp.Y);
 
             if (fp.X < line.Length)
@@ -1929,7 +1905,7 @@ namespace Xyglo
         /// <param name="text"></param>
         public bool find(string text)
         {
-            FilePosition searchPos = m_cursorPosition;
+            ScreenPosition searchPos = m_cursorPosition;
             bool searching = true;
             m_searchText = text;
 
@@ -2011,7 +1987,11 @@ namespace Xyglo
         /// <param name="steps"></param>
         public void undo(SyntaxManager syntaxManager, int steps = 1)
         {
-            m_cursorPosition = m_fileBuffer.undo(steps);
+            Pair<ScreenPosition, Pair<ScreenPosition, ScreenPosition>> rP = m_fileBuffer.undo(steps);
+
+            // Set cursor position to the first
+            //
+            m_cursorPosition = rP.First;
 
             // Remove any highlight
             //
@@ -2026,6 +2006,23 @@ namespace Xyglo
             // Ensure that the cursor is visible in the BufferView
             //
             keepVisible();
+
+            // Fix any highlighting that was included in the command
+            //
+            if (rP.Second != null)
+            {
+                // Use the highlight information return from the undo
+                //
+                if (rP.Second.First.X != -1 && rP.Second.First.Y != -1)
+                {
+                    m_highlightStart = rP.Second.First;
+                }
+
+                if (rP.Second.Second.X != -1 && rP.Second.Second.Y != -1)
+                {
+                    m_highlightEnd = rP.Second.Second;
+                }
+            }
         }
 
         /// <summary>
@@ -2035,7 +2032,9 @@ namespace Xyglo
         /// <param name="steps"></param>
         public void redo(SyntaxManager syntaxManager, int steps = 1)
         {
-            m_cursorPosition = m_fileBuffer.redo(1);
+            Pair<ScreenPosition, Pair<ScreenPosition, ScreenPosition>> rP = m_fileBuffer.redo(1);
+
+            m_cursorPosition = rP.First;
 
             // Remove any highlight
             //
@@ -2050,47 +2049,87 @@ namespace Xyglo
             // Ensure that the cursor is visible in the BufferView
             //
             keepVisible();
+
+            // Fix any highlighting that was included in the command
+            //
+            if (rP.Second != null)
+            {
+                // Use the highlight information return from the undo
+                //
+                if (rP.Second.First.X != -1 && rP.Second.First.Y != -1)
+                {
+                    m_highlightStart = rP.Second.First;
+                }
+
+                if (rP.Second.Second.X != -1 && rP.Second.Second.Y != -1)
+                {
+                    m_highlightEnd = rP.Second.Second;
+                }
+            }
         }
 
 
         /// <summary>
-        /// Get the real position in the file of the X cursor compensating for any tabs
+        /// Get the real position in the file of the X cursor compensating for any tabs - just wraps
+        /// the project screenToFile method.
         /// </summary>
         /// <param name="project"></param>
         /// <returns></returns>
-        public int getRealFilePositionX(Project project)
+        protected int screenToFileX(Project project)
         {
             // Only fetch the line if we have one to fetch
             //
-            if (m_cursorPosition.Y == 0 || m_cursorPosition.Y >= m_fileBuffer.getLineCount())
+            if (m_cursorPosition.Y == 0 && m_fileBuffer.getLineCount() == 0)
             {
                 return m_cursorPosition.X;
             }
 
+            // Fetch the line and expand tabs for screenLine using project helper
+            //
             string line = m_fileBuffer.getLine(m_cursorPosition.Y);
-            string subLine = line.Substring(0, Math.Min(m_cursorPosition.X, line.Length));
 
-            // Number of tabs
-            //
-            int numTabs = subLine.Where(item => item == '\t').Count();
-
-            // Remove the width of the tabs from the position
-            //
-            return m_cursorPosition.X - (numTabs * (project.getTab().Length - 1));
+            return project.screenToFile(line, m_cursorPosition.X);
         }
 
         /// <summary>
         /// Compensate for any tabs when converting from screen position to file position
         /// </summary>
-        public FilePosition getRealFilePosition(Project project)
+        public FilePosition screenToFilePosition(Project project)
         {
-            int x = getRealFilePositionX(project);
-            int y = m_cursorPosition.Y;
-
             
+            int x = screenToFileX(project);
+            int y = m_cursorPosition.Y;
 
             return new FilePosition(x, y);
         }
+
+        /// <summary>
+        /// ScreenPosition to FilePosition using the project helper
+        /// </summary>
+        /// <param name="project"></param>
+        /// <param name="sP"></param>
+        /// <returns></returns>
+        public FilePosition screenToFilePosition(Project project, ScreenPosition sP)
+        {
+            // Only fetch the line if we have one to fetch
+            //
+            if (sP.Y != 0 && sP.Y >= m_fileBuffer.getLineCount())
+            {
+                throw new Exception("BufferView::screenToFilePosition() - cannot fetch line " + sP.Y);
+            }
+
+            // Fetch the line and expand tabs for screenLine using project helper
+            //
+            string getLine = m_fileBuffer.getLine(sP.Y);
+
+            // Create return type and populate
+            //
+            FilePosition fP = new FilePosition(sP);
+            fP.X = project.screenToFile(getLine, sP.X);
+
+            return fP;
+        }
+
 
         /// <summary>
         /// Move the cursor right - taking into account end of lines, not fitting on screen, wrapping
@@ -2116,9 +2155,9 @@ namespace Xyglo
 
             // Add numTabs to the line.Length for all calculations
             //
-            if (m_cursorPosition.X + steps <= lineLength)
+            if (m_cursorPosition.X + steps < lineLength)
             {
-                int numTabs = line.Substring(getRealFilePositionX(project), steps).Where(item => item == '\t').Count();
+                int numTabs = line.Substring(screenToFileX(project), steps).Where(item => item == '\t').Count();
 
                 // Adjust movement by number of tabs we've found
                 //
@@ -2152,12 +2191,16 @@ namespace Xyglo
             }
 
             string line = m_fileBuffer.getLine(m_cursorPosition.Y);
+            
+            // We always need total number of tabs in the line to allow for adjustments
+            //
+            int lineLength = line.Replace("\t", project.getTab()).Length;
 
-            if (m_cursorPosition.X - steps > 0 && m_cursorPosition.X + steps < line.Length)
+            if (m_cursorPosition.X - steps > 0 && m_cursorPosition.X - steps < lineLength)
             {
                 // Get number of tabs within our movement string
                 //
-                int numTabs = line.Substring(m_cursorPosition.X - steps, steps).Where(item => item == '\t').Count();
+                int numTabs = line.Substring(screenToFileX(project) - steps, steps).Where(item => item == '\t').Count();
 
                 // Add extra tab steps in here
                 //

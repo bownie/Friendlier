@@ -131,6 +131,7 @@
     <Compile Include="BufferView.cs" />
     <Compile Include="Command.cs" />
     <Compile Include="CppSyntaxManager.cs" />
+    <Compile Include="DateTimeNowCache.cs" />
     <Compile Include="DeleteTextCommand.cs" />
     <Compile Include="DiffMatchPatch.cs" />
     <Compile Include="FileBuffer.cs" />
@@ -144,6 +145,7 @@
     <Compile Include="KinectWorker.cs" />
     <Compile Include="Pair.cs" />
     <Compile Include="ReformatTextCommand.cs" />
+    <Compile Include="ScreenPosition.cs" />
     <Compile Include="User.cs" />
     <Compile Include="XygloKinectHelper.cs" />
     <Compile Include="XygloKinectManager.cs" />

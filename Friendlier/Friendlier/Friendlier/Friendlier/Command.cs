@@ -55,23 +55,29 @@ namespace Xyglo
         /// Store the start of the highlight for undo purposes
         /// </summary>
         [DataMember]
-        protected FilePosition m_highlightStart;
+        protected ScreenPosition m_highlightStart;
 
         /// <summary>
         /// Store the end of the highlight
         /// </summary>
         [DataMember]
-        protected FilePosition m_highlightEnd;
+        protected ScreenPosition m_highlightEnd;
 
         /// <summary>
-        /// Define an abstract command for (re)do that returns a modified cursor position
+        /// Position at which this action is taking place
         /// </summary>
-        public abstract FilePosition doCommand();
+        [DataMember]
+        protected ScreenPosition m_screenPosition = new ScreenPosition();
 
         /// <summary>
-        /// Define an asbtract command for undo that returns a modified cursor position
+        /// Define an abstract command for (re)do that returns a modified cursor position in ScreenPosition
         /// </summary>
-        public abstract FilePosition undoCommand();
+        public abstract ScreenPosition doCommand();
+
+        /// <summary>
+        /// Define an asbtract command for undo that returns a modified cursor position in ScreenPosition
+        /// </summary>
+        public abstract ScreenPosition undoCommand();
 
         /// <summary>
         /// Abstract method to dispose of this object
@@ -99,6 +105,24 @@ namespace Xyglo
                 m_startPos = m_endPos;
                 m_endPos = swap;
             }
+        }
+
+        /// <summary>
+        /// HighlightEnd position
+        /// </summary>
+        /// <returns></returns>
+        public ScreenPosition getHighlightStart()
+        {
+            return m_highlightStart;
+        }
+
+        /// <summary>
+        /// HighlightEnd position
+        /// </summary>
+        /// <returns></returns>
+        public ScreenPosition getHighlightEnd()
+        {
+            return m_highlightEnd;
         }
     }
 }

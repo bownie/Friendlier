@@ -44,7 +44,8 @@ namespace Xyglo
     {
 
         /// <summary>
-        /// Define a viewing mode for this project
+        /// Define a viewing mode for this project - this decides what should be shown
+        /// and when during working with the project i.e. banners, medals etc.
         /// </summary>
         public enum ViewMode
         {
@@ -124,7 +125,7 @@ namespace Xyglo
         /// Store where we last opened a file from
         /// </summary>
         [DataMember]
-        protected string m_openDirectory = "";
+        protected string m_openDirectory = @"C:\";
 
         /// <summary>
         /// Store where we last saved a file to
@@ -523,6 +524,40 @@ namespace Xyglo
                 }
             }
             return rL;
+        }
+
+        /// <summary>
+        /// Try and find a BufferView for a given filename
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        public BufferView getBufferView(string filename)
+        {
+            List<BufferView> bvL = m_bufferViews.Where(item => item.getFileBuffer().getFilepath().ToUpper() == filename.ToUpper()).ToList();
+
+            if (bvL.Count() > 0)
+            {
+                return bvL[0];
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Get a FileBuffer for a given filepath
+        /// </summary>
+        /// <param name="filename"></param>
+        /// <returns></returns>
+        public FileBuffer getFileBuffer(string filename)
+        {
+            List<FileBuffer> fbL = m_fileBuffers.Where(item => item.getFilepath().ToUpper() == filename.ToUpper()).ToList();
+
+            if (fbL.Count() > 0)
+            {
+                return fbL[0];
+            }
+
+            return null;
+
         }
 
         /// <summary>
@@ -1626,7 +1661,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="ray"></param>
         /// <returns></returns>
-        public Pair<BufferView, FilePosition> testRayIntersection(Ray ray)
+        public Pair<BufferView, ScreenPosition> testRayIntersection(Ray ray)
         {
 #if TEST_RAY
             // Some test code
@@ -1652,7 +1687,7 @@ namespace Xyglo
             // Return BufferView
             //
             BufferView rBV = null;
-            FilePosition rFP = new FilePosition();
+            ScreenPosition rFP = new ScreenPosition();
 
             // Hypotenuse of our ray - distance to where ray hits the bounding box of the BufferView
             //
@@ -1702,7 +1737,85 @@ namespace Xyglo
                 Logger.logMsg("Project::testRayIntersection() - got FilePosition of X = " + rFP.X + ", Y = " + rFP.Y);
             }
 
-            return new Pair<BufferView, FilePosition>(rBV, rFP);
+            return new Pair<BufferView, ScreenPosition>(rBV, rFP);
+        }
+
+        /// <summary>
+        /// Convert a File line to a Screen line with spaces in it
+        /// </summary>
+        /// <param name="line"></param>
+        /// <returns></returns>
+        public string fileToScreen(string line)
+        {
+            return line.Replace("\t", getTab());
+        }
+
+        /// <summary>
+        /// Turn a FilePosition to ScreenPosition X coordinate allowing for tabs
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="position"></param>
+        /// <returns></returns>
+        public int fileToScreen(string line, int filePositionX)
+        {
+            return line.Substring(0, filePositionX).Replace("\t", getTab()).Length;
+        }
+
+        /// <summary>
+        /// Accept a file name 
+        /// </summary>
+        /// <param name="fileLine"></param>
+        /// <param name="screenPositionX"></param>
+        /// <returns></returns>
+        public int screenToFile(string fileLine, int screenPositionX)
+        {
+            string screenString = fileLine.Replace("\t", getTab());
+            int rP = 0; // return position (in file)
+            int sP = 0; // screen position
+
+            // Test for single char tabs
+            if (screenString.Length == fileLine.Length)
+            {
+                return screenPositionX;
+            }
+
+            // Return position will be at most the screenPositionX or 
+            // the screenString length if it's shorter (error).
+            //
+            while (sP < Math.Min(screenPositionX, screenString.Length))
+            {
+                if (fileLine[rP] == '\t')
+                {
+                    sP += getTab().Length;
+                }
+                else
+                {
+                    sP++;
+                }
+                rP++;
+            }
+
+            Logger.logMsg("Project::screenToFile() - rP " + rP);
+            return rP;
+        }
+
+        /// <summary>
+        /// Set the directory where we are opening files from.
+        /// </summary>
+        /// <param name="directory"></param>
+        public void setOpenDirectory(string directory)
+        {
+            m_openDirectory = directory;
+        }
+
+        /// <summary>
+        /// Get the directory where files are being opened from
+        /// </summary>
+        /// <returns></returns>
+        public string getOpenDirectory()
+        {
+            return m_openDirectory;
+
         }
     }
 

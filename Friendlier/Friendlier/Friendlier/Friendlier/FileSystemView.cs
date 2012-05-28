@@ -19,7 +19,7 @@ namespace Xyglo
         /// <summary>
         /// Our current directory
         /// </summary>
-        protected string m_path;
+        protected string m_path = null;
 
         /// <summary>
         /// Number of characters to show in a BufferView line
@@ -42,15 +42,9 @@ namespace Xyglo
         protected FileInfo m_fileInfo;
 
         /// <summary>
-        /// Font related hight
+        /// Project associated with this FileSystemView
         /// </summary>
-        float m_lineHeight;
-
-        /// <summary>
-        /// Character related width
-        /// </summary>
-        float m_charWidth;
-
+        Project m_project;
 
         /// <summary>
         /// Index of the currently highlighted directory in a directory picker
@@ -63,13 +57,21 @@ namespace Xyglo
         Vector3 m_position;
 
         ///////////////////////// CONSTRUCTORS ////////////////////////
-        public FileSystemView(string path, Vector3 position, float lineHeight, float charWidth)
+        public FileSystemView(string path, Vector3 position, Project project)
         {
             m_path = fixPathEnding(path);
             m_position = position;
-            m_lineHeight = lineHeight;
-            m_charWidth = charWidth;
+            m_project = project;
             scanDirectory();
+        }
+
+        /// <summary>
+        /// Set the project
+        /// </summary>
+        /// <param name="project"></param>
+        public void setProject(Project project)
+        {
+            m_project = project;
         }
 
 
@@ -230,8 +232,8 @@ namespace Xyglo
         {
             Vector3 rV = m_position;
             rV.Y = -rV.Y; // invert Y
-            rV.X += m_charWidth * m_bufferShowWidth / 2;
-            rV.Y -= m_lineHeight * m_bufferShowLength / 2;
+            rV.X += m_project.getFontManager().getCharWidth() * m_bufferShowWidth / 2;
+            rV.Y -= m_project.getFontManager().getLineSpacing() * m_bufferShowLength / 2;
             rV.Z += 600.0f;
             return rV;
         }

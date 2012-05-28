@@ -8,6 +8,7 @@ namespace Xyglo
 {
     /// <summary>
     /// Take a FilePosition and some text and insert it into a FileBuffer at that point.
+    /// Note that we accept a FilePosition and we return a screen position.
     /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     class InsertTextCommand : Command
@@ -19,12 +20,14 @@ namespace Xyglo
         /// <param name="buffer"></param>
         /// <param name="insertPosition"></param>
         /// <param name="text"></param>
-        public InsertTextCommand(Project project, string name, FileBuffer buffer, FilePosition insertPosition, string text)
+        public InsertTextCommand(Project project, string name, FileBuffer buffer, FilePosition insertPosition, string text, ScreenPosition highlightStart, ScreenPosition highlightEnd)
         {
             m_name = name;
             m_fileBuffer = buffer;
             m_startPos = insertPosition;
             m_project = project;
+            m_highlightStart = highlightStart;
+            m_highlightEnd = highlightEnd;
 
             if (text != null && text.Split(m_splitCharacter).Count() > 1)
             {
@@ -39,6 +42,21 @@ namespace Xyglo
             {
                 m_snippet.m_lines.Add(text);  // populate one line
             }
+
+            // Generate an initial ScreenPosition from the FilePosition - we use this for undo
+            //
+            try
+            {
+                string fetchLine = m_fileBuffer.getLine(m_startPos.Y);
+                m_screenPosition.X = fetchLine.Substring(0, Math.Min(m_startPos.X, fetchLine.Length)).Replace("\t", project.getTab()).Length;
+                m_screenPosition.Y = m_startPos.Y;
+            }
+            catch (Exception)
+            {
+                // If there is no line in the file we catch the exception here
+                //
+                Logger.logMsg("InsertTextCommand::InsertTextCommand() - cannot fetch line " + m_startPos.Y);
+            }
         }
 
         /// <summary>
@@ -48,7 +66,7 @@ namespace Xyglo
         /// <param name="buffer"></param>
         /// <param name="insertPosition"></param>
         /// <param name="newLine"></param>
-        public InsertTextCommand(Project project, string name, FileBuffer buffer, FilePosition insertPosition, bool newLine = true, string indent = "")
+        public InsertTextCommand(Project project, string name, FileBuffer buffer, FilePosition insertPosition, ScreenPosition highlightStart, ScreenPosition highlightEnd, bool newLine = true, string indent = "")
         {
             m_name = name;
             m_fileBuffer = buffer;
@@ -56,22 +74,39 @@ namespace Xyglo
             m_newLine = newLine;
             m_indent = indent;
             m_project = project;
+            m_highlightStart = highlightStart;
+            m_highlightEnd = highlightEnd;
+
+
+            // Generate an initial ScreenPosition from the FilePosition - we use this for undo
+            //
+            try
+            {
+                m_screenPosition.X = m_fileBuffer.getLine(m_startPos.Y).Substring(0, m_startPos.X).Replace("\t", project.getTab()).Length;
+                m_screenPosition.Y = m_startPos.Y;
+            }
+            catch (Exception)
+            {
+                // If there is no line in the file we catch the exception here
+                //
+                Logger.logMsg("InsertTextCommand::InsertTextCommand() - cannot fetch line " + m_startPos.Y);
+            }
         }
 
         /// <summary>
         /// Do this command
         /// </summary>
-        public override FilePosition doCommand()
+        public override ScreenPosition doCommand()
         {
 #if INSERT_COMMAND_DEBUG
             Logger.logMsg("InsertTextCommand::doCommand() - start position X = " + m_startPos.X + ", Y = " + m_startPos.Y);
 #endif
 
-            // Store the initial cursor position locally
+            // Store the initial cursor position locally - m_startPos is a FilePosition
             //
-            FilePosition fp = m_startPos;
+            ScreenPosition fp = new ScreenPosition(m_startPos);
 
-            //Logger.logMsg("START FP.X = " + fp.X);
+//            Logger.logMsg("START FP.X = " + fp.X);
 
             // Fetch the line if it's available
             //
@@ -80,8 +115,10 @@ namespace Xyglo
             {
                 fetchLine = m_fileBuffer.getLine(m_startPos.Y);
             }
-            
-            string firstLine = fetchLine.Substring(0, m_startPos.X);
+
+            // Have to check the minima here in case of tabs
+            //
+            string firstLine = fetchLine.Substring(0, Math.Min(m_startPos.X, fetchLine.Length));
             string secondLine = "";
 
             // Always as default set the original line to this
@@ -218,7 +255,7 @@ namespace Xyglo
         /// <summary>
         /// Undo this command
         /// </summary>
-        public override FilePosition undoCommand()
+        public override ScreenPosition undoCommand()
         {
             // Did we insert a line or some text?
             if (m_newLine)
@@ -255,7 +292,7 @@ namespace Xyglo
                 if (m_startPos.Y == 0 && m_originalText == "")
                 {
                     m_fileBuffer.deleteLines(0, 1);
-                    return (new FilePosition(0, 0));
+                    return (new ScreenPosition(0, 0));
 
                 }
                 else
@@ -271,7 +308,7 @@ namespace Xyglo
 
             // Return the start position when undoing
             //
-            return m_startPos;
+            return m_screenPosition;
         }
 
         /// <summary>

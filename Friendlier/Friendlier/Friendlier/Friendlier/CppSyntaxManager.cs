@@ -98,9 +98,6 @@ namespace Xyglo
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - completed.");
         }
 
-
-
-
         /// <summary>
         /// Regenerate the highlightList by parsing the entire file
         /// </summary>
@@ -138,6 +135,9 @@ namespace Xyglo
             int lastXPosition = 0;
             int foundPosition = 0;
             bool inMLComment = false;
+#if TABS_DONT_WORK_HERE
+            int startTab = 0;
+#endif
 
             // Ok - we scan the whole file - this might have to be optimised at some point
             //
@@ -149,6 +149,12 @@ namespace Xyglo
                 //
                 xPosition = 0;
                 foundPosition = -1;
+
+#if TABS_DONT_WORK_HERE
+                // Initialise startTab so we can handle multiple blocks of tabs efficiently
+                //
+                startTab = -1;
+#endif
 
                 // Scan whole line potentially many times for embedded comments etc
                 //
@@ -255,6 +261,21 @@ namespace Xyglo
                                         m_bracePositions.Add(bd, newDepth);
                                     }
                                 }
+
+#if TABS_DONT_WORK_HERE
+                                // End of tab run - insert highlight
+                                //
+                                if (line[xPosition] != '\t' && startTab != -1)
+                                {
+                                    Highlight newHighlight = new Highlight(i, startTab, xPosition, "TB", SyntaxManager.m_commentColour);
+                                    fileBuffer.setHighlight(newHighlight);
+                                    startTab = -1;
+                                }
+                                else if (line[xPosition] == '\t' && startTab == -1) // Handle tabs - we might want to highlight there
+                                {
+                                    startTab = xPosition;
+                                }
+#endif
                             }
                         }
                     }

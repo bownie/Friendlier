@@ -11,13 +11,32 @@ namespace Xyglo
     /// </summary>
     public struct FilePosition : ICloneable, IComparable
     {
+        /// <summary>
+        /// Integer constructor
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
         public FilePosition(int x, int y)
         {
             X = x;
             Y = y;
         }
 
+        /// <summary>
+        /// Copy constructor
+        /// </summary>
+        /// <param name="p"></param>
         public FilePosition(FilePosition p)
+        {
+            X = p.X;
+            Y = p.Y;
+        }
+
+        /// <summary>
+        /// ScreenPosition constructor
+        /// </summary>
+        /// <param name="p"></param>
+        public FilePosition(ScreenPosition p)
         {
             X = p.X;
             Y = p.Y;

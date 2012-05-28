@@ -61,21 +61,25 @@ namespace Xyglo
         /// <summary>
         /// Last GameTime that we fetched this file
         /// </summary>
+        [NonSerialized]
         protected TimeSpan m_lastFetchTime = TimeSpan.Zero;
 
         /// <summary>
         /// The last System time we fetch this file
         /// </summary>
+        [NonSerialized]
         protected DateTime m_lastFetchSystemTime = DateTime.MinValue;
 
         /// <summary>
         /// When this FileBuffer was created
         /// </summary>
-        protected DateTime m_creationSystemTime = DateTime.Now;
+        [DataMember]
+        protected DateTime m_creationSystemTime = DateTime.MinValue;
 
         /// <summary>
         /// Last time we wrote this file
         /// </summary>
+        [DataMember]
         protected DateTime m_lastWriteSystemTime = DateTime.MinValue;
 
         /// <summary>
@@ -119,9 +123,9 @@ namespace Xyglo
             m_filename = "";
             m_shortName = "";
 
-            // Define Timespan in the default constructor
+            // Initialise things
             //
-            m_fetchWindow =  new TimeSpan(0, 0, 0, 1, 0);
+            initialise();
         }
 
         /// <summary>
@@ -134,17 +138,27 @@ namespace Xyglo
             m_filename = filename;
             m_readOnly = readOnly;
 
-            // Define Timespan here
-            //
-            m_fetchWindow =  new TimeSpan(0, 0, 0, 1, 0);
-
             // Fix the paths properly
             //
             fixPaths();
+
+            // Initialise things
+            //
+            initialise();
         }
 
 
         /////////////// METHODS ///////////////////
+
+        /// <summary>
+        /// Initialise some stuff
+        /// </summary>
+        protected void initialise()
+        {
+            // Define Timespan in the default constructor
+            //
+            m_fetchWindow = new TimeSpan(0, 0, 0, 1, 0);
+        }
 
         /// <summary>
         /// Get the full filepath
@@ -236,6 +250,17 @@ namespace Xyglo
                 return;
             }
 
+            // Set up some file information here
+            try
+            {
+                m_creationSystemTime = File.GetCreationTime(m_filename);
+                m_lastWriteSystemTime = File.GetLastWriteTime(m_filename);
+            }
+            catch (Exception)
+            {
+                Logger.logMsg("FileBuffer::FileBuffer() - can't get the file creation time");
+            }
+
             // If we have recovered this FileBuffer from a persisted state then m_lines could
             // very well be null at this point - initialise it if it is.  Otherwise we clear
             // before we load.
@@ -260,6 +285,8 @@ namespace Xyglo
                     m_lines.Add(line);
                 }
             }
+
+            m_lastFetchSystemTime = DateTime.Now;
         }
 
         /// <summary>
@@ -293,9 +320,11 @@ namespace Xyglo
                 //if (fileModTime != m_lastFetchSystemTime)
                 //{
                     m_lines.Clear();
+
+                    // Calling this also updates the m_lastFetchSystemTime
+                    //
                     loadFile(syntaxManager);
                     m_lastFetchTime = gametime.TotalGameTime;
-                    m_lastFetchSystemTime = DateTime.Now;
 
                     //Logger.logMsg("FileBuffer::fetchFile() - refetching file " + m_filename);
                     return true;
@@ -455,6 +484,10 @@ namespace Xyglo
             return lC;
         }
 
+        /// <summary>
+        /// Is this FileBuffer too big for Friendlier to process currently?
+        /// </summary>
+        /// <returns></returns>
         public bool isTooBig()
         {
             FileInfo fI = new FileInfo(m_filename);
@@ -500,18 +533,17 @@ namespace Xyglo
         /// <param name="startSelection"></param>
         /// <param name="endSelection"></param>
         /// <returns></returns>
-        public FilePosition deleteSelection(Project project, FilePosition startSelection, FilePosition endSelection)
+        public ScreenPosition deleteSelection(Project project, FilePosition startSelection, FilePosition endSelection, ScreenPosition startHighlight, ScreenPosition endHighlight)
         {
+            ScreenPosition fp = new ScreenPosition(endSelection);
             if (m_readOnly)
             {
-                return endSelection;
+                return fp;
             }
-
-            FilePosition fp = endSelection;
 
             try
             {
-                DeleteTextCommand command = new DeleteTextCommand(project, "Delete Selection", this, startSelection, endSelection);
+                DeleteTextCommand command = new DeleteTextCommand(project, "Delete Selection", this, startSelection, endSelection, startHighlight, endHighlight);
                 fp = command.doCommand();
 
                 // Ensure we are neat and tidy
@@ -533,15 +565,15 @@ namespace Xyglo
         /// <param name="replacePosition"></param>
         /// <param name="text"></param>
         /// <returns></returns>
-        public FilePosition replaceText(FilePosition startSelection, FilePosition endSelection, string text)
+        public ScreenPosition replaceText(Project project, FilePosition startSelection, FilePosition endSelection, string text, ScreenPosition highlightStart, ScreenPosition highlightEnd)
         {
             if (m_readOnly)
             {
-                return endSelection;
+                return new ScreenPosition(endSelection);
             }
 
-            ReplaceTextCommand command = new ReplaceTextCommand("Replace Text", this, startSelection, endSelection, text);
-            FilePosition fp = command.doCommand();
+            ReplaceTextCommand command = new ReplaceTextCommand(project, "Replace Text", this, startSelection, endSelection, text, highlightStart, highlightEnd);
+            ScreenPosition fp = command.doCommand();
 
             // Ensure we are neat and tidy
             //
@@ -550,21 +582,51 @@ namespace Xyglo
             return fp;
         }
 
+        /*
+        /// <summary>
+        /// Need this conversion at a file level to a ScreenPosition - this is used by commands to
+        /// provide screen level feedback
+        /// </summary>
+        /// <param name="project"></param>
+        /// <returns></returns>
+        public FilePosition getFilePosition(Project project, ScreenPosition sP)
+        {
+            // Only fetch the line if we have one to fetch
+            //
+            if (sP.Y == 0 || sP.Y >= getLineCount())
+            {
+                return new FilePosition(sP);
+            }
+
+            string line = getLine(sP.Y);
+            string subLine = line.Substring(0, Math.Min(sP.X, line.Length));
+
+            // Number of tabs
+            //
+            int numTabs = subLine.Where(item => item == '\t').Count();
+
+            // Remove the width of the tabs from the position
+            //
+            return m_cursorPosition.X - (numTabs * (project.getTab().Length - 1));
+        }
+        */
+
+
         /// <summary>
         /// Insert some text into our current FileBuffer at a particular position
         /// </summary>
         /// <param name="insertPosition"></param>
         /// <param name="text"></param>
         /// <returns></returns>
-        public FilePosition insertText(Project project, FilePosition insertPosition, string text)
+        public ScreenPosition insertText(Project project, FilePosition insertPosition, ScreenPosition highlightStart, ScreenPosition highlightEnd, string text)
         {
             if (m_readOnly)
             {
-                return insertPosition;
+                return new ScreenPosition(insertPosition);
             }
 
-            InsertTextCommand command = new InsertTextCommand(project, "Insert Text", this, insertPosition, text);
-            FilePosition fp = command.doCommand();
+            InsertTextCommand command = new InsertTextCommand(project, "Insert Text", this, insertPosition, text, highlightStart, highlightEnd);
+            ScreenPosition fp = command.doCommand();
 
             // Ensure we are neat and tidy
             //
@@ -587,10 +649,10 @@ namespace Xyglo
         /// Insert a new line
         /// </summary>
         /// <param name="insertPosition"></param>
-        public FilePosition insertNewLine(Project project, FilePosition insertPosition, string indent)
+        public ScreenPosition insertNewLine(Project project, FilePosition insertPosition, ScreenPosition highlightStart, ScreenPosition highlightEnd, string indent)
         {
-            InsertTextCommand command = new InsertTextCommand(project, "Insert new line", this, insertPosition, true, indent);
-            FilePosition fp = command.doCommand();
+            InsertTextCommand command = new InsertTextCommand(project, "Insert new line", this, insertPosition, highlightStart, highlightEnd, true, indent);
+            ScreenPosition fp = command.doCommand();
 
             // Ensure we are neat and tidy
             //
@@ -603,9 +665,13 @@ namespace Xyglo
         /// Redo a certain number of commands already on the commands list
         /// </summary>
         /// <param name="steps"></param>
-        public FilePosition redo(int steps)
+        public Pair<ScreenPosition, Pair<ScreenPosition, ScreenPosition>> redo(int steps)
         {
-            FilePosition fp = new FilePosition();
+            Pair<ScreenPosition, Pair<ScreenPosition, ScreenPosition>> rP = new Pair<ScreenPosition, Pair<ScreenPosition, ScreenPosition>>();
+            ScreenPosition fp = new ScreenPosition();
+
+            ScreenPosition startHighlight = new ScreenPosition();
+            ScreenPosition endHighlight = new ScreenPosition();
 
             Logger.logMsg("FileBuffer::redo() - redo " + steps + " commands from position " + m_undoPosition);
 
@@ -618,6 +684,8 @@ namespace Xyglo
                 for (int i = m_undoPosition; i < m_undoPosition + steps; i++)
                 {
                     fp = m_commands[i].doCommand();
+                    startHighlight = m_commands[i].getHighlightStart();
+                    endHighlight = m_commands[i].getHighlightEnd();
                 }
 
                 // Incremenet the m_undoPosition accordingly
@@ -625,20 +693,35 @@ namespace Xyglo
                 m_undoPosition += steps;
             }
 
-            return fp;
+            // Set return value of the cursor position and highlight information
+            //
+            rP.First = fp;
+
+            // Assign the sub-pair
+            //
+            rP.Second = new Pair<ScreenPosition, ScreenPosition>();
+            rP.Second.First = startHighlight;
+            rP.Second.Second = endHighlight;
+
+            return rP;
 
         }
 
         /// <summary>
-        /// Undo a given number of steps in the life of a FileBuffer
+        /// Undo a given number of steps in the life of a FileBuffer - returns a complicated package
+        /// of position cursor and highlighting (if any was saved)
         /// </summary>
         /// <param name="steps"></param>
         /// <returns></returns>
-        public FilePosition undo(int steps)
+        public Pair<ScreenPosition, Pair<ScreenPosition, ScreenPosition>> undo(int steps)
         {
-            FilePosition fp = new FilePosition();
+            Pair<ScreenPosition, Pair<ScreenPosition, ScreenPosition>> rP = new Pair<ScreenPosition, Pair<ScreenPosition, ScreenPosition>>();
+            ScreenPosition fp = new ScreenPosition();
 
             Logger.logMsg("FileBuffer::undo() - undo " + steps + " commands from position " + m_undoPosition);
+
+            ScreenPosition startHighlight = new ScreenPosition();
+            ScreenPosition endHighlight = new ScreenPosition();
 
             if (m_commands.Count >= steps && m_undoPosition >= 0)
             {
@@ -647,6 +730,9 @@ namespace Xyglo
                 for (int i = m_undoPosition - 1; i > m_undoPosition - 1 - steps; i--)
                 {
                     fp = m_commands[i].undoCommand();
+
+                    startHighlight = m_commands[i].getHighlightStart();
+                    endHighlight = m_commands[i].getHighlightEnd();
                 }
 
                 // Reduce the m_undoPosition accordingly
@@ -658,8 +744,17 @@ namespace Xyglo
             Logger.logMsg("FileBuffer::undo() - undo stack size is now " + m_commands.Count);
             Logger.logMsg("FileBuffer::undo() - undo stack position is now " + m_undoPosition);
 #endif
+            // Set return value of the cursor position and highlight information
+            //
+            rP.First = fp;
 
-            return fp;
+            // Assign the sub-pair
+            //
+            rP.Second = new Pair<ScreenPosition, ScreenPosition>();
+            rP.Second.First = startHighlight;
+            rP.Second.Second = endHighlight;
+
+            return rP;
         }
 
         // Number of commands in stack

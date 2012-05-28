@@ -9,13 +9,15 @@ namespace Xyglo
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class ReplaceTextCommand : Command
     {
-        public ReplaceTextCommand(string name, FileBuffer buffer, FilePosition start, FilePosition end, string text)
+        public ReplaceTextCommand(Project project, string name, FileBuffer buffer, FilePosition start, FilePosition end, string text, ScreenPosition highlightStart, ScreenPosition highlightEnd)
         {
             m_name = name;
             m_fileBuffer = buffer;
             m_startPos = start;
             m_endPos = end;
             m_text = text;
+            m_highlightStart = highlightStart;
+            m_highlightEnd = highlightEnd;
 
             if (m_text != null && m_text.Split(m_splitCharacter).Count() > 1)
             {
@@ -34,12 +36,17 @@ namespace Xyglo
             // Correct start and end positions
             //
             positionOrder();
+
+            // Generate an initial ScreenPosition from the FilePosition - we use this for undo
+            //
+            m_screenPosition.X = m_fileBuffer.getLine(m_startPos.Y).Substring(0, m_startPos.X).Replace("\t", project.getTab()).Length;
+            m_screenPosition.Y = m_startPos.Y;
         }
 
         /// <summary>
         /// Do this command
         /// </summary>
-        public override FilePosition doCommand()
+        public override ScreenPosition doCommand()
         {
             string newLine, bufLine;
 
@@ -148,7 +155,7 @@ namespace Xyglo
 
             // Store the initial cursor position locally
             //
-            FilePosition fp = m_startPos;
+            ScreenPosition fp = new ScreenPosition(m_startPos);
 
             if (m_writeSnippet.m_lines.Count == 0)
             {
@@ -256,7 +263,7 @@ namespace Xyglo
         /// <summary>
         /// Undo this command
         /// </summary>
-        public override FilePosition undoCommand()
+        public override ScreenPosition undoCommand()
         {
             Logger.logMsg("ReplaceTextCommand::undoCommand() - m_linesDeleted = " + m_saveSnippet.getLinesDeleted());
 
@@ -281,7 +288,7 @@ namespace Xyglo
 
             // Return the start position for undo
             //
-            return m_startPos;
+            return m_screenPosition;
         }
 
         /// <summary>

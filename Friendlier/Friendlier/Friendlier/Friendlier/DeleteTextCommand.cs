@@ -9,13 +9,15 @@ namespace Xyglo
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class DeleteTextCommand : Command
     {
-        public DeleteTextCommand(Project project, string name, FileBuffer buffer, FilePosition start, FilePosition end)
+        public DeleteTextCommand(Project project, string name, FileBuffer buffer, FilePosition start, FilePosition end, ScreenPosition startHighlight, ScreenPosition endHighlight)
         {
             m_name = name;
             m_fileBuffer = buffer;
             m_startPos = start;
             m_endPos = end;
             m_project = project;
+            m_highlightStart = startHighlight;
+            m_highlightEnd = endHighlight;
 
             // Correct start and end positions
             //
@@ -25,7 +27,7 @@ namespace Xyglo
         /// <summary>
         /// Do this command
         /// </summary>
-        public override FilePosition doCommand()
+        public override ScreenPosition doCommand()
         {
             string newLine, bufLine;
 
@@ -144,13 +146,13 @@ namespace Xyglo
 #if DELETE_COMMAND_DEBUG
             Logger.logMsg("DeleteTextCommand:doCommand() - snippet position is " + m_snippet.getSnippetFactoryPosition());
 #endif
-            return m_startPos;
+            return new ScreenPosition(m_startPos);
         }
 
         /// <summary>
         /// Undo this command
         /// </summary>
-        public override FilePosition undoCommand()
+        public override ScreenPosition undoCommand()
         {
 #if DELETE_COMMAND_DEBUG
             Logger.logMsg("DeleteTextCommand::undoCommand() - Lines to add " + m_snippet.getLinesDeleted());
@@ -181,7 +183,7 @@ namespace Xyglo
 
             // Return the start position for undo
             //
-            return m_startPos;
+            return m_screenPosition;
         }
 
         /// <summary>

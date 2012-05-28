@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Diagnostics;
+using System.Reflection;
 
 namespace Xyglo
 {
@@ -15,17 +14,43 @@ namespace Xyglo
         /// </summary>
         /// <param name="message"></param>
         /// <param name="showTime"></param>
-        public static void logMsg(string message, bool showTime = false)
+        public static void logMsg(string message, bool showTime = false, bool showStack = false)
         {
+            string prefix = "";
+
+            
             if (showTime)
             {
-                //Console.WriteLine(String.Format("{0:s}", DateTime.Now) + " - " + message);
-                Console.WriteLine(DateTime.Now.ToString() + " - " + message);
+                prefix += DateTimeNowCache.GetDateTime().ToString() + " - ";
             }
-            else
+
+            if (showStack)
             {
-                Console.WriteLine(message);
+                StackTrace stackTrace = new StackTrace();
+                prefix += stackTrace.GetFrame(0) + " - ";
             }
+
+            Console.WriteLine(prefix + message);
         }
+
+#if NOT_USED
+        private static void WhatsMyName()
+        {
+            StackFrame stackFrame = new StackFrame();
+            MethodBase methodBase = stackFrame.GetMethod();
+            Console.WriteLine(methodBase.Name); // Displays “WhatsmyName”
+            WhoCalledMe();
+        }
+
+        // Function to display parent function
+        private static void WhoCalledMe()
+        {
+            StackTrace stackTrace = new StackTrace();
+            StackFrame stackFrame = stackTrace.GetFrame(1);
+            MethodBase methodBase = stackFrame.GetMethod();
+            // Displays “WhatsmyName”
+            Console.WriteLine(" Parent Method Name {0} ", methodBase.Name);
+        }
+#endif
     }
 }

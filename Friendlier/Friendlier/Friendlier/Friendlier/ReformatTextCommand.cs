@@ -31,9 +31,9 @@ namespace Xyglo
         /// <summary>
         /// Do this command
         /// </summary>
-        public override FilePosition doCommand()
+        public override ScreenPosition doCommand()
         {
-            FilePosition fp = m_startPos;
+            ScreenPosition fp = new ScreenPosition(m_startPos);
 
             string fetchLine = m_fileBuffer.getLine(m_startPos.Y);
 
@@ -63,13 +63,13 @@ namespace Xyglo
         /// <summary>
         /// Undo this command
         /// </summary>
-        public override FilePosition undoCommand()
+        public override ScreenPosition undoCommand()
         {
             if (m_snippet.m_lines.Count() == 1)
             {
                 string line = m_snippet.m_lines[0];
             }
-            return m_startPos;
+            return new ScreenPosition(m_startPos);
         }
 
         /// <summary>
