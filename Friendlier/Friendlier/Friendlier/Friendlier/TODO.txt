@@ -1,6 +1,13 @@
 USE CASES
 ---------
 - The developer - developing, debugging, coding
+
+  Scenario - building Rosegarden
+
+  - generated Makefile from QtCreator/QMake already
+  - Use Qt lrelease to generate QM files
+  - 
+
 - The writer - writing a book, researching
 - The journalist - writing a story, researching
 
@@ -10,10 +17,14 @@ USE CASES
 BUILD and USABILITY FEATURES TODO and BUGS
 ----
 
-- error with collections during background build
-- Cancel build option
-- browse up error messages in build log
-- Build in Progress - ensure confirmation of exit
+- slow when editing.. [TRACING]
+- double click error line to file editor [ALMOST WORKING]
+- make clean [DONE]
+- make debug/release options [CAN WORKAROUND THIS]
+- Cancel build option [HALF DONE]
+- browse up error messages in build log [DONE]
+- error with collections during background build [ADDED NEW MUTEX WHICH MAY FIX]
+- Build in Progress - ensure confirmation of exit [PARTIALLY DONE]
 
 OLD
 ----

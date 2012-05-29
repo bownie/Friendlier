@@ -151,7 +151,8 @@ namespace Xyglo
         {
             None,
             FileSave,
-            FileSaveCancel
+            FileSaveCancel,
+            CancelBuild
         }
 
         /// <summary>
@@ -419,9 +420,14 @@ namespace Xyglo
         protected string m_searchText = "";
 
         /// <summary>
-        /// Lock the log file for writing
+        /// Lock the Standard out log file for writing
         /// </summary>
-        protected Mutex m_logFileMutex = new Mutex();
+        protected Mutex m_stdOutLogFileMutex = new Mutex();
+
+        /// <summary>
+        /// Lock the Started error log file for writing
+        /// </summary>
+        protected Mutex m_stdErrLogFileMutex = new Mutex();
 
         /// <summary>
         /// Store GameTime somewhere central
@@ -683,6 +689,11 @@ namespace Xyglo
             // such as FontManager etc.
             //
             m_project.connectFloatingWorld();
+
+            // Reconnect these views if they exist
+            //
+            m_buildStdOutView = m_project.getStdOutView();
+            m_buildStdErrView = m_project.getStdErrView();
 
             // Set the tab space
             //
@@ -1585,6 +1596,15 @@ namespace Xyglo
             //
             if (checkKeyState(Keys.Escape, gameTime))
             {
+                // Check to see if we are building something
+                //
+                if (m_buildProcess != null)
+                {
+                    setTemporaryMessage("Cancel build? (Y/N)", 0);
+                    m_confirmState = ConfirmState.CancelBuild;
+                    return true;
+                }
+
                 // Depends where we are in the process here - check state
 
                 Vector3 newPosition = m_eye;
@@ -2087,6 +2107,10 @@ namespace Xyglo
             {
                 doBuildCommand(gameTime);
             }
+            else if (checkKeyState(Keys.F7, gameTime))
+            {
+                doBuildCommand(gameTime, "clean");
+            }
             else if (checkKeyState(Keys.F11, gameTime)) // Toggle full screen
             {
                 if (m_project.isFullScreen())
@@ -2436,7 +2460,7 @@ namespace Xyglo
             {
                 if (checkKeyState(Keys.Y, gameTime))
                 {
-                    Logger.logMsg("Friendlier::processCombinationsCommands() - confirm save");
+                    Logger.logMsg("Friendlier::processCombinationsCommands() - confirm y/n");
                     try
                     {
                         if (m_confirmState == ConfirmState.FileSave)
@@ -2506,6 +2530,12 @@ namespace Xyglo
                                 checkExit(gameTime);
                             }
                         }
+                        else if (m_confirmState == ConfirmState.CancelBuild)
+                        {
+                            Logger.logMsg("Friendlier::processCombinationsCommands() - cancel build");
+                            m_buildProcess.Close();
+                            m_buildProcess = null;
+                        }
                     }
                     catch (Exception e)
                     {
@@ -2528,6 +2558,11 @@ namespace Xyglo
                         // Exit nicely
                         //
                         checkExit(gameTime, true);
+                    }
+                    else if (m_confirmState == ConfirmState.CancelBuild)
+                    {
+                        setTemporaryMessage("Continuing build..", 2);
+                        m_confirmState = ConfirmState.None;
                     }
                 }
                 else if (checkKeyState(Keys.C, gameTime) && m_confirmState == ConfirmState.FileSaveCancel)
@@ -3221,7 +3256,7 @@ namespace Xyglo
                 //
                 default:
                     key = "";
-                    Logger.logMsg("Friendlier::update() - got key = " + keyDown.ToString());
+                    //Logger.logMsg("Friendlier::update() - got key = " + keyDown.ToString());
                     break;
             }
 
@@ -3779,6 +3814,60 @@ namespace Xyglo
                     m_lastClickPosition.Y = mouseY;
                     m_lastClickPosition.Z = 0;
 
+                    // Double click fired
+                    //
+                    if ((gameTime.TotalGameTime - m_lastClickTime).TotalSeconds < 0.15f)
+                    {
+                        Logger.logMsg("DOUBLE CLICK");
+                        Pair<BufferView, ScreenPosition> testFind = m_project.testRayIntersection(GetPickRay());
+
+                        BufferView bv = (BufferView)testFind.First;
+                        ScreenPosition fp = (ScreenPosition)testFind.Second;
+
+                        if (bv.testCursorPosition(fp))
+                        {
+                            string line = "";
+                            try
+                            {
+                                line = bv.getFileBuffer().getLine(fp.Y);
+                                Logger.logMsg("GOT LINE = " + line);
+                            }
+                            catch (Exception)
+                            {
+                                Logger.logMsg("Couldn't fetch line " + fp.Y);
+                            }
+
+                            Pair<FileBuffer, ScreenPosition> found = m_project.findFileBufferFromText(line, m_modelBuilder);
+
+                            if (found.First != null)
+                            {
+                                FileBuffer fb = (FileBuffer)found.First;
+                                ScreenPosition sp = (ScreenPosition)found.Second;
+
+                                bv = m_project.getBufferView(fb.getFilepath());
+
+                                if (bv != null)
+                                {
+                                    try
+                                    {
+                                        Logger.logMsg("Trying to active BufferView and zap to line");
+                                        setActiveBuffer(bv);
+                                        bv.setCursorPosition(sp);
+                                    }
+                                    catch (Exception)
+                                    {
+                                        Logger.logMsg("Couldn't activate and zap to line in file");
+                                    }
+                                }
+                            }
+
+                            // Do something with the result
+                            //
+                            return;
+
+                        }
+                    }
+
                     m_lastClickVector = pickRay.Direction;
                     m_lastClickTime = gameTime.TotalGameTime;
 
@@ -4188,7 +4277,7 @@ namespace Xyglo
 
             // Set up some of these variables here
             //
-            string positionString = m_project.getSelectedBufferView().getCursorPosition().Y + m_project.getSelectedBufferView().getBufferShowStartY() + "," + m_project.getSelectedBufferView().getCursorPosition().X;
+            string positionString = m_project.getSelectedBufferView().getCursorPosition().Y + "," + m_project.getSelectedBufferView().getCursorPosition().X;
             float positionStringXPos = m_graphics.GraphicsDevice.Viewport.Width - positionString.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) - (m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 14);
             float filePercent = 0.0f;
 
@@ -4764,13 +4853,35 @@ namespace Xyglo
             //
             if (view.isTailing() && view.isReadOnly())
             {
+                // Ensure that we're tailing correctly by adjusting bufferview position
+                //
+
+
                 // We let the view do the hard work with the wrapped lines
                 //
-                List<string> lines = view.getWrappedEndofBuffer();
+                List<string> lines;
+
+                if (view == m_buildStdOutView)
+                {
+                    lines = view.getWrappedEndofBuffer(m_project.getStdOutLastLine());
+                }
+                else if (view == m_buildStdErrView)
+                {
+                    lines = view.getWrappedEndofBuffer(m_project.getStdErrLastLine());
+                }
+                else
+                {
+                    // Default
+                    //
+                    lines = view.getWrappedEndofBuffer();
+                }
+
+                Color bufferColourLastRun = new Color(50, 50, 50, 50);
 
                 for (int i = 0; i < lines.Count; i++)
                 {
-                    m_spriteBatch.DrawString(m_project.getFontManager().getFont(), lines[i], new Vector2((int)viewSpaceTextPosition.X, (int)viewSpaceTextPosition.Y + yPosition), bufferColour, 0, Vector2.Zero, m_project.getFontManager().getTextScale(), 0, 0);
+                    m_spriteBatch.DrawString(m_project.getFontManager().getFont(), lines[i], new Vector2((int)viewSpaceTextPosition.X, (int)viewSpaceTextPosition.Y + yPosition),
+                        (i < view.getLogRunTerminator() ? bufferColourLastRun : bufferColour), 0, Vector2.Zero, m_project.getFontManager().getTextScale(), 0, 0);
                     yPosition += m_project.getFontManager().getLineSpacing();
                 }
             }
@@ -5386,7 +5497,7 @@ namespace Xyglo
         /// <summary>
         /// Perform an external build
         /// </summary>
-        protected void doBuildCommand(GameTime gameTime)
+        protected void doBuildCommand(GameTime gameTime, string options = "")
         {
 
             if (m_buildProcess != null)
@@ -5436,10 +5547,10 @@ namespace Xyglo
                         //
                         if (!File.Exists(buildStdErrLog))
                         {
-                            m_logFileMutex.WaitOne();
+                            m_stdErrLogFileMutex.WaitOne();
                             StreamWriter newStdErr = File.CreateText(buildStdErrLog);
                             newStdErr.Close();
-                            m_logFileMutex.ReleaseMutex();
+                            m_stdErrLogFileMutex.ReleaseMutex();
                         }
 
                         m_buildStdErrView = m_project.findBufferView(buildStdErrLog);
@@ -5451,14 +5562,18 @@ namespace Xyglo
                         m_buildStdErrView.setTailColour(Color.Orange);
                         //m_buildStdErrView.setReadOnlyColour(Color.DarkRed);
 
+                        // Store the line length of the existing file
+                        //
+                        m_project.setStdErrLastLine(m_buildStdErrView.getFileBuffer().getLineCount());
+
                         // If the build log doesn't exist then create it
                         //
                         if (!File.Exists(buildStdOutLog))
                         {
-                            m_logFileMutex.WaitOne();
+                            m_stdOutLogFileMutex.WaitOne();
                             StreamWriter newStdOut = File.CreateText(buildStdOutLog);
                             newStdOut.Close();
-                            m_logFileMutex.ReleaseMutex();
+                            m_stdOutLogFileMutex.ReleaseMutex();
                         }
 
                         // Now ensure that the build log is visible on the screen somewhere
@@ -5470,9 +5585,14 @@ namespace Xyglo
                             m_buildStdOutView = addNewFileBuffer(buildStdOutLog, true, true);
                         }
 
+                        // Store the line length of the existing file
+                        //
+                        m_project.setStdOutLastLine(m_buildStdOutView.getFileBuffer().getLineCount());
+
                         // Move to that BufferView
                         //
                         setActiveBuffer(m_buildStdOutView);
+
 
                         // Build the argument list
                         //
@@ -5485,7 +5605,7 @@ namespace Xyglo
                         info.FileName = m_project.getCommand();
                         info.WindowStyle = ProcessWindowStyle.Hidden;
                         info.CreateNoWindow = true;
-                        info.Arguments = m_project.getArguments();
+                        info.Arguments = m_project.getArguments() + (options == "" ? "" : " " + options);
                         info.RedirectStandardOutput = true;
                         info.RedirectStandardError = true;
 
@@ -5550,7 +5670,7 @@ namespace Xyglo
 
             // Lock log file for writing
             //
-            m_logFileMutex.WaitOne();
+            m_stdOutLogFileMutex.WaitOne();
 
             m_buildStdOutView.getFileBuffer().appendLine(logBody);
 
@@ -5569,7 +5689,11 @@ namespace Xyglo
 #endif
             // Unlock
             //
-            m_logFileMutex.ReleaseMutex();
+            m_stdOutLogFileMutex.ReleaseMutex();
+
+            // Ensure we're looking at the end of the file
+            //
+            m_buildStdOutView.setTailPosition();
         }
 
         /// <summary>
@@ -5590,7 +5714,7 @@ namespace Xyglo
 
             // Lock log file for writing
             //
-            m_logFileMutex.WaitOne();
+            m_stdErrLogFileMutex.WaitOne();
             m_buildStdErrView.getFileBuffer().appendLine(logBody);
 
             // Save the log file
@@ -5609,7 +5733,11 @@ namespace Xyglo
 
             // Unlock
             //
-            m_logFileMutex.ReleaseMutex();
+            m_stdErrLogFileMutex.ReleaseMutex();
+
+            // Ensure we're looking at the end of the file
+            //
+            m_buildStdErrView.setTailPosition();
         }
 
         /// <summary>

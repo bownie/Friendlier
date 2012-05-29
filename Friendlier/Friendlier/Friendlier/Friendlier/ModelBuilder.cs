@@ -243,6 +243,7 @@ namespace Xyglo
                 //
                 if (tbg.Degree(vertex) == 1 && vertex != "")
                 {
+
                     m_returnString += vertex + "\n";
                     m_leafNodesPlaced++;
                 }

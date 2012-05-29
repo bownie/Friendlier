@@ -233,6 +233,10 @@ namespace Xyglo
             {
                 m_searchText = "";
             }
+
+            // Initialise the wrapped map
+            //
+            m_wrappedMap = new Dictionary<int, int>();
         }
        
         /// <summary>
@@ -247,6 +251,10 @@ namespace Xyglo
             }
 
             m_fontManager = fontManager;
+
+            // Initialise the wrapped map
+            //
+            m_wrappedMap = new Dictionary<int, int>();
         }
        
         /// <summary>
@@ -265,6 +273,10 @@ namespace Xyglo
             m_fileBufferIndex = rootBV.m_fileBufferIndex;
             m_readOnly = rootBV.m_readOnly;
             m_fontManager = fontManager;
+            
+            // Initialise the wrapped map
+            //
+            m_wrappedMap = new Dictionary<int, int>();
         }
 
         /// <summary>
@@ -286,6 +298,10 @@ namespace Xyglo
             m_fileBufferIndex = fileIndex;
             m_readOnly = readOnly;
             m_fontManager = fontManager;
+
+            // Initialise the wrapped map
+            //
+            m_wrappedMap = new Dictionary<int, int>();
         }
 
         /// <summary>
@@ -341,6 +357,10 @@ namespace Xyglo
             {
                 m_position = rootBV.calculateRelativePosition(position);
             }
+
+            // Initialise the wrapped map
+            //
+            m_wrappedMap = new Dictionary<int, int>();
         }
 
 
@@ -623,13 +643,6 @@ namespace Xyglo
         /// </summary>
         public void pageUp(Project project)
         {
-            // Do nothing if tailing
-            //
-            //if (m_tailing)
-            //{
-                //return;
-            //}
-
             // Page up the BufferView position
             //
             m_bufferShowStartY -= m_bufferShowLength;
@@ -637,6 +650,13 @@ namespace Xyglo
             if (m_bufferShowStartY < 0)
             {
                 m_bufferShowStartY = 0;
+            }
+
+            // Handle tailing without cursor
+            //
+            if (m_tailing)
+            {
+                return;
             }
 
             // Page up the cursor
@@ -659,19 +679,19 @@ namespace Xyglo
         /// </summary>
         public void pageDown(Project project)
         {
-            // Do nothing if tailing
-            //
-            //if (m_tailing)
-            //{
-//                return;
-            //}
-
             // Page down the buffer view position
             m_bufferShowStartY += m_bufferShowLength;
 
             if (m_bufferShowStartY > m_fileBuffer.getLineCount() - 1)
             {
                 m_bufferShowStartY = m_fileBuffer.getLineCount() - 1;
+            }
+
+            // Handle tailing without cursor
+            //
+            if (m_tailing)
+            {
+                return;
             }
 
             // Page down the cursor
@@ -1374,12 +1394,17 @@ namespace Xyglo
         /// <param name="leftCursor"></param>
         public void moveCursorUp(Project project, bool leftCursor)
         {
-            // Do nothing if tailing
+            // Move start position if tailing
             //
-//            if (m_tailing)
-            //{
-              //  return;
-            //}
+            if (m_tailing)
+            {
+                if (m_bufferShowStartY > 0)
+                {
+                    m_bufferShowStartY--;
+                }
+
+                return;
+            }
 
             if (m_cursorPosition.Y > 0)
             {
@@ -1418,12 +1443,16 @@ namespace Xyglo
         /// <param name="rightCursor"></param>
         public void moveCursorDown(bool rightCursor)
         {
-            // Do nothing if tailing
+            // Move the view position if tailing
             //
-            //if (m_tailing)
-            //{
-                //return;
-            //}
+            if (m_tailing)
+            {
+                if (m_bufferShowStartY < m_fileBuffer.getLineCount())
+                {
+                    m_bufferShowStartY++;
+                }
+                return;
+            }
 
             if (m_cursorPosition.Y + 1 < m_fileBuffer.getLineCount())
             {
@@ -1539,6 +1568,18 @@ namespace Xyglo
             {
                 m_bufferShowStartX = m_cursorPosition.X - (m_bufferShowWidth - 1);
             }
+        }
+
+        /// <summary>
+        /// Set the tailing position at the end of the file
+        /// </summary>
+        public void setTailPosition()
+        {
+            if (m_fileBuffer != null)
+            {
+                m_bufferShowStartY = m_fileBuffer.getLineCount() - m_bufferShowLength;
+            }
+
         }
 
         /// <summary>
@@ -2230,12 +2271,39 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// When we're autowrapping a BufferView we'll need to work out in advance how many rows
-        /// we need to use to return a given position.  We do this for the end of the file by working
-        /// backwards from the last rows upwards
+        /// This store the place in a WrappedEndoFBuffer call that the old log file
+        /// becomes the new log file.
+        /// </summary>
+        protected int m_logRunTerminator = -1;
+
+        /// <summary>
+        /// Get the terminator between old and new log file for wrapped lines
         /// </summary>
         /// <returns></returns>
-        public List<string> getWrappedEndofBuffer()
+        public int getLogRunTerminator()
+        {
+            return m_logRunTerminator;
+        }
+
+        /// <summary>
+        /// Map of FileBuffer line to Wrapped line position - we use this to work backwards from mouse clicks
+        /// </summary>
+        protected Dictionary<int, int> m_wrappedMap = null;
+
+        /// <summary>
+        /// Adjustment to our m_wrappedMap to use when calculating file position
+        /// </summary>
+        protected int m_wrapAdjustment = 0;
+
+        /// <summary>
+        /// When we're autowrapping a BufferView we'll need to work out in advance how many rows
+        /// we need to use to return a given position.  We do this for the end of the file by working
+        /// backwards from the last rows upwards.   We can also set the m_logRunTerminator as this
+        /// point to highlight differences between a current run with this log file (potentially)
+        /// and a new one.   Not that there is a mapping between FilePosition and ScreenPosition here.
+        /// </summary>
+        /// <returns></returns>
+        public List<string> getWrappedEndofBuffer(int lastRunPosition = -1)
         {
             // Our return list
             //
@@ -2250,14 +2318,38 @@ namespace Xyglo
 
             // We keep on going until we've filled the buffer or we're at the first line
             //
-            int lineNumber = Math.Max(0, m_fileBuffer.getLineCount() - m_bufferShowLength);
+            //int lineNumber = Math.Max(0, m_fileBuffer.getLineCount() - m_bufferShowLength);
+            int lineNumber = Math.Max(0, m_bufferShowStartY);
+            if (m_bufferShowStartY == m_fileBuffer.getLineCount())
+            {
+                lineNumber = Math.Max(0, m_fileBuffer.getLineCount() - m_bufferShowLength);
+            }
 
-            while (lineNumber < m_fileBuffer.getLineCount())
+            // Set logRunTerminator to not active
+            //
+            m_logRunTerminator = -1;
+
+            // We may have a terminator to position if this is true
+            if (lineNumber < lastRunPosition)
+            {
+                m_logRunTerminator = 0;
+            }
+
+            // Initialise the wrapped map
+            //
+            if (m_wrappedMap == null)
+            {
+                m_wrappedMap = new Dictionary<int, int>();
+            }
+            m_wrappedMap.Clear();
+
+            while (lineNumber < Math.Min(m_bufferShowStartY + m_bufferShowLength, m_fileBuffer.getLineCount()))
             {
                 string fetchLine = m_fileBuffer.getLine(lineNumber);
 
                 if (fetchLine.Length <= m_bufferShowWidth)
                 {
+                    m_wrappedMap.Add(rS.Count(), lineNumber);
                     rS.Add(fetchLine);
                 }
                 else
@@ -2268,6 +2360,7 @@ namespace Xyglo
                     while (splitLine.Length > m_bufferShowWidth)
                     {
                         addLine = splitLine.Substring(0, Math.Min(m_bufferShowWidth, splitLine.Length));
+                        m_wrappedMap.Add(rS.Count(), lineNumber);
                         rS.Add(addLine);
 
                         // Reset split line and decrement line number
@@ -2275,7 +2368,14 @@ namespace Xyglo
                         splitLine = splitLine.Substring(m_bufferShowWidth, splitLine.Length - m_bufferShowWidth);
                     }
 
+                    m_wrappedMap.Add(rS.Count(), lineNumber);
                     rS.Add(splitLine);
+                }
+
+                // Increment the m_logRunTerminator until the lineNumber exceeds the last run position
+                if (lineNumber < lastRunPosition)
+                {
+                    m_logRunTerminator = rS.Count();
                 }
 
                 // Decrement line number
@@ -2289,10 +2389,40 @@ namespace Xyglo
             //
             if (rS.Count > m_bufferShowLength)
             {
-                rS.RemoveRange(0, rS.Count - m_bufferShowLength);
+                int adjustLength = rS.Count - m_bufferShowLength;
+
+                // We need to adjust the m_logRunTerminator accordingly
+                //
+                m_logRunTerminator -= adjustLength;
+
+                // Now remove the range that we won't display
+                //
+                rS.RemoveRange(0, adjustLength);
+
+                // We also have to adjust the m_wrappedMap key by the number of steps 
+                //
+                m_wrapAdjustment = adjustLength;
             }
 
             return rS;
+        }
+
+        /// <summary>
+        /// Get the real line for a wrapped line
+        /// </summary>
+        /// <param name="wrappedLine"></param>
+        /// <returns></returns>
+        public int convertWrappedLineToFileLine(int wrappedLine)
+        {
+            try
+            {
+                var result = m_wrappedMap.Where(item => item.Key == wrappedLine + m_wrapAdjustment).First();
+                return result.Value;
+            }
+            catch (Exception)
+            {
+                return -1;
+            }
         }
 
         /// <summary>

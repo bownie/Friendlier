@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
+using System.Text.RegularExpressions;
 
 namespace Xyglo
 {
@@ -206,6 +207,18 @@ namespace Xyglo
         /// </summary>
         [NonSerialized]
         protected string m_tab;
+
+        /// <summary>
+        /// The last line in the Standard Output log from the previous run
+        /// </summary>
+        [DataMember]
+        protected int m_stdOutLastLine;
+
+        /// <summary>
+        /// The last line in the Standard Error log from the previous run
+        /// </summary>
+        [DataMember]
+        protected int m_stdErrLastLine;
 
         ////////// CONSTRUCTORS ///////////
 
@@ -903,6 +916,42 @@ namespace Xyglo
             Logger.logMsg("Project::loadFiles() - completed.");
         }
 
+
+        /// <summary>
+        /// Find the Standard Output View
+        /// </summary>
+        /// <returns></returns>
+        public BufferView getStdOutView()
+        {
+            foreach (BufferView bv in m_bufferViews)
+            {
+                if (bv.getFileBuffer().getFilepath() == getConfigurationValue("BUILDSTDOUTLOG"))
+                {
+                    return bv;
+                }
+            }
+
+            return null;
+        }
+
+
+        /// <summary>
+        /// Find the Standard Error View
+        /// </summary>
+        /// <returns></returns>
+        public BufferView getStdErrView()
+        {
+            foreach (BufferView bv in m_bufferViews)
+            {
+                if (bv.getFileBuffer().getFilepath() == getConfigurationValue("BUILDSTDERRLOG"))
+                {
+                    return bv;
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// After we have deserialised we need to connect up the objects - this helps
         /// to stop things breaking.  Also we need to initialise things that we haven't
@@ -928,7 +977,6 @@ namespace Xyglo
                     {
                         bv.setFileBuffer(m_fileBuffers[bv.getFileBufferIndex()]);
                     }
-                    
                 }
 
                 bv.setFontManager(m_fontManager);
@@ -1124,6 +1172,7 @@ namespace Xyglo
         }
 
         /// <summary>
+
         /// Get the argument list only from the m_buildCommand
         /// </summary>
         /// <returns></returns>
@@ -1735,10 +1784,90 @@ namespace Xyglo
                 rFP.Y = (int)(intersectPos.Y / getFontManager().getLineSpacing()) + rBV.getBufferShowStartY();
 
                 Logger.logMsg("Project::testRayIntersection() - got FilePosition of X = " + rFP.X + ", Y = " + rFP.Y);
+
+                if (rBV.isTailing())
+                {
+                    int wrappedLine = rFP.Y - rBV.getBufferShowStartY();
+                     int fileLine = rBV.convertWrappedLineToFileLine(wrappedLine);
+
+                    if (fileLine != -1)
+                    {
+                        Logger.logMsg("GET REAL LINE = " + rBV.getFileBuffer().getLine(fileLine));
+                    }
+
+                }
             }
 
             return new Pair<BufferView, ScreenPosition>(rBV, rFP);
         }
+
+        /// <summary>
+        /// Send this method some text and it'll try to work out a FileBuffer for it and a ScreenPosition in
+        /// that FileBuffer if possible.
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public Pair<FileBuffer, ScreenPosition> findFileBufferFromText(string text, ModelBuilder model)
+        {
+            Pair<FileBuffer, ScreenPosition> rF = new Pair<FileBuffer, ScreenPosition>();
+
+            // Default first 
+            rF.First = null;
+            ScreenPosition sP = new ScreenPosition();
+
+            // Firstly try and find a FileName
+            //
+            Regex fileName = new Regex(@"[A-Za-z]+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+");
+            Regex lineNumber = new Regex(@"[A-Za-z]+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+:[0-9]+");
+            MatchCollection matches = fileName.Matches(text);
+
+            foreach(Match m in matches)
+            {
+                Logger.logMsg("GOT MATCH = " + m);
+
+                // Try and find match in existing FileBuffers
+                //
+                foreach(FileBuffer fb in m_fileBuffers)
+                {
+                    if (fb.getFilepath().ToUpper().Contains(m.ToString().ToUpper()))
+                    {
+                        rF.First = fb;
+                        break;
+                    }
+                }
+                
+                // Break out if complete
+                //
+                if (rF.First != null)
+                {
+                    MatchCollection lineMatches = lineNumber.Matches(text);
+
+                    int line = -1;
+                    foreach (Match l in lineMatches)
+                    {
+                        line = Convert.ToInt16(l.ToString().Split(':')[1]);
+                    }
+
+                    if (line != -1)
+                    {
+                        sP.Y = line;
+                    }
+
+                    break;
+                }
+                else
+                {
+                    // Attempt to add this file
+                    //
+                    Logger.logMsg("SEARCH AT ROOT = " + model.getRootString());
+                }
+            }
+
+            rF.Second = sP;
+
+            return rF;
+        }
+
 
         /// <summary>
         /// Convert a File line to a Screen line with spaces in it
@@ -1816,6 +1945,42 @@ namespace Xyglo
         {
             return m_openDirectory;
 
+        }
+
+        /// <summary>
+        /// Set stdout line
+        /// </summary>
+        /// <param name="line"></param>
+        public void setStdOutLastLine(int line)
+        {
+            m_stdOutLastLine = line;
+        }
+
+        /// <summary>
+        /// Set last stderr line
+        /// </summary>
+        /// <param name="line"></param>
+        public void setStdErrLastLine(int line)
+        {
+            m_stdErrLastLine = line;
+        }
+
+        /// <summary>
+        /// /// Last line standard output was written to on
+        /// </summary>
+        /// <returns></returns>
+        public int getStdOutLastLine()
+        {
+            return m_stdOutLastLine;
+        }
+
+        /// <summary>
+        /// Last line standard error was written to on
+        /// </summary>
+        /// <returns></returns>
+        public int getStdErrLastLine()
+        {
+            return m_stdErrLastLine;
         }
     }
 
