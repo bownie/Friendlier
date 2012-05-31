@@ -300,5 +300,37 @@ namespace Xyglo
         {
             return m_bufferShowWidth;
         }
+
+        List<string> m_fileHolder = new List<string>();
+
+        public void directorySearch(string sDir, string filename) 
+        {
+            try	
+            {
+                foreach (string d in Directory.GetDirectories(sDir)) 
+                {
+                    foreach (string f in Directory.GetFiles(d, filename)) 
+                    {
+                        m_fileHolder.Add(f);
+                    }
+                    directorySearch(d, filename);
+                }
+            }
+            catch (System.Exception excpt) 
+            {
+                Console.WriteLine(excpt.Message);
+            }
+        }
+
+        public List<string> getSearchDirectories()
+        {
+            return m_fileHolder;
+        }
+
+        public void clearSearchDirectories()
+        {
+            m_fileHolder.Clear();
+        }
+
     }
 }

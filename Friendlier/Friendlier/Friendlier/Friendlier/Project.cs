@@ -220,6 +220,20 @@ namespace Xyglo
         [DataMember]
         protected int m_stdErrLastLine;
 
+        /// <summary>
+        /// An external file that defines the project - could be a project file or a build/Makefile
+        /// that provides information about the whole project.
+        /// </summary>
+        [DataMember]
+        protected string m_externalProjectDefinitionFile = "";
+
+        /// <summary>
+        /// Define a base directory for our project - searching for files will occur from this 
+        /// directory.
+        /// </summary>
+        [DataMember]
+        protected string m_externalProjectBaseDirectory = "";
+
         ////////// CONSTRUCTORS ///////////
 
         /// <summary>
@@ -882,11 +896,13 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// When we are ready we can load all the files
+        /// When we are ready we can load all the files that have BufferViews
         /// </summary>
         public void loadFiles()
         {
             Logger.logMsg("Project::loadFiles() - starting");
+            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+            sw.Start(); 
 
             // We always need a Syntax Manager when handling files
             //
@@ -897,23 +913,30 @@ namespace Xyglo
                 m_syntaxManager = new CppSyntaxManager(this);
             }
 
-            foreach (FileBuffer fb in m_fileBuffers)
+            // Only load files by active FileBuffers
+            //
+            foreach (BufferView bv in m_bufferViews)
             {
-                Logger.logMsg("Project::loadFiles() - loading " + fb.getFilepath(), true);
-                fb.loadFile(m_syntaxManager);
-                Logger.logMsg("Project::loadFiles() - completed loading " + fb.getFilepath(), true);
+                Logger.logMsg("Project::loadFiles() - loading " + bv.getFileBuffer().getFilepath(), true);
+                bv.getFileBuffer().loadFile(m_syntaxManager);
+                Logger.logMsg("Project::loadFiles() - completed loading " + bv.getFileBuffer().getFilepath(), true);
 
-                Logger.logMsg("Project::loadFiles() - generating highlighting for " + fb.getFilepath(), true);
-                m_syntaxManager.updateHighlighting(fb);
+                // Don't generate any highlighting for tailing files as we consider those as outputs
+                //
+                if (!bv.isTailing())
+                {
+                    Logger.logMsg("Project::loadFiles() - generating highlighting for " + bv.getFileBuffer().getFilepath(), true);
+                    m_syntaxManager.updateHighlighting(bv.getFileBuffer());
+                }
+
             }
-
-            Logger.logMsg("Project::loadFiles() - completed generating highlighting for BufferViews", true);
 
             // Also reset our access timer
             //
             m_lastAccessTime = DateTime.Now;
 
-            Logger.logMsg("Project::loadFiles() - completed.");
+            sw.Stop();
+            Logger.logMsg("Project::loadFiles() - completed in  " + sw.ElapsedMilliseconds + " ms");
         }
 
 
@@ -967,15 +990,15 @@ namespace Xyglo
             {
                 if (bv.getFileBuffer() == null)
                 {
-                    if (bv.getFileBufferIndex() > m_fileBuffers.Count)
+                    if (bv.getFileBufferIndex() < m_fileBuffers.Count)
+                    {
+                        bv.setFileBuffer(m_fileBuffers[bv.getFileBufferIndex()]);
+                    }
+                    else
                     {
                         Logger.logMsg(
                             "Project::connectFloatingWorld() - got out of scope FileBuffer reference - removing BufferView");
                         removeList.Add(bv);
-                    }
-                    else
-                    {
-                        bv.setFileBuffer(m_fileBuffers[bv.getFileBufferIndex()]);
                     }
                 }
 
@@ -1706,11 +1729,14 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Check to see if a Ray passes through one of our BufferViews
+        /// Check to see if a Ray passes through one of our BufferViews.  If it does then we
+        /// work out whereabouts on the BufferView this hits - we return a ScreenPosition but
+        /// this refers not a screen relative position but to a Screen (expanded tabs) position
+        /// within the file.
         /// </summary>
         /// <param name="ray"></param>
         /// <returns></returns>
-        public Pair<BufferView, ScreenPosition> testRayIntersection(Ray ray)
+        public Pair<BufferView, Pair<ScreenPosition, ScreenPosition>> testRayIntersection(Ray ray)
         {
 #if TEST_RAY
             // Some test code
@@ -1737,6 +1763,7 @@ namespace Xyglo
             //
             BufferView rBV = null;
             ScreenPosition rFP = new ScreenPosition();
+            ScreenPosition rSP = new ScreenPosition();
 
             // Hypotenuse of our ray - distance to where ray hits the bounding box of the BufferView
             //
@@ -1768,8 +1795,8 @@ namespace Xyglo
 
                 double dHyp = (double)hyp; // convert this here
 
-                intersectPos.X = (float)(ray.Position.X + dHyp * (Math.Atan((double)(-ray.Direction.X) / (double)(ray.Direction.Z))));
-                intersectPos.Y = (float)(ray.Position.Y + dHyp * (Math.Atan((double)(-ray.Direction.Y) / (double)(ray.Direction.Z))));
+                intersectPos.X = (float)(ray.Position.X + dHyp * (Math.Atan((-ray.Direction.X) / (ray.Direction.Z))));
+                intersectPos.Y = (float)(ray.Position.Y + dHyp * (Math.Atan((-ray.Direction.Y) / (ray.Direction.Z))));
                 intersectPos.Z = 0.0f;
 
                 // Now convert the bufferview screen position to a cursor position.
@@ -1783,22 +1810,76 @@ namespace Xyglo
                 rFP.X = (int)(intersectPos.X / getFontManager().getCharWidth()) + rBV.getBufferShowStartX();
                 rFP.Y = (int)(intersectPos.Y / getFontManager().getLineSpacing()) + rBV.getBufferShowStartY();
 
+                // We also want to store the ScreenPosition at this point and return it 
+                // as we have no way of calculating externally (easily) the relative position
+                // on the screen considering wrappedlines (tailing buffers).
+                //
+                rSP.X = (int)(intersectPos.X / getFontManager().getCharWidth());
+                rSP.Y = (int)(intersectPos.Y / getFontManager().getLineSpacing());
+
                 Logger.logMsg("Project::testRayIntersection() - got FilePosition of X = " + rFP.X + ", Y = " + rFP.Y);
 
                 if (rBV.isTailing())
                 {
                     int wrappedLine = rFP.Y - rBV.getBufferShowStartY();
-                     int fileLine = rBV.convertWrappedLineToFileLine(wrappedLine);
+                    int fileLine = rBV.convertWrappedLineToFileLine(wrappedLine);
 
                     if (fileLine != -1)
                     {
                         Logger.logMsg("GET REAL LINE = " + rBV.getFileBuffer().getLine(fileLine));
                     }
-
                 }
             }
 
-            return new Pair<BufferView, ScreenPosition>(rBV, rFP);
+
+            return new Pair<BufferView, Pair<ScreenPosition, ScreenPosition>>(rBV, new Pair<ScreenPosition, ScreenPosition>(rFP, rSP));
+        }
+
+        /// <summary>
+        /// Get a filename and line, column value from a string taken from a build standard error file.
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public List<Pair<string, Pair<int, int>>> getFileNamesFromText(string text)
+        {
+            List<Pair<string, Pair<int, int>>> rL = new List<Pair<string, Pair<int, int>>>();
+
+            // Firstly try and find a FileName
+            //
+            Regex fileName = new Regex(@"[A-Za-z]+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+");
+            Regex lineNumber = new Regex(@"[A-Za-z]+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+:[0-9]+");
+            MatchCollection matches = fileName.Matches(text);
+
+            foreach (Match m in matches)
+            {
+                Pair<int, int> lineColumn = new Pair<int,int>();
+
+                // Default line and column to -1
+                //
+                lineColumn.First = -1;
+                lineColumn.Second = -1;
+
+                // Test and set line if we find it
+                //
+                MatchCollection lineMatches = lineNumber.Matches(text);
+
+                int line = -1;
+                foreach (Match l in lineMatches)
+                {
+                    line = Convert.ToInt16(l.ToString().Split(':')[1]);
+                }
+
+                if (line != -1)
+                {
+                    lineColumn.First = line;
+                }
+
+                // Push onto return collection
+                //
+                rL.Add(new Pair<string, Pair<int, int>>(m.ToString(), lineColumn));
+            }
+
+            return rL;
         }
 
         /// <summary>
@@ -1817,53 +1898,29 @@ namespace Xyglo
 
             // Firstly try and find a FileName
             //
-            Regex fileName = new Regex(@"[A-Za-z]+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+");
-            Regex lineNumber = new Regex(@"[A-Za-z]+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+:[0-9]+");
-            MatchCollection matches = fileName.Matches(text);
+            //Regex fileName = new Regex(@"[A-Za-z]+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+");
+            //Regex lineNumber = new Regex(@"[A-Za-z]+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+:[0-9]+");
+            //MatchCollection matches = fileName.Matches(text);
 
-            foreach(Match m in matches)
+            List<Pair<string, Pair<int, int>>> matches = getFileNamesFromText(text);
+
+            foreach (Pair<string, Pair<int, int>> m in matches)
             {
-                Logger.logMsg("GOT MATCH = " + m);
-
                 // Try and find match in existing FileBuffers
                 //
                 foreach(FileBuffer fb in m_fileBuffers)
                 {
-                    if (fb.getFilepath().ToUpper().Contains(m.ToString().ToUpper()))
+                    if (fb.getFilepath().ToUpper().Contains(m.First.ToUpper()))
                     {
-                        rF.First = fb;
+                        rF.First = fb; // set filename
+                        sP.Y = m.Second.First;  // set line
+                        sP.X = m.Second.Second; // set column
+
+                        rF.Second = sP;
                         break;
                     }
                 }
-                
-                // Break out if complete
-                //
-                if (rF.First != null)
-                {
-                    MatchCollection lineMatches = lineNumber.Matches(text);
-
-                    int line = -1;
-                    foreach (Match l in lineMatches)
-                    {
-                        line = Convert.ToInt16(l.ToString().Split(':')[1]);
-                    }
-
-                    if (line != -1)
-                    {
-                        sP.Y = line;
-                    }
-
-                    break;
-                }
-                else
-                {
-                    // Attempt to add this file
-                    //
-                    Logger.logMsg("SEARCH AT ROOT = " + model.getRootString());
-                }
             }
-
-            rF.Second = sP;
 
             return rF;
         }
@@ -1981,6 +2038,42 @@ namespace Xyglo
         public int getStdErrLastLine()
         {
             return m_stdErrLastLine;
+        }
+
+        /// <summary>
+        /// External project definition file - Makefile or .pro file for example
+        /// </summary>
+        /// <returns></returns>
+        public string getExternalProjectDefinitionFile()
+        {
+            return m_externalProjectDefinitionFile;
+        }
+
+        /// <summary>
+        /// External project base directory
+        /// </summary>
+        /// <returns></returns>
+        public string getExternalProjectBaseDirectory()
+        {
+            return m_externalProjectBaseDirectory;
+        }
+
+        /// <summary>
+        /// Set the external project definition file
+        /// </summary>
+        /// <param name="file"></param>
+        public void setExternalProjectDefinitionFile(string file)
+        {
+            m_externalProjectDefinitionFile = file;
+        }
+
+        /// <summary>
+        /// Set the external project base directory
+        /// </summary>
+        /// <param name="directory"></param>
+        public void setExternalProjectBaseDirectory(string directory)
+        {
+            m_externalProjectBaseDirectory = directory;
         }
     }
 

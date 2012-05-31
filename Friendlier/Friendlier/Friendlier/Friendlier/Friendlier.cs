@@ -120,6 +120,11 @@ namespace Xyglo
         protected double m_heldDownLastRepeatTime = 0;
 
         /// <summary>
+        /// Is the held key actually held or just last state?   This is an awkward way of doing this.
+        /// </summary>
+        protected bool m_heldDownKeyValid = false;
+
+        /// <summary>
         /// Is either Shift key being held?
         /// </summary>
         protected bool m_shiftDown = false;
@@ -732,7 +737,7 @@ namespace Xyglo
             {
                 // check positions
                 //
-                bv.calculateMyRelativePosition();
+                //bv.calculateMyRelativePosition();
 
                 // check boundaries for cursor and highlighting
                 //
@@ -820,6 +825,8 @@ namespace Xyglo
         private void generateTreeModel()
         {
             Logger.logMsg("Friendlier::generateTreeModel() - starting");
+            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
 
             // Firstly get a root directory for the FileBuffer tree
             //
@@ -838,7 +845,8 @@ namespace Xyglo
             //
             m_modelBuilder.build(rG, m_projectPosition);
 
-            Logger.logMsg("Friendlier::generateTreeModel() - completed.");
+            sw.Stop();
+            Logger.logMsg("Friendlier::generateTreeModel() - completed in " + sw.ElapsedMilliseconds + " ms");
         }
 
 
@@ -1152,12 +1160,15 @@ namespace Xyglo
                 {
                     m_project.setSelectedBufferView(item);
                 }
-                    /*
                 else if (m_project.getBufferViews().Count == 0) // Or if we have none then create one
                 {
-                    m_project.addBufferView(new BufferView());
+                    BufferView bv = new BufferView(m_project.getFontManager());
+                    FileBuffer fb = new FileBuffer();
+
+                    m_project.addBufferView(bv);
+                    m_project.addFileBuffer(fb);
+                    bv.setFileBuffer(fb);
                 }
-                     */
             }
             catch (Exception e)
             {
@@ -1181,12 +1192,12 @@ namespace Xyglo
                 }
             */
 
-                // Now recalculate positions
-                //
-                foreach (BufferView bv in m_project.getBufferViews())
-                {
-                    bv.calculateMyRelativePosition();
-                }
+            // Now recalculate positions
+            //
+            foreach (BufferView bv in m_project.getBufferViews())
+            {
+                bv.calculateMyRelativePosition();
+            }
 
             // All the maths is done in the Buffer View
             //
@@ -2140,12 +2151,6 @@ namespace Xyglo
                 m_project.setSelectedBufferViewId(newValue);
                 setActiveBuffer();
             }
-            else if (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.Insert)) // Reset
-            {
-                m_eye.X = 12f;
-                m_eye.Y = 5f;
-                m_eye.Z = 0f;
-            }
             else if (checkKeyState(Keys.PageDown, gameTime))
             {
                 if (m_state == FriendlierState.TextEditing)
@@ -2878,6 +2883,7 @@ namespace Xyglo
             m_lastWindowSize.Y = m_graphics.GraphicsDevice.Viewport.Height;
         }
 
+        protected Keys m_currentKeyDown;
 
         /// <summary>
         /// Process any keys that need to be printed
@@ -2889,26 +2895,43 @@ namespace Xyglo
             //
             if (Keyboard.GetState().GetPressedKeys().Length == 0)
             {
-                //m_heldDownStartTime = 0.0f;
-                //m_heldDownLastRepeatTime = 0.0f;
+                //m_heldDownStartTime = gameTime.TotalGameTime.TotalSeconds;
+                //m_heldDownLastRepeatTime = gameTime.TotalGameTime.TotalSeconds;
+                m_heldDownKeyValid = false;
                 return;
             }
 
-            Keys keyDown = new Keys();
+            // We need to do a variety of tests here - test to see if a new key has been
+            // pressed but also check to see if a held key is still being pressed.  If the
+            // former is true then we set 'foundKey' and in the latter is true we have 
+            // 'foundLastKey'.  Both have implications in terms of timing of key repeats.
+            //
+            //Keys keyDown = new Keys();
             bool foundKey = false;
 
             // Detect a key being hit that isn't one of the meta keys
             //
             foreach (Keys testKey in Keyboard.GetState().GetPressedKeys())
             {
-                if (testKey != Keys.RightShift && testKey != Keys.LeftShift &&
-                    testKey != Keys.RightControl && testKey != Keys.LeftControl &&
-                    testKey != Keys.LeftAlt && testKey != Keys.RightAlt)
+                // Discard any processing if a meta key is involved
+                //
+                if (testKey == Keys.RightControl || testKey == Keys.LeftControl ||
+                    testKey == Keys.LeftAlt || testKey == Keys.RightAlt)
                 {
-                    keyDown = testKey;
-                    foundKey = true;
+                    return;
+                }
+                else
+                {
+                    // Ignore shifts at this time
+                    //
+                    if (testKey != Keys.LeftShift && testKey != Keys.RightShift)
+                    {
+                        m_currentKeyDown = testKey;
+                        foundKey = true;
+                    }
                 }
             }
+
             // Just return if we've not got anything
             //
             if (!foundKey)
@@ -2918,11 +2941,11 @@ namespace Xyglo
 
             // Test for auto-repeating
             //
-            if (m_heldKey != keyDown)
+            if (m_heldKey != m_currentKeyDown || !m_heldDownKeyValid)
             {
                 m_heldDownStartTime = gameTime.TotalGameTime.TotalSeconds;
                 m_heldDownLastRepeatTime = gameTime.TotalGameTime.TotalSeconds;
-                m_heldKey = keyDown;
+                m_heldKey = m_currentKeyDown;
             }
             else
             {
@@ -2946,11 +2969,15 @@ namespace Xyglo
                 //Logger.logMsg("Friendlier::processKeys() - got key repeat");
             }
 
+            // At this point any held down key is valid for the next iteration
+            //
+            m_heldDownKeyValid = true;
+
             // Ok, let's see if we can translate a key
             //
             string key = "";
 
-            switch (keyDown)
+            switch (m_currentKeyDown)
             {
                 case Keys.LeftShift:
                 case Keys.RightShift:
@@ -3223,11 +3250,11 @@ namespace Xyglo
                 case Keys.Z:
                     if (m_shiftDown)
                     {
-                        key = keyDown.ToString().ToUpper();
+                        key = m_currentKeyDown.ToString().ToUpper();
                     }
                     else
                     {
-                        key = keyDown.ToString().ToLower();
+                        key = m_currentKeyDown.ToString().ToLower();
                     }
                     break;
 
@@ -3242,11 +3269,11 @@ namespace Xyglo
                     {
                         if (m_shiftDown)
                         {
-                            key = keyDown.ToString().ToUpper();
+                            key = m_currentKeyDown.ToString().ToUpper();
                         }
                         else
                         {
-                            key = keyDown.ToString().ToLower();
+                            key = m_currentKeyDown.ToString().ToLower();
                         }
                     }
                     break;
@@ -3456,7 +3483,7 @@ namespace Xyglo
                 newPos = getFreeBufferViewPosition(m_newPosition); // use the m_newPosition for the direction
             }
 
-            BufferView newBV = new BufferView(m_project.getFontManager(), newFB, newPos, 0, 20, m_project.getFontManager().getCharWidth(), m_project.getFontManager().getLineSpacing(), fileIndex, readOnly);
+            BufferView newBV = new BufferView(m_project.getFontManager(), newFB, newPos, 0, 20, fileIndex, readOnly);
             newBV.setTailing(tailFile);
             m_project.addBufferView(newBV);
 
@@ -3464,13 +3491,18 @@ namespace Xyglo
             //
             newBV.setBackgroundColour(m_project.getNewFileBufferColour());
 
-            // We've add a new file so regenerate the model
+            // Only do the following if tailing
             //
-            generateTreeModel();
+            if (!tailFile)
+            {
+                // We've add a new file so regenerate the model
+                //
+                generateTreeModel();
 
-            // Now generate highlighting
-            //
-            newFB.generateHighlighting(m_project.getSyntaxManager());
+                // Now generate highlighting
+                //
+                m_project.getSyntaxManager().updateHighlighting(newFB);
+            }
 
             return newBV;
         }
@@ -3730,7 +3762,7 @@ namespace Xyglo
         /// Get some rays to help us work out where the user is clicking
         /// </summary>
         /// <returns></returns>
-        public Ray GetPickRay()
+        public Ray getPickRay()
         {
             MouseState mouseState = Mouse.GetState();
 
@@ -3774,6 +3806,127 @@ namespace Xyglo
         protected Vector3 m_lastClickEyePosition = Vector3.Zero;
 
         /// <summary>
+        /// Double click handler
+        /// </summary>
+        protected void handleDoubleClick()
+        {
+            Logger.logMsg("Friendlier::checkMouse() - got double click");
+            Pair<BufferView, Pair<ScreenPosition, ScreenPosition>> testFind = m_project.testRayIntersection(getPickRay());
+
+            BufferView bv = (BufferView)testFind.First;
+            ScreenPosition fp = (ScreenPosition)testFind.Second.First;
+            ScreenPosition screenRelativePosition = (ScreenPosition)testFind.Second.Second;
+
+            if (bv.testCursorPosition(fp))
+            {
+                // Fetch the line indicated from the file into the line variable
+                //
+                string line = "";
+                try
+                {
+                    line = bv.getFileBuffer().getLine(fp.Y);
+                    Logger.logMsg("Friendlier::checkMouse() - GOT LINE = " + line);
+                }
+                catch (Exception)
+                {
+                    Logger.logMsg("Friendlier::checkMouse() - couldn't fetch line " + fp.Y);
+                }
+
+                
+                // Look for a FileBuffer indicated in this line - we look up the filename from
+                // the text and seek this filename in the FileBuffers.  If we find one then we
+                // zap to it
+                //
+                Pair<FileBuffer, ScreenPosition> found = m_project.findFileBufferFromText(line, m_modelBuilder);
+
+                if (found.First != null)  // Found one.
+                {
+                    FileBuffer fb = (FileBuffer)found.First;
+                    ScreenPosition sp = (ScreenPosition)found.Second;
+
+                    bv = m_project.getBufferView(fb.getFilepath());
+
+                    if (bv != null)
+                    {
+                        try
+                        {
+                            Logger.logMsg("Friendlier::checkMouse() - trying to active BufferView and zap to line");
+                            setActiveBuffer(bv);
+                            bv.setCursorPosition(sp);
+                        }
+                        catch (Exception)
+                        {
+                            Logger.logMsg("Friendlier::checkMouse() - couldn't activate and zap to line in file");
+                        }
+                    }
+                }
+                else // not found anything - look on the filesystem
+                {
+                    // Can 
+                    Logger.logMsg("LOOKING ON FILESYSTEM");
+
+                    //string baseDir = @"C:\dev-alpha2\win32-mingw-rtmidi";
+                    string baseDir = @"D:\win32-mingw-rtmidi";
+
+                    // If we have retrieved a line to test
+                    //
+                    if (line != "") 
+                    {
+                        // The getFileNamesFromText tries to find a filename and a FilePosition as well as
+                        // an adjusted relative Scr
+
+                        List<Pair<string, Pair<int, int>>> filePositionList = m_project.getFileNamesFromText(line);
+
+                        foreach (Pair<string, Pair<int, int>> fpEntry in filePositionList)
+                        {
+                            // Clear the storage out first
+                            //
+                            m_fileSystemView.clearSearchDirectories();
+
+                            // Do a search
+                            //
+                            m_fileSystemView.directorySearch(baseDir, fpEntry.First);
+
+                            // Get results
+                            //
+                            List<string> rL = m_fileSystemView.getSearchDirectories();
+
+                            if (rL.Count > 0)
+                            {
+                                Logger.logMsg("Got " + rL.Count + " matches for file " + fpEntry.First);
+
+                                // Set a highlight on the current BufferView
+                                //
+                                int xPosition = line.IndexOf(fpEntry.First);
+
+                                // Set up the m_clickHighlight
+                                //
+                                m_clickHighlight.First = m_project.getSelectedBufferView();
+                                m_clickHighlight.Second = new Highlight(screenRelativePosition.Y, xPosition, xPosition + fpEntry.First.Length, fpEntry.First, new Color(230, 230, 0, 180));
+
+                                // Open file and zap to it
+                                //
+                                BufferView newBv = addNewFileBuffer(rL[0]);
+                                setActiveBuffer(newBv);
+
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Do something with the result
+                //
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Use this for highlighting a selected BufferView temporarily
+        /// </summary>
+        protected Pair<BufferView, Highlight> m_clickHighlight = new Pair<BufferView, Highlight>();
+
+        /// <summary>
         /// Handle mouse clicks
         /// </summary>
         /// <param name="gameTime"></param>
@@ -3789,22 +3942,9 @@ namespace Xyglo
             {
                 // Get the pick ray
                 //
-                Ray pickRay = GetPickRay();
+                Ray pickRay = getPickRay();
                 int mouseX = mouseState.X;
                 int mouseY = mouseState.Y;
-
-                // Testing mouse outside window area
-                /*
-                Logger.logMsg("MOUSE X = " + mouseX + ",Y = " + mouseY);
-
-                if (mouseX < 0 || mouseY < 0 ||
-                    mouseX > GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width ||
-                    mouseY > GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height)
-                {
-                    // clicked outside this window
-                    return;
-                }
-                */
 
                 if (m_lastMouseState.LeftButton == ButtonState.Released)
                 {
@@ -3816,56 +3956,15 @@ namespace Xyglo
 
                     // Double click fired
                     //
-                    if ((gameTime.TotalGameTime - m_lastClickTime).TotalSeconds < 0.15f)
+                    if ((gameTime.TotalGameTime - m_lastClickTime).TotalSeconds < 0.25f)
                     {
-                        Logger.logMsg("DOUBLE CLICK");
-                        Pair<BufferView, ScreenPosition> testFind = m_project.testRayIntersection(GetPickRay());
+                        handleDoubleClick();
 
-                        BufferView bv = (BufferView)testFind.First;
-                        ScreenPosition fp = (ScreenPosition)testFind.Second;
+                        // If we return early then make sure we set m_lastMousState
+                        //
+                        m_lastMouseState = mouseState;
 
-                        if (bv.testCursorPosition(fp))
-                        {
-                            string line = "";
-                            try
-                            {
-                                line = bv.getFileBuffer().getLine(fp.Y);
-                                Logger.logMsg("GOT LINE = " + line);
-                            }
-                            catch (Exception)
-                            {
-                                Logger.logMsg("Couldn't fetch line " + fp.Y);
-                            }
-
-                            Pair<FileBuffer, ScreenPosition> found = m_project.findFileBufferFromText(line, m_modelBuilder);
-
-                            if (found.First != null)
-                            {
-                                FileBuffer fb = (FileBuffer)found.First;
-                                ScreenPosition sp = (ScreenPosition)found.Second;
-
-                                bv = m_project.getBufferView(fb.getFilepath());
-
-                                if (bv != null)
-                                {
-                                    try
-                                    {
-                                        Logger.logMsg("Trying to active BufferView and zap to line");
-                                        setActiveBuffer(bv);
-                                        bv.setCursorPosition(sp);
-                                    }
-                                    catch (Exception)
-                                    {
-                                        Logger.logMsg("Couldn't activate and zap to line in file");
-                                    }
-                                }
-                            }
-
-                            // Do something with the result
-                            //
-                            return;
-
-                        }
+                        return;
                     }
 
                     m_lastClickVector = pickRay.Direction;
@@ -3926,12 +4025,12 @@ namespace Xyglo
                         //
                         //Logger.logMsg("MOUSE X = " + mouseState.X + ", Y = " + mouseState.Y);
 
-                        Pair<BufferView, ScreenPosition> testFind = m_project.testRayIntersection(GetPickRay());
+                        Pair<BufferView, Pair<ScreenPosition, ScreenPosition>> testFind = m_project.testRayIntersection(getPickRay());
 
-                        if (testFind.First != null && testFind.Second != null)
+                        if (testFind.First != null && testFind.Second.First != null)
                         {
                             BufferView bv = (BufferView)testFind.First;
-                            ScreenPosition fp = (ScreenPosition)testFind.Second;
+                            ScreenPosition fp = (ScreenPosition)testFind.Second.First;
 
                             if (bv.testCursorPosition(fp))
                             {
@@ -4153,13 +4252,10 @@ namespace Xyglo
                     //
                     drawOverlay(gameTime);
 
-                    // Cursor and cursor highlight - none for tailed bufferviews
+                    // Cursor and cursor highlight
                     //
-                    if (!m_project.getSelectedBufferView().isTailing())
-                    {
-                        drawCursor(gameTime);
-                        drawHighlight(gameTime);
-                    }
+                    drawCursor(gameTime);
+                    drawHighlight(gameTime);
                 }
 
                 // Draw a background square for all buffer views if they are coloured
@@ -4554,25 +4650,45 @@ namespace Xyglo
                 return;
             }
 
-            double dTS = gameTime.TotalGameTime.TotalSeconds;
-            int blinkRate = 4;
-
-            // Test for when we're showing this
+            // No cursor for tailing BufferViews
             //
-            if (Convert.ToInt16(dTS * blinkRate) % 2 != 0)
+            if (!m_project.getSelectedBufferView().isTailing())
             {
-                return;
+                double dTS = gameTime.TotalGameTime.TotalSeconds;
+                int blinkRate = 4;
+
+                // Test for when we're showing this
+                //
+                if (Convert.ToInt16(dTS * blinkRate) % 2 != 0)
+                {
+                    return;
+                }
+
+                // Blinks rate
+                //
+                Vector3 v1 = m_project.getSelectedBufferView().getCursorCoordinates();
+                v1.Y += m_project.getSelectedBufferView().getLineSpacing();
+
+                Vector3 v2 = m_project.getSelectedBufferView().getCursorCoordinates();
+                v2.X += 1;
+
+                renderQuad(v1, v2, m_project.getSelectedBufferView().getHighlightColor());
             }
-
-            // Blinks rate
+            // Draw any temporary highlight
             //
-            Vector3 v1 = m_project.getSelectedBufferView().getCursorCoordinates();
-            v1.Y += m_project.getSelectedBufferView().getLineSpacing();
+            if (m_clickHighlight.First != null && m_clickHighlight.Second != null &&
+                ((BufferView)m_clickHighlight.First) == m_project.getSelectedBufferView())
+            {
+                Highlight h = (Highlight)m_clickHighlight.Second;
+                Vector3 h1 = m_project.getSelectedBufferView().getSpaceCoordinates(h.m_startHighlight.asScreenPosition());
+                Vector3 h2 = m_project.getSelectedBufferView().getSpaceCoordinates(h.m_endHighlight.asScreenPosition());
 
-            Vector3 v2 = m_project.getSelectedBufferView().getCursorCoordinates();
-            v2.X += 1;
+                // Add some height here so we can see the highlight
+                //
+                h2.Y += m_project.getFontManager().getLineSpacing();
 
-            renderQuad(v1, v2, m_project.getSelectedBufferView().getHighlightColor());
+                renderQuad(h1, h2, h.m_colour);
+            }
         }
 
         /// <summary>
@@ -4910,7 +5026,7 @@ namespace Xyglo
                         }
                         else
                         {
-                            if (view.getBufferShowStartX() < fetchLine.Length)
+                            if (view.getBufferShowStartX() >= 0 && view.getBufferShowStartX() < fetchLine.Length)
                             {
                                 line = fetchLine.Substring(view.getBufferShowStartX(), fetchLine.Length - view.getBufferShowStartX());
                             }
@@ -5003,7 +5119,12 @@ namespace Xyglo
 
                 Color seeThroughColour = bufferColour;
                 seeThroughColour.A = 70;
-                m_spriteBatch.DrawString(m_project.getFontManager().getFont(), bufferId, new Vector2((int)viewSpaceTextPosition.X, (int)viewSpaceTextPosition.Y), seeThroughColour, 0, Vector2.Zero, m_project.getFontManager().getTextScale() * 16.0f, 0, 0);
+                //m_spriteBatch.DrawString(m_project.getFontManager().getFont(), bufferId, new Vector2((int)viewSpaceTextPosition.X, (int)viewSpaceTextPosition.Y), seeThroughColour, 0, Vector2.Zero, m_project.getFontManager().getTextScale() * 16.0f, 0, 0);
+
+                // Show a filename
+                //
+                string fileName = view.getFileBuffer().getShortFileName();
+                m_spriteBatch.DrawString(m_project.getFontManager().getFont(), fileName, new Vector2((int)viewSpaceTextPosition.X, (int)viewSpaceTextPosition.Y), seeThroughColour, 0, Vector2.Zero, m_project.getFontManager().getTextScale() * 4.0f, 0, 0);
             }
         }
 
@@ -5274,8 +5395,10 @@ namespace Xyglo
             text += "\n"; // divider
             text += "Project name:      : " + m_project.m_projectName + "\n";
             text += "Project created    : " + m_project.getCreationTime().ToString() + "\n";
-            text += "Project files      : " + m_project.getFileBuffers().Count + "\n";
-            text += "Project lines      : " + m_project.getFilesTotalLines() + "\n";
+            text += "Project file       : " + m_project.getExternalProjectDefinitionFile() + "\n";
+            text += "Profile base dir   : " + m_project.getExternalProjectBaseDirectory() + "\n";
+            text += "Number of files    : " + m_project.getFileBuffers().Count + "\n";
+            text += "File lines         : " + m_project.getFilesTotalLines() + "\n";
             text += "FileBuffers        : " + m_project.getFileBuffers().Count + "\n";
             text += "BufferViews        : " + m_project.getBufferViews().Count + "\n";
             text += "\n"; // divider

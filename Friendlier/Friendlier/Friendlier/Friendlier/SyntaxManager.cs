@@ -34,6 +34,7 @@ namespace Xyglo
         [NonSerialized]
         protected SortedList m_bracePositions = new SortedList();
 
+
         /////////////////////////////// CONSTRUCTORS ///////////////////////////////////////
 
         /// <summary>
@@ -58,23 +59,9 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Get some highlighting suggestions from the indicated line
-        /// </summary>
-        /// <param name="line"></param>
-        /// <returns></returns>
-        //public abstract List<Highlight> getHighlighting(int line);
-
-        /// <summary>
-        /// Get some highlighting suggestions for a line range
-        /// </summary>
-        /// <param name="line"></param>
-        /// <returns></returns>
-        //public abstract List<Highlight> getHighlighting(int startLine, int endLine);
-
-        /// <summary>
         /// Update the highlighting information after we've made a modification
         /// </summary>
-        public abstract void updateHighlighting(FileBuffer fileBuffer /*, int fromLine = 0*/);
+        public abstract void updateHighlighting(FileBuffer fileBuffer , int toLine = -1);
 
         /// <summary>
         /// Generates all highlighting for all FileBuffers

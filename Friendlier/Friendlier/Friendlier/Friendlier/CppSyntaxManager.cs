@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Xyglo
 {
@@ -98,34 +99,53 @@ namespace Xyglo
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - completed.");
         }
 
+        public static Regex m_openComment = new Regex(@"/\*");
+
+        public static Regex m_closeComment = new Regex(@"\*\/");
+
+        public static Regex m_lineComment = new Regex(@"//");
+
+        public static Regex m_hashLineComment = new Regex(@"#");
+
+        /// <summary>
+        /// A faster indexOf implementation using regexs
+        /// </summary>
+        /// <param name="reg"></param>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        protected int indexOf(Regex reg, string input)
+        {
+            Match m = reg.Match(input);
+
+            if (m.Success)
+            {
+                return m.Index;
+            }
+
+            return -1;
+        }
+
         /// <summary>
         /// Regenerate the highlightList by parsing the entire file
         /// </summary>
-        public override void updateHighlighting(FileBuffer fileBuffer /* , int fromLine = 0 */)
+        public override void updateHighlighting(FileBuffer fileBuffer , int toLine = -1)
         {
             Logger.logMsg("CppSyntaxManager::updateHighlighting() - updating " + fileBuffer.getFilepath(), true);
 
-            // Start line for highlight update
+            // Start line for highlight update - always has to be from zero
             //
             int startLine = 0;
+
+            // Default value to full FileBuffer length
+            //
+            if (toLine == -1)
+            {
+                toLine = fileBuffer.getLineCount();
+            }
 
             // We have to recalculate these every time in case we're removing or adding lines
             //
             m_bracePositions.Clear();
-
-            /*
-            if (fromLine != 0 && fromLine > (fileBuffer.getLineCount() - 1))
-            {
-                throw new Exception("Line number greater than buffer length when updating highlighting");
-            }
-
-            for (startLine = 0; startLine < fileBuffer.m_highlightList.Count; startLine++)
-            {
-                if (fileBuffer.m_highlightList[startLine].m_startHighlight.Y >= fromLine)
-                {
-                    break;
-                }
-            }*/
 
             // Remove the range we're going to update
             //
@@ -135,13 +155,15 @@ namespace Xyglo
             int lastXPosition = 0;
             int foundPosition = 0;
             bool inMLComment = false;
+
+
 #if TABS_DONT_WORK_HERE
             int startTab = 0;
 #endif
 
-            // Ok - we scan the whole file - this might have to be optimised at some point
+            // Scan range that we have set
             //
-            for (int i = startLine; i < fileBuffer.getLineCount(); i++)
+            for (int i = startLine; i < toLine; i++)
             {
                 string line = fileBuffer.getLine(i);
 
@@ -167,6 +189,8 @@ namespace Xyglo
                     if (inMLComment)
                     {
                         int endOfComment = line.Substring(xPosition).IndexOf("*/");
+                        //int endOfComment = indexOf(CppSyntaxManager.m_closeComment, line.Substring(xPosition));
+
                         if (endOfComment != -1) // end comment and continue
                         {
                             Highlight newHighlight = new Highlight(i, xPosition, endOfComment + 1, line.Substring(xPosition, endOfComment), SyntaxManager.m_commentColour);
@@ -190,6 +214,7 @@ namespace Xyglo
                         // Now deal with starting comments
                         //
                         foundPosition = line.Substring(xPosition).IndexOf("/*");
+                        //foundPosition = indexOf(CppSyntaxManager.m_openComment, line.Substring(xPosition));
 
                         if (foundPosition != -1)
                         {
@@ -208,7 +233,8 @@ namespace Xyglo
                         else // other comments and everything that is not commented but requires highlighting
                         {
                             // #defines etc
-                            if (line.IndexOf('#') == 0)
+                            if (line.IndexOf("#") == 0)
+                            //if (indexOf(CppSyntaxManager.m_hashLineComment, line) == 0)
                             {
                                 // Create a highlight for a #define
                                 Highlight newHighlight = new Highlight(i, 0, line.Length, line, SyntaxManager.m_defineColour);
@@ -219,6 +245,7 @@ namespace Xyglo
                                 xPosition = line.Length;
                             }
                             else if ((foundPosition = line.IndexOf("//")) != -1)
+                            //else if ((foundPosition = indexOf(CppSyntaxManager.m_lineComment, line)) != -1)
                             {
                                 Highlight newHighlight = new Highlight(i, foundPosition, line.Length - foundPosition, line.Substring(foundPosition, line.Length - foundPosition), SyntaxManager.m_commentColour);
                                 //fileBuffer.m_highlightList.Add(newHighlight);

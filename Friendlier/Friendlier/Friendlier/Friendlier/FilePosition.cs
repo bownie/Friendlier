@@ -95,6 +95,15 @@ namespace Xyglo
             }
         }
 
+        /// <summary>
+        /// Return as a ScreenPosition
+        /// </summary>
+        /// <returns></returns>
+        public ScreenPosition asScreenPosition()
+        {
+            return new ScreenPosition(this);
+        }
+
 
         /// <summary>
         /// Less than operator

@@ -138,6 +138,8 @@ namespace Xyglo
         public Dictionary<string, ModelItem> build(TreeBuilderGraph tbg, Vector3 startPosition)
         {
             Logger.logMsg("ModelBuilder::build() - building model from tree with " + tbg.Vertices.Count<string>() + " vertices");
+            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
 
             // Store the model position and set up some initial conditions
             //
@@ -175,6 +177,10 @@ namespace Xyglo
             m_incrementZ = 100.0f / depth;
             m_itemWidth = 10.0f;
             m_itemHeight = 10.0f;
+
+
+            sw.Stop();
+            Logger.logMsg("ModelBuilder::build() - took " + sw.Elapsed.TotalMilliseconds + " ms"); 
 
             return m_itemList;
 

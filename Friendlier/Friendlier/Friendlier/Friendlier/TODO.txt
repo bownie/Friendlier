@@ -12,8 +12,6 @@ USE CASES
 - The journalist - writing a story, researching
 
 
-
-
 BUILD and USABILITY FEATURES TODO and BUGS
 ----
 

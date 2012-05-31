@@ -226,18 +226,6 @@ namespace Xyglo
             return false;
         }
 
-
-        /// <summary>
-        /// Generate the highlighting for this FileBuffer
-        /// </summary>
-        /// <param name="syntaxmanager"></param>
-        public void generateHighlighting(SyntaxManager syntaxManager)
-        {
-            // We don't want to do this every time we load a file - it should persist the highlight anyway
-            //
-            syntaxManager.updateHighlighting(this);
-        }
-
         /// <summary>
         /// Load this file - passing a syntax manager to do the necessary syntax processing for it.
         /// </summary>
@@ -918,7 +906,6 @@ namespace Xyglo
         /// </summary>
         public void clearHighlights()
         {
-            //m_highlightDictionary.Clear();
             m_highlightSortedList.Clear();
         }
 
@@ -929,16 +916,6 @@ namespace Xyglo
         /// <param name="highlight"></param>
         public void setHighlight(Highlight highlight)
         {
-            /*
-            if (m_highlightDictionary.ContainsKey(highlight.m_startHighlight))
-            {
-                m_highlightDictionary[highlight.m_startHighlight] = highlight;
-            }
-            else
-            {
-                m_highlightDictionary.Add(highlight.m_startHighlight, highlight);
-            }
-             * */
             if (m_highlightSortedList.ContainsKey(highlight.m_startHighlight))
             {
                 m_highlightSortedList[highlight.m_startHighlight] = highlight;

@@ -286,9 +286,7 @@ namespace Xyglo
         /// <param name="position"></param>
         /// <param name="bufferShowStartY"></param>
         /// <param name="bufferShowLength"></param>
-        /// <param name="charWidth"></param>
-        /// <param name="lineHeight"></param>
-        public BufferView(FontManager fontManager, FileBuffer buffer, Vector3 position, int bufferShowStartY, int bufferShowLength, float charWidth, float lineHeight, int fileIndex, bool readOnly = false)
+        public BufferView(FontManager fontManager, FileBuffer buffer, Vector3 position, int bufferShowStartY, int bufferShowLength, int fileIndex, bool readOnly = false)
         {
             m_position = position;
             m_fileBuffer = buffer;
@@ -302,26 +300,6 @@ namespace Xyglo
             // Initialise the wrapped map
             //
             m_wrappedMap = new Dictionary<int, int>();
-        }
-
-        /// <summary>
-        /// Specify some but not all of the things we need to draw the BufferView - we still need
-        /// charWidth and lineHeight from somewhere.
-        /// </summary>
-        /// <param name="buffer"></param>
-        /// <param name="position"></param>
-        /// <param name="bufferShowStartY"></param>
-        /// <param name="bufferShowLength"></param>
-        public BufferView(FontManager fontManager, FileBuffer buffer, Vector3 position, int bufferShowStartY, int bufferShowLength, int fileBufferIndex, bool readOnly = false)
-        {
-            m_position = position;
-            m_fileBuffer = buffer;
-            m_bufferShowStartY = bufferShowStartY;
-            m_bufferShowStartX = 0;
-            m_bufferShowLength = bufferShowLength;
-            m_fileBufferIndex = fileBufferIndex;
-            m_readOnly = readOnly;
-            m_fontManager = fontManager;
         }
 
         /// <summary>
@@ -639,6 +617,17 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Get the Space coordinates from the 
+        /// </summary>
+        /// <param name="sp"></param>
+        /// <returns></returns>
+        public Vector3 getSpaceCoordinates(ScreenPosition sp)
+        {
+            Vector3 rV = new Vector3(m_position.X + sp.X * m_fontManager.getCharWidth(), m_position.Y + sp.Y * m_fontManager.getLineSpacing(), 0);
+            return rV;
+        }
+
+        /// <summary>
         /// Page up the BufferView
         /// </summary>
         public void pageUp(Project project)
@@ -952,38 +941,7 @@ namespace Xyglo
         {
             return m_fontManager.getLineSpacing();
         }
-
-        /*
-        /// <summary>
-        /// Set the line height both in this BufferView and any rootBV
-        /// </summary>
-        /// <param name="height"></param>
-        public void setLineHeight(float height)
-        {
-            m_lineHeight = height;
-
-            if (m_bufferViewPosition.rootBV != null)
-            {
-                m_bufferViewPosition.rootBV.setLineHeight(height);
-            }
-        }*/
-
-        /// <summary>
-        /// Set the m_charWidth both in this BufferView and any rootBV
-        /// </summary>
-        /// <param name="width"></param>
-        /*
-        public void setCharWidth(float width)
-        {
-            m_charWidth = width;
-
-            if (m_bufferViewPosition.rootBV != null)
-            {
-                m_bufferViewPosition.rootBV.setCharWidth(width);
-            }
-        }
-         * */
-
+        
         /// <summary>
         /// Get the associated FileBuffer
         /// </summary>
@@ -1036,9 +994,16 @@ namespace Xyglo
         /// <returns></returns>
         public Vector3 calculateRelativePosition(BufferPosition position)
         {
-            if (m_fontManager.getLineSpacing() == 0 || m_fontManager.getCharWidth() == 0)
+            try
             {
-                throw new Exception("BufferView::calculateRelativePosition() - some of our basic settings are zero - cannot calculate");
+                if (m_fontManager.getLineSpacing() == 0 || m_fontManager.getCharWidth() == 0)
+                {
+                    throw new Exception("BufferView::calculateRelativePosition() - some of our basic settings are zero - cannot calculate");
+                }
+            }
+            catch (Exception)
+            {
+                return m_position;
             }
 
             switch (position)

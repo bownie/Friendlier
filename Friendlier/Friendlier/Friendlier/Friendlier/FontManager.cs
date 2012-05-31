@@ -232,6 +232,11 @@ namespace Xyglo
         /// <returns></returns>
         public float getCharWidth()
         {
+            if (getFont() == null)
+            {
+                throw new Exception("No font defined");
+            }
+
             return getTextScale() * getFont().MeasureString("X").X;
         }
 
@@ -242,6 +247,11 @@ namespace Xyglo
         /// <returns></returns>
         public float getLineSpacing()
         {
+            if (getFont() == null)
+            {
+                throw new Exception("No font defined");
+            }
+
             if (m_processor.ToLower() == "nuclex")
             {
                 return getTextScale() * getFont().LineSpacing * 1.12f; // Kludge for Nuclex issue 
@@ -257,6 +267,11 @@ namespace Xyglo
         /// <returns></returns>
         public float getCharHeight()
         {
+            if (getFont() == null)
+            {
+                throw new Exception("No font defined");
+            }
+
             return getTextScale() * getFont().MeasureString("X").Y;
         }
 

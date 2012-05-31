@@ -16,21 +16,19 @@ namespace Xyglo
         /// <param name="showTime"></param>
         public static void logMsg(string message, bool showTime = false, bool showStack = false)
         {
-            string prefix = "";
-
-            
+            //string prefix = "";
             if (showTime)
             {
-                prefix += DateTimeNowCache.GetDateTime().ToString() + " - ";
+                Console.Write(DateTimeNowCache.GetDateTime().ToString() + " - ");
             }
 
             if (showStack)
             {
                 StackTrace stackTrace = new StackTrace();
-                prefix += stackTrace.GetFrame(0) + " - ";
+                Console.Write(stackTrace.GetFrame(0) + " - ");
             }
 
-            Console.WriteLine(prefix + message);
+            Console.Write(message + "\n");
         }
 
 #if NOT_USED
