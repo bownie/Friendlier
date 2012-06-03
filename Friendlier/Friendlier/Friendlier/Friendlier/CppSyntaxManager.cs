@@ -20,7 +20,9 @@ namespace Xyglo
         //
         public CppSyntaxManager(Project project) : base(project)
         {
+            initialiseKeywords();
         }
+
 
         // ---------------------------------------- METHODS -----------------------------------------------
         //
@@ -107,6 +109,8 @@ namespace Xyglo
 
         public static Regex m_hashLineComment = new Regex(@"#");
 
+        public static Regex m_token = new Regex(@"\b([A-Za-z_][A-Za-z0-9_]+)\b");
+
         /// <summary>
         /// A faster indexOf implementation using regexs
         /// </summary>
@@ -119,7 +123,7 @@ namespace Xyglo
 
             if (m.Success)
             {
-                return m.Index;
+                return m.Index; // step past whitespace character
             }
 
             return -1;
@@ -155,6 +159,7 @@ namespace Xyglo
             int lastXPosition = 0;
             int foundPosition = 0;
             bool inMLComment = false;
+            int lineCommentPosition = -1; // position where a line comment starts
 
 
 #if TABS_DONT_WORK_HERE
@@ -171,6 +176,7 @@ namespace Xyglo
                 //
                 xPosition = 0;
                 foundPosition = -1;
+                lineCommentPosition = -1;
 
 #if TABS_DONT_WORK_HERE
                 // Initialise startTab so we can handle multiple blocks of tabs efficiently
@@ -193,17 +199,17 @@ namespace Xyglo
 
                         if (endOfComment != -1) // end comment and continue
                         {
-                            Highlight newHighlight = new Highlight(i, xPosition, endOfComment + 1, line.Substring(xPosition, endOfComment), SyntaxManager.m_commentColour);
+                            Highlight newHighlight = new Highlight(i, xPosition, xPosition + endOfComment + 2, line.Substring(xPosition, endOfComment + 2), SyntaxManager.m_commentColour);
                             //fileBuffer.m_highlightList.Add(newHighlight);
                             fileBuffer.setHighlight(newHighlight);
-                            xPosition = endOfComment + 1;
+                            xPosition += endOfComment + 2;
                             inMLComment = false;
                         }
                         else
                         {
                             // Insert comment to end of line and don't unset inMLComment as we're still in it
                             //
-                            Highlight newHighlight = new Highlight(i, xPosition, line.Length - xPosition, line.Substring(xPosition, line.Length - xPosition), SyntaxManager.m_commentColour);
+                            Highlight newHighlight = new Highlight(i, xPosition, line.Length, line.Substring(xPosition, line.Length - xPosition), SyntaxManager.m_commentColour);
                             //fileBuffer.m_highlightList.Add(newHighlight);
                             fileBuffer.setHighlight(newHighlight);
                             xPosition = line.Length;
@@ -220,13 +226,13 @@ namespace Xyglo
                         {
                             // Insert highlight if this is only thing on line
                             //
-                            Highlight newHighlight = new Highlight(i, foundPosition, 2, line.Substring(xPosition, 2), SyntaxManager.m_commentColour);
+                            Highlight newHighlight = new Highlight(i, foundPosition, foundPosition + 2, line.Substring(xPosition, 2), SyntaxManager.m_commentColour);
                             //fileBuffer.m_highlightList.Add(newHighlight);
                             fileBuffer.setHighlight(newHighlight);
 
                             // Move past comment start
                             //
-                            xPosition = foundPosition + 2; // might go over end of line so beware this
+                            xPosition += foundPosition + 2; // might go over end of line so beware this
 
                             inMLComment = true;
                         }
@@ -247,16 +253,18 @@ namespace Xyglo
                             else if ((foundPosition = line.IndexOf("//")) != -1)
                             //else if ((foundPosition = indexOf(CppSyntaxManager.m_lineComment, line)) != -1)
                             {
-                                Highlight newHighlight = new Highlight(i, foundPosition, line.Length - foundPosition, line.Substring(foundPosition, line.Length - foundPosition), SyntaxManager.m_commentColour);
+                                Highlight newHighlight = new Highlight(i, foundPosition, line.Length, line.Substring(foundPosition, line.Length - foundPosition), SyntaxManager.m_commentColour);
                                 //fileBuffer.m_highlightList.Add(newHighlight);
                                 fileBuffer.setHighlight(newHighlight);
+                                lineCommentPosition = foundPosition;
                             }
 
                             // Now process any other characters ensuring that we're still within the string
+                            // and we're not beyond the start of a line comment boundary.
                             //
-                            if (xPosition < line.Length)
+                            if (xPosition < line.Length && xPosition < lineCommentPosition)
                             {
-                                if (line[xPosition] == '{')
+                                if (line[xPosition] == '{') 
                                 {
                                     // Check to see if there is an existing BraceDepth entry here
                                     //
@@ -276,8 +284,7 @@ namespace Xyglo
                                         m_bracePositions.Add(bd, newDepth);
                                     }
                                 }
-
-                                if (line[xPosition] == '}')
+                                else if (line[xPosition] == '}')
                                 {
                                     if (testBraceDepth(xPosition, i) == -1)
                                     {
@@ -288,7 +295,30 @@ namespace Xyglo
                                         m_bracePositions.Add(bd, newDepth);
                                     }
                                 }
+                                else
+                                {
+                                    // Fetch a token
+                                    //
+                                    Match m = m_token.Match(line.Substring(xPosition));
 
+                                    // If we have a token inspect it
+                                    //
+                                    if (m.Success)
+                                    {
+                                        //Logger.logMsg("GOT TOKEN " + m.Value);
+                                        string stripWhitespace = m.Value.Replace(" ", "");
+                                        int adjustLength = m.Value.Length - stripWhitespace.Length;
+
+                                        GroupCollection coll = m.Groups;
+
+                                        if (m_keywords.Contains(stripWhitespace))
+                                        {
+                                            //Highlight newHighlight = new Highlight(i, m.Index - adjustLength, m.Index + stripWhitespace.Length - adjustLength, stripWhitespace, SyntaxManager.m_keywordColour);
+                                            //fileBuffer.setHighlight(newHighlight);
+                                            //xPosition += m.Value.Length;
+                                        }
+                                    }
+                                }
 #if TABS_DONT_WORK_HERE
                                 // End of tab run - insert highlight
                                 //
@@ -347,6 +377,102 @@ namespace Xyglo
             }
 
             return rS;
+        }
+
+        /// <summary>
+        /// Initialise our C++ keywords
+        /// </summary>
+        public override void initialiseKeywords()
+        {
+            // from http://en.cppreference.com/w/cpp/keyword
+
+            // Ignoring these for the minute
+            //
+            //alignas (C++11)
+            //alignof (C++11)
+            //char16_t(since C++11)
+            //char32_t(since C++11)
+            //constexpr(since C++11)
+            //decltype(since C++11)
+            //noexcept(since C++11)
+            //nullptr (since C++11)
+            //static_assert(since C++11)
+            //thread_local(since C++11)
+
+            m_keywords = new string[] { "and",
+                                        "and_eq",
+                                        "asm",
+                                        "auto",
+                                        "bitand",
+                                        "bitor",
+                                        "bool",
+                                        "break",
+                                        "case",
+                                        "catch",
+                                        "char",
+                                        "class",
+                                        "compl",
+                                        "const",
+                                        "const_cast",
+                                        "continue",
+                                        "default",
+                                        "delete",
+                                        "do",
+                                        "double",
+                                        "dynamic_cast",
+                                        "else",
+                                        "enum",
+                                        "explicit",
+                                        "export",
+                                        "extern",
+                                        "false",
+                                        "float",
+                                        "for",
+                                        "friend",
+                                        "goto",
+                                        "if",
+                                        "inline",
+                                        "int",
+                                        "long",
+                                        "mutable",
+                                        "namespace",
+                                        "new",
+                                        "not",
+                                        "not_eq",
+                                        "operator",
+                                        "or",
+                                        "or_eq",
+                                        "private",
+                                        "protected",
+                                        "public",
+                                        "register",
+                                        "reinterpret_cast",
+                                        "return",
+                                        "short",
+                                        "signed",
+                                        "sizeof",
+                                        "static",
+                                        "static_cast",
+                                        "struct",
+                                        "switch",
+                                        "template",
+                                        "this",
+                                        "throw",
+                                        "true",
+                                        "try",
+                                        "typedef",
+                                        "typeid",
+                                        "typename",
+                                        "union",
+                                        "unsigned",
+                                        "using",
+                                        "virtual",
+                                        "void",
+                                        "volatile",
+                                        "wchar_t",
+                                        "while",
+                                        "xor",
+                                        "xor_eq" };
         }
     }
 }

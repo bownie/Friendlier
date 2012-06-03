@@ -790,6 +790,22 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Return a m_fileBuffer index value for the FileBuffer
+        /// </summary>
+        /// <param name="fb"></param>
+        /// <returns></returns>
+        public int getFileIndex(FileBuffer fb)
+        {
+            for (int i = 0; i < m_fileBuffers.Count(); i++)
+            {
+                if (fb == m_fileBuffers[i])
+                    return i;
+            }
+
+            return -1;
+        }
+
+        /// <summary>
         /// Add a new FileBuffer without an index
         /// </summary>
         /// <param name="filePath"></param>
@@ -1795,8 +1811,8 @@ namespace Xyglo
 
                 double dHyp = (double)hyp; // convert this here
 
-                intersectPos.X = (float)(ray.Position.X + dHyp * (Math.Atan((-ray.Direction.X) / (ray.Direction.Z))));
-                intersectPos.Y = (float)(ray.Position.Y + dHyp * (Math.Atan((-ray.Direction.Y) / (ray.Direction.Z))));
+                intersectPos.X = (float)(ray.Position.X + dHyp * (Math.Atan(((double)(-ray.Direction.X)) / ((double)(ray.Direction.Z)))));
+                intersectPos.Y = (float)(ray.Position.Y + dHyp * (Math.Atan((((double)-ray.Direction.Y)) / ((double)(ray.Direction.Z)))));
                 intersectPos.Z = 0.0f;
 
                 // Now convert the bufferview screen position to a cursor position.
@@ -1827,10 +1843,14 @@ namespace Xyglo
                     if (fileLine != -1)
                     {
                         Logger.logMsg("GET REAL LINE = " + rBV.getFileBuffer().getLine(fileLine));
+
+                        // Set the return file position to the correct row - nice bug here, we were
+                        // doing all the hard work and then forgetting to set the return value..
+                        //
+                        rFP.Y = fileLine;
                     }
                 }
             }
-
 
             return new Pair<BufferView, Pair<ScreenPosition, ScreenPosition>>(rBV, new Pair<ScreenPosition, ScreenPosition>(rFP, rSP));
         }
@@ -1854,10 +1874,10 @@ namespace Xyglo
             {
                 Pair<int, int> lineColumn = new Pair<int,int>();
 
-                // Default line and column to -1
+                // Default line and column to 0
                 //
-                lineColumn.First = -1;
-                lineColumn.Second = -1;
+                lineColumn.First = 0;
+                lineColumn.Second = 0;
 
                 // Test and set line if we find it
                 //
@@ -1893,15 +1913,12 @@ namespace Xyglo
             Pair<FileBuffer, ScreenPosition> rF = new Pair<FileBuffer, ScreenPosition>();
 
             // Default first 
+            //
             rF.First = null;
             ScreenPosition sP = new ScreenPosition();
 
-            // Firstly try and find a FileName
+            // Get the list of potentials
             //
-            //Regex fileName = new Regex(@"[A-Za-z]+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+");
-            //Regex lineNumber = new Regex(@"[A-Za-z]+[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+:[0-9]+");
-            //MatchCollection matches = fileName.Matches(text);
-
             List<Pair<string, Pair<int, int>>> matches = getFileNamesFromText(text);
 
             foreach (Pair<string, Pair<int, int>> m in matches)
@@ -2075,6 +2092,103 @@ namespace Xyglo
         {
             m_externalProjectBaseDirectory = directory;
         }
+
+        /// <summary>
+        /// Calculate a good position for a new BufferView close to the existing one.
+        /// </summary>
+        /// <param name="bv"></param>
+        /// <returns></returns>
+        public Vector3 getBestBufferViewPosition(BufferView bv)
+        {
+            // Setup the new BoundingBox as a copy of the original
+            //
+            BoundingBox newBB = bv.getBoundingBox();
+
+            // Store the size of it
+
+            Vector3 bbSize = newBB.Max - newBB.Min;
+
+            // Our new potential position
+            //
+            Vector3 newPosition = new Vector3();
+
+            // Scale factor
+            //
+            int factor = 1;
+
+            while (checkBufferViewOverlaps(newBB))
+            {
+                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Right, factor);
+                newBB.Min = newPosition;
+                newBB.Max = newPosition + bbSize;
+
+                if (!checkBufferViewOverlaps(newBB))
+                {
+                    break;
+                }
+
+                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Above, factor);
+                newBB.Min = newPosition;
+                newBB.Max = newPosition + bbSize;
+
+                if (!checkBufferViewOverlaps(newBB))
+                {
+                    break;
+                }
+
+                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Left, factor);
+                newBB.Min = newPosition;
+                newBB.Max = newPosition + bbSize;
+
+                if (!checkBufferViewOverlaps(newBB))
+                {
+                    break;
+                }
+
+                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Below, factor);
+                newBB.Min = newPosition;
+                newBB.Max = newPosition + bbSize;
+
+                if (!checkBufferViewOverlaps(newBB))
+                {
+                    break;
+                }
+
+                factor++;
+            }
+
+            return newPosition;
+        }
+
+        /// <summary>
+        /// Check for BufferView intersections
+        /// </summary>
+        /// <param name="bv1"></param>
+        /// <param name="bv2"></param>
+        /// <returns></returns>
+        public bool checkBufferViewOverlap(BufferView bv1, BufferView bv2)
+        {
+            return bv1.getBoundingBox().Intersects(bv2.getBoundingBox());
+        }
+
+        /// <summary>
+        /// Check project for BufferView collisions with this BoundingBox
+        /// </summary>
+        /// <param name="bb"></param>
+        /// <returns></returns>
+        public bool checkBufferViewOverlaps(BoundingBox bb)
+        {
+            foreach (BufferView bv in m_bufferViews)
+            {
+                if (bv.getBoundingBox().Intersects(bb))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
     }
 
     /// <summary>

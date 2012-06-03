@@ -26,7 +26,7 @@ namespace Xyglo
         /// <summary>
         /// List of keywords for this language
         /// </summary>
-        protected List<string> m_keywords;
+        protected string [] m_keywords;
 
         /// <summary>
         /// Sorted list of brace positions
@@ -69,6 +69,11 @@ namespace Xyglo
         public abstract void generateHighlighting();
 
         /// <summary>
+        /// Ensure we have a method which initialises a list of keywords
+        /// </summary>
+        public abstract void initialiseKeywords();
+
+        /// <summary>
         /// Get some suggestions from the current text we're entering
         /// </summary>
         /// <param name="text"></param>
@@ -101,6 +106,11 @@ namespace Xyglo
         /// Colour of a Paranthesis
         /// </summary>
         static public Color m_paranthesisColour = Color.Blue;
+
+        /// <summary>
+        /// Colour of a Keyword
+        /// </summary>
+        static public Color m_keywordColour = Color.Green;
 
         /// <summary>
         /// For a given line number return the indent of it - we use this when the previous line has been

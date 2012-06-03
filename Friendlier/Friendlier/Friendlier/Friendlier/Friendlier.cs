@@ -14,6 +14,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Diagnostics;
+using BloomPostprocess;
 
 namespace Xyglo
 {
@@ -93,6 +94,16 @@ namespace Xyglo
         /// Are we spinning?
         /// </summary>
         bool m_spinning = false;
+
+        /// <summary>
+        /// The bloom component
+        /// </summary>
+        BloomComponent m_bloom;
+
+        // Current bloom settings index
+        //
+        int m_bloomSettingsIndex = 0;
+
 
         /// <summary>
         /// Current project
@@ -189,18 +200,6 @@ namespace Xyglo
         /// A texture we can render a text string to and scroll
         /// </summary>
         protected Texture2D m_textScrollTexture;
-
-        /*
-        /// <summary>
-        /// A rendertarget for a moveable text scroller
-        /// </summary>
-        RenderTarget2D m_freeTextScroller;
-
-        /// <summary>
-        /// A texture we can render a text string to and scroll
-        /// </summary>
-        Texture2D m_freeTextScrollTexture;
-        */
 
         /// <summary>
         /// Rotations are stored in this vector
@@ -345,11 +344,6 @@ namespace Xyglo
         protected int m_flySteps = 15;
 
         /// <summary>
-        /// Initial path for FileSystemView
-        /// </summary>
-        //protected string m_filePath = @"C:\";
-
-        /// <summary>
         /// An object that wraps our view of the file system
         /// </summary>
         protected FileSystemView m_fileSystemView;
@@ -368,11 +362,6 @@ namespace Xyglo
         /// User help string
         /// </summary>
         protected string m_userHelp;
-
-        /// <summary>
-        /// Passed in FontManager
-        /// </summary>
-        //protected FontManager m_project.getFontManager();
 
         /// <summary>
         /// Position in configuration list when selecting something
@@ -509,6 +498,45 @@ namespace Xyglo
         /// </summary>
         protected int m_configXOffset = 0;
 
+        /// <summary>
+        /// Last mouse state
+        /// </summary>
+        protected MouseState m_lastMouseState = new MouseState();
+
+        /// <summary>
+        /// Time of last click
+        /// </summary>
+        protected TimeSpan m_lastClickTime = TimeSpan.Zero;
+
+        /// <summary>
+        /// Last position of the click
+        /// </summary>
+        protected Vector3 m_lastClickEyePosition = Vector3.Zero;
+
+        /// <summary>
+        /// Use this for highlighting a selected BufferView temporarily
+        /// </summary>
+        protected Pair<BufferView, Highlight> m_clickHighlight = new Pair<BufferView, Highlight>();
+
+        /// <summary>
+        /// Time for key auto-repeat to start
+        /// </summary>
+        double m_repeatHoldTime = 0.6; // seconds
+
+        // Time between autorepeats
+        //
+        double m_repeatInterval = 0.05; // second
+
+        /// <summary>
+        /// Testing whether arrived in bounding sphere
+        /// </summary>
+        protected BoundingSphere m_testArrived = new BoundingSphere();
+
+        /// <summary>
+        /// Test result
+        /// </summary>
+        protected ContainmentType m_testResult;
+
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
         /// <summary>
@@ -516,25 +544,7 @@ namespace Xyglo
         /// </summary>
         public Friendlier()
         {
-            m_graphics = new GraphicsDeviceManager(this);
-            Content.RootDirectory = "Content";
-
-            // Antialiasing
-            //
-            m_graphics.PreferMultiSampling = true;
-
-            // Set the editing state
-            //
-            m_state = FriendlierState.TextEditing;
-
-            // Set physical memory
-            //
-            Microsoft.VisualBasic.Devices.ComputerInfo ci = new Microsoft.VisualBasic.Devices.ComputerInfo();
-            m_physicalMemory = (float)(ci.TotalPhysicalMemory / (1024 * 1024));
-
-            // Populate the user help
-            //
-            populateUserHelp();
+            initialise();
         }
 
 
@@ -544,16 +554,32 @@ namespace Xyglo
         /// <param name="project"></param>
         public Friendlier(Project project)
         {
+            // File name
+            //
+            m_project = project;
+
+            initialise();
+        }
+
+        /////////////////////////////// METHODS //////////////////////////////////////
+
+
+        /// <summary>
+        /// Initialise some stuff in the constructor
+        /// </summary>
+        protected void initialise()
+        {
             m_graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
+
+            // Initialise the bloom component
+            //
+            m_bloom = new BloomComponent(this);
+            Components.Add(m_bloom);
 
             // Antialiasing
             //
             m_graphics.PreferMultiSampling = true;
-
-            // File name
-            //
-            m_project = project;
 
             // Set the editing state
             //
@@ -571,15 +597,7 @@ namespace Xyglo
             // Populate the user help
             //
             populateUserHelp();
-
-#if WINDOWS_PHONE
-            TargetElapsedTime = TimeSpan.FromTicks(333333);
-            graphics.IsFullScreen = true;
-#endif
         }
-
-        /////////////////////////////// METHODS //////////////////////////////////////
-
 
         /// <summary>
         /// Get the FileBuffer id of the active view
@@ -615,8 +633,6 @@ namespace Xyglo
                     maxHeight = dm.Height;
                 }
             }
-
-
 
             // Defaults
             //
@@ -907,6 +923,16 @@ namespace Xyglo
                     m_graphics.IsFullScreen = bFullScreen;
                     m_graphics.ApplyChanges();
 
+                    // Reload the bloom component
+                    //
+                    if (m_bloom != null)
+                    {
+                        Components.Remove(m_bloom);
+                        //m_bloom.Dispose();
+                        m_bloom = new BloomComponent(this);
+                        Components.Add(m_bloom);
+                    }
+
                     Logger.logMsg("Friendlier::initGraphicsMode() - width = " + iWidth + ", height = " + iHeight + ", fullscreen = " + bFullScreen.ToString());
                     return true;
                 }
@@ -927,6 +953,16 @@ namespace Xyglo
                         m_graphics.PreferredBackBufferHeight = iHeight;
                         m_graphics.IsFullScreen = bFullScreen;
                         m_graphics.ApplyChanges();
+
+                        // Reload the bloom component
+                        //
+                        if (m_bloom != null)
+                        {
+                            Components.Remove(m_bloom);
+                            //m_bloom.Dispose();
+                            m_bloom = new BloomComponent(this);
+                            Components.Add(m_bloom);
+                        }
 
                         Logger.logMsg("Friendlier::initGraphicsMode() - width = " + iWidth + ", height = " + iHeight + ", fullscreen = " + bFullScreen.ToString());
                         return true;
@@ -1000,6 +1036,12 @@ namespace Xyglo
         /// </summary>
         protected override void LoadContent()
         {
+            //bloomSettingsIndex = (bloomSettingsIndex + 1) %
+              //                       BloomSettings.PresetSettings.Length;
+
+            m_bloom.Settings = BloomSettings.PresetSettings[5];
+
+
             // Start up the worker thread for the performance counters
             //
             m_counterWorker = new PerformanceWorker();
@@ -1333,7 +1375,7 @@ namespace Xyglo
             }
             else
             {
-                setTemporaryMessage("[LAST BUFFER]", gameTime, 2);
+                setTemporaryMessage("[LAST BUFFER]", 2, gameTime);
             }
         }
 
@@ -1438,7 +1480,7 @@ namespace Xyglo
                 }
                 catch (Exception)
                 {
-                    setTemporaryMessage("Friendlier::traverseDirectory() - Cannot access \"" + subDirectory + "\"", gameTime, 2);
+                    setTemporaryMessage("Friendlier::traverseDirectory() - Cannot access \"" + subDirectory + "\"", 2, gameTime);
                 }
             }
         }
@@ -1455,7 +1497,7 @@ namespace Xyglo
                 return true;
             }
 
-            setTemporaryMessage("[Can't save due to licence issue]", 10);
+            setTemporaryMessage("[Can't save due to licence issue]", 10, m_gameTime);
 
             return false;
         }
@@ -1483,11 +1525,11 @@ namespace Xyglo
                 flyToPosition(newPosition);
                 m_state = FriendlierState.TextEditing;
 
-                setTemporaryMessage("[Saved]", gameTime, 2);
+                setTemporaryMessage("[Saved]", 2, gameTime);
             }
             catch (Exception)
             {
-                setTemporaryMessage("Failed to save to " + m_project.getSelectedBufferView().getFileBuffer().getFilepath(), gameTime, 2);
+                setTemporaryMessage("Failed to save to " + m_project.getSelectedBufferView().getFileBuffer().getFilepath(), 2, gameTime);
             }
         }
 
@@ -1521,13 +1563,13 @@ namespace Xyglo
             {
                 if (m_confirmState == ConfirmState.FileSaveCancel)
                 {
-                    setTemporaryMessage("", gameTime, 1);
+                    setTemporaryMessage("", 1, gameTime);
                     m_confirmState = ConfirmState.None;
                     return;
                 }
                 else
                 {
-                    setTemporaryMessage("[Unsaved Buffers.  Save?  Y/N/C]", gameTime, 0);
+                    setTemporaryMessage("[Unsaved Buffers.  Save?  Y/N/C]", 0, gameTime);
                     m_confirmState = ConfirmState.FileSaveCancel;
                     m_saveAsExit = true;
                     //m_state = FriendlierState.FileSaveAs;
@@ -1611,7 +1653,7 @@ namespace Xyglo
                 //
                 if (m_buildProcess != null)
                 {
-                    setTemporaryMessage("Cancel build? (Y/N)", 0);
+                    setTemporaryMessage("Cancel build? (Y/N)", 0, m_gameTime);
                     m_confirmState = ConfirmState.CancelBuild;
                     return true;
                 }
@@ -1629,7 +1671,7 @@ namespace Xyglo
 
 
                     case FriendlierState.FileSaveAs:
-                        setTemporaryMessage("[Cancelled Quit]", gameTime, 0.5);
+                        setTemporaryMessage("[Cancelled Quit]", 0.5, gameTime);
                         m_confirmState = ConfirmState.None;
                         m_state = FriendlierState.TextEditing;
                         m_saveAsExit = false;
@@ -1768,7 +1810,6 @@ namespace Xyglo
         /// </summary>
         protected void processMetaKeys()
         {
-
             // Control key state
             //
             if (m_ctrlDown && Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftControl) &&
@@ -1982,7 +2023,7 @@ namespace Xyglo
                     }
                     catch (Exception /*e*/)
                     {
-                        setTemporaryMessage("Cannot access " + parDirectory.ToString(), gameTime, 2);
+                        setTemporaryMessage("Cannot access " + parDirectory.ToString(), 2, gameTime);
                     }
                 }
                 else
@@ -2277,7 +2318,7 @@ namespace Xyglo
                             //
                             generateTreeModel();
 
-                            setTemporaryMessage("Removed " + fileToRemove + " from project", 5);
+                            setTemporaryMessage("Removed " + fileToRemove + " from project", 5, m_gameTime);
                         }
                         else
                         {
@@ -2484,7 +2525,7 @@ namespace Xyglo
                                 {
                                     // Save has completed without error
                                     //
-                                    setTemporaryMessage("[Saved]", gameTime, 2);
+                                    setTemporaryMessage("[Saved]", 2, gameTime);
                                 }
 
                                 m_state = FriendlierState.TextEditing;
@@ -2544,7 +2585,7 @@ namespace Xyglo
                     }
                     catch (Exception e)
                     {
-                        setTemporaryMessage("[Save failed with \"" + e.Message + "\" ]", gameTime, 5);
+                        setTemporaryMessage("[Save failed with \"" + e.Message + "\" ]", 5, gameTime);
                     }
 
                     m_confirmState = ConfirmState.None;
@@ -2566,13 +2607,13 @@ namespace Xyglo
                     }
                     else if (m_confirmState == ConfirmState.CancelBuild)
                     {
-                        setTemporaryMessage("Continuing build..", 2);
+                        setTemporaryMessage("Continuing build..", 2, gameTime);
                         m_confirmState = ConfirmState.None;
                     }
                 }
                 else if (checkKeyState(Keys.C, gameTime) && m_confirmState == ConfirmState.FileSaveCancel)
                 {
-                    setTemporaryMessage("[Cancelled Quit]", gameTime, 0.5);
+                    setTemporaryMessage("[Cancelled Quit]", 0.5, gameTime);
                     m_confirmState = ConfirmState.None;
                     rC = true;
                 }
@@ -2633,7 +2674,7 @@ namespace Xyglo
                         else
                         {
                             //Logger.logMsg("Friendlier::Update() - nothing to undo");
-                            setTemporaryMessage("[NOUNDO]", gameTime, 0.3);
+                            setTemporaryMessage("[NOUNDO]", 0.3, gameTime);
                         }
                         rC = true;
                     }
@@ -2641,7 +2682,7 @@ namespace Xyglo
                     {
                         //System.Windows.Forms.MessageBox.Show("Undo stack is empty - " + e.Message);
                         Logger.logMsg("Friendlier::processCombinationsCommands() - got exception " + e.Message);
-                        setTemporaryMessage("[NOUNDO]", gameTime, 2);
+                        setTemporaryMessage("[NOUNDO]", 2, gameTime);
                     }
                 }
                 else if (checkKeyState(Keys.Y, gameTime))  // Redo
@@ -2661,7 +2702,7 @@ namespace Xyglo
                         }
                         else
                         {
-                            setTemporaryMessage("[NOREDO]", gameTime, 0.3);
+                            setTemporaryMessage("[NOREDO]", 0.3, gameTime);
                         }
                         rC = true;
                     }
@@ -2669,7 +2710,7 @@ namespace Xyglo
                     {
                         //System.Windows.Forms.MessageBox.Show("Undo stack is empty - " + e.Message);
                         Logger.logMsg("Friendlier::processCombinationsCommands() - got exception " + e.Message);
-                        setTemporaryMessage("[NOREDO]", gameTime, 2);
+                        setTemporaryMessage("[NOREDO]", 2, gameTime);
                     }
                 }
                 else if (checkKeyState(Keys.A, gameTime))  // Select all
@@ -2677,6 +2718,33 @@ namespace Xyglo
                     m_project.getSelectedBufferView().selectAll();
                     rC = true;
                 }
+                else if (checkKeyState(Keys.OemPlus, gameTime)) // increment bloom state
+                {
+                    m_bloomSettingsIndex = (m_bloomSettingsIndex + 1) % BloomSettings.PresetSettings.Length;
+                    m_bloom.Settings = BloomSettings.PresetSettings[m_bloomSettingsIndex];
+                    m_bloom.Visible = true;
+
+                    setTemporaryMessage("Bloom set to " + BloomSettings.PresetSettings[m_bloomSettingsIndex].Name, 3, gameTime);
+                }
+                else if (checkKeyState(Keys.OemMinus, gameTime)) // decrement bloom state
+                {
+                    m_bloomSettingsIndex = (m_bloomSettingsIndex - 1);
+
+                    if (m_bloomSettingsIndex < 0)
+                    {
+                        m_bloomSettingsIndex += BloomSettings.PresetSettings.Length;
+                    }
+
+                    m_bloom.Settings = BloomSettings.PresetSettings[m_bloomSettingsIndex];
+                    m_bloom.Visible = true;
+                    setTemporaryMessage("Bloom set to " + BloomSettings.PresetSettings[m_bloomSettingsIndex].Name, 3, gameTime);
+                }
+                else if (checkKeyState(Keys.B, gameTime)) // Toggle bloom
+                {
+                    m_bloom.Visible = !m_bloom.Visible;
+                    setTemporaryMessage("Bloom " + (m_bloom.Visible ? "on" : "off"), 3, gameTime);
+                }
+
             }
             else if (m_altDown) // ALT down action
             {
@@ -2686,7 +2754,7 @@ namespace Xyglo
                     //
                     if (m_confirmFileSave)
                     {
-                        setTemporaryMessage("[Confirm Save? Y/N]", gameTime, 0);
+                        setTemporaryMessage("[Confirm Save? Y/N]", 0, gameTime);
                         m_confirmState = ConfirmState.FileSave;
                     }
                     else  // just save
@@ -2706,7 +2774,7 @@ namespace Xyglo
                             {
                                 // Save has completed without error
                                 //
-                                setTemporaryMessage("[Saved]", gameTime, 2);
+                                setTemporaryMessage("[Saved]", 2, gameTime);
                             }
 
                             m_state = FriendlierState.TextEditing;
@@ -2767,7 +2835,7 @@ namespace Xyglo
                 else if (checkKeyState(Keys.D, gameTime))
                 {
                     m_state = FriendlierState.DiffPicker;
-                    setTemporaryMessage("Pick a BufferView to diff against", 10);
+                    setTemporaryMessage("Pick a BufferView to diff against", 10, gameTime);
                     rC = true;
                 }
                 else if (checkKeyState(Keys.M, gameTime))
@@ -3336,7 +3404,7 @@ namespace Xyglo
 
             if (!m_project.getSelectedBufferView().find(m_searchText))
             {
-                setTemporaryMessage("[\"" + m_searchText + "\" not found]", gameTime, 1);
+                setTemporaryMessage("[\"" + m_searchText + "\" not found]", 1, gameTime);
             }
 
             m_state = FriendlierState.TextEditing;
@@ -3405,34 +3473,11 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Set the temporary message without a GameTime
-        /// </summary>
-        /// <param name="message"></param>
-        /// <param name="seconds"></param>
-        protected void setTemporaryMessage(string message, double seconds)
-        {
-            m_temporaryMessage = message;
-
-            if (seconds == 0)
-            {
-                seconds = 604800; // a week should be long enough to signal infinity
-            }
-
-            // Store the start and end time for this message - start time is used for
-            // scrolling.
-
-            //
-            m_temporaryMessageStartTime = m_gameTime.TotalGameTime.TotalSeconds;
-            m_temporaryMessageEndTime = m_temporaryMessageStartTime + seconds;
-        }
-
-
-        /// <summary>
         /// Set a temporary message until a given end time (seconds into the future)
         /// </summary>
         /// <param name="message"></param>
         /// <param name="gameTime"></param>
-        protected void setTemporaryMessage(string message, GameTime gameTime, double seconds)
+        protected void setTemporaryMessage(string message, double seconds, GameTime gameTime)
         {
             m_temporaryMessage = message;
 
@@ -3588,7 +3633,7 @@ namespace Xyglo
             }
             else
             {
-                setTemporaryMessage("[NO BUFFERVIEW]", gameTime, 0.5);
+                setTemporaryMessage("[NO BUFFERVIEW]", 0.5, gameTime);
             }
         }
 
@@ -3603,16 +3648,6 @@ namespace Xyglo
             m_changingPositionLastGameTime = TimeSpan.Zero;
             m_changingEyePosition = true;
         }
-
-        /// <summary>
-        /// Testing whether arrived in bounding sphere
-        /// </summary>
-        protected BoundingSphere m_testArrived = new BoundingSphere();
-
-        /// <summary>
-        /// Test result
-        /// </summary>
-        protected ContainmentType m_testResult;
 
         /// <summary>
         /// Transform current eye position to an intended eye position over time
@@ -3699,16 +3734,6 @@ namespace Xyglo
             }
         }
 
-
-        /// <summary>
-        /// Time for key auto-repeat to start
-        /// </summary>
-        double m_repeatHoldTime = 0.6; // seconds
-
-        // Time between autorepeats
-        //
-        double m_repeatInterval = 0.05; // second
-
         /// <summary>
         /// Gets a single key click - but also repeats if it's still held down after a while
         /// </summary>
@@ -3789,22 +3814,6 @@ namespace Xyglo
             return pickRay;
         }
 
-
-        /// <summary>
-        /// Last mouse state
-        /// </summary>
-        protected MouseState m_lastMouseState = new MouseState();
-
-        /// <summary>
-        /// Time of last click
-        /// </summary>
-        protected TimeSpan m_lastClickTime = TimeSpan.Zero;
-
-        /// <summary>
-        /// Last position of the click
-        /// </summary>
-        protected Vector3 m_lastClickEyePosition = Vector3.Zero;
-
         /// <summary>
         /// Double click handler
         /// </summary>
@@ -3817,7 +3826,211 @@ namespace Xyglo
             ScreenPosition fp = (ScreenPosition)testFind.Second.First;
             ScreenPosition screenRelativePosition = (ScreenPosition)testFind.Second.Second;
 
-            if (bv.testCursorPosition(fp))
+            if (bv.isTailing())
+            {
+                handleTailingDoubleClick(bv, fp, screenRelativePosition);
+            }
+            else
+            {
+                handleStandardDoubleClick(bv, fp, screenRelativePosition);
+            }
+
+        }
+
+        protected void handleDiffPick(GameTime gameTime)
+        {
+            Pair<BufferView, Pair<ScreenPosition, ScreenPosition>> testFind = m_project.testRayIntersection(getPickRay());
+
+            // We're only really interesed in the BufferView
+            //
+            if (testFind.First != null)
+            {
+                BufferView bv1 = m_project.getSelectedBufferView();
+                BufferView bv2 = testFind.First;
+
+                if (bv1 != bv2)
+                {
+#if DIFFMATCHPATCH
+                    //DiffMatchPatch dm = new DiffMatchPatch;
+                    DiffMatchPatch.diff_match_patch dm = new DiffMatchPatch.diff_match_patch();
+
+                    List<DiffMatchPatch.Diff> rL = dm.diff_main(bv1.getFileBuffer().getTextString(), bv2.getFileBuffer().getTextString());
+                    //string string1 = bv1.getFileBuffer().getTextString();
+                    //string st2 = bv2.getFileBuffer().getTextString();
+
+
+                    //List<DiffMatchPatch.Diff> rL = dm.diff_lineMode(bv1.getFileBuffer().getTextString(), bv2.getFileBuffer().getTextString());
+                    //List<DiffMatchPatch.Diff> rL = dm.diff_lineMode(string1, st2);
+
+                    if (rL.Count > 0)
+                    {
+                        // Make the diffs human readable
+                        //
+                        dm.diff_cleanupSemantic(rL);
+
+                        setTemporaryMessage(rL.Count + " differences found", 3, gameTime);
+
+                        BufferView newBV = addNewFileBuffer();
+
+                        foreach(DiffMatchPatch.Diff diff in rL)
+                        {
+                            //Logger.logMsg("TEXT = " + diff.text);
+                            if (diff.operation == DiffMatchPatch.Operation.DELETE)
+                            {
+                                foreach (string thing in diff.text.Split('\n'))
+                                {
+                                    newBV.getFileBuffer().appendLine("DELETE : " + thing);
+                                }
+                                
+                            }
+                            else if (diff.operation == DiffMatchPatch.Operation.INSERT)
+                            {
+                                foreach (string thing in diff.text.Split('\n'))
+                                {
+                                    newBV.getFileBuffer().appendLine("INSERT : " + thing);
+                                }
+                            }
+                            else // EQUAL
+                            {
+                                foreach (string thing in diff.text.Split('\n'))
+                                {
+                                    newBV.getFileBuffer().appendLine(thing);
+                                }
+                            }
+                        }
+
+                        setActiveBuffer(newBV);
+
+                        // Set state back to default
+                        //
+                        m_state = FriendlierState.TextEditing;
+                    }
+                    else
+                    {
+                        setTemporaryMessage("No differences found", 3, gameTime);
+                    }
+#endif
+
+                    // http://razor.occams.info/code/diff/
+
+                    Algorithm.Diff.Diff diff = new Algorithm.Diff.Diff(bv1.getFileBuffer().getFilepath(), bv2.getFileBuffer().getFilepath(), true, true);
+
+                    Algorithm.Diff.Patch patch = diff.CreatePatch();
+
+                    //Algorithm.Diff.Patch.Hunk
+                    foreach(Algorithm.Diff.Patch.Hunk hunk in patch)
+                    {
+                        Logger.logMsg("CONFLICT = " + hunk);
+                    }
+
+                    Logger.logMsg("PATCH = " + patch.ToString());
+
+                }
+                else
+                {
+                    setTemporaryMessage("Makes no sense to diff a BufferView with itself", 3, gameTime);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Handle a single left button mouse click
+        /// </summary>
+        /// <param name="gameTime"></param>
+        protected void handleSingleClick(GameTime gameTime)
+        {
+            Pair<BufferView, Pair<ScreenPosition, ScreenPosition>> testFind = m_project.testRayIntersection(getPickRay());
+
+            // Have we got a valid intersection?
+            //
+            if (testFind.First != null && testFind.Second.First != null)
+            {
+                BufferView bv = (BufferView)testFind.First;
+                ScreenPosition fp = (ScreenPosition)testFind.Second.First;
+
+                if (bv.testCursorPosition(fp))
+                {
+                    setActiveBuffer(bv);
+                    bv.mouseCursorTo(m_shiftDown, fp);
+                }
+            }
+        }
+        
+        /// <summary>
+        /// How we handle a double click on a normal canvas when we're editing - accept the BufferView
+        /// we've clicked on, the ScreenPosition (FilePosition with expanded tabs) and also the screen
+        /// relative position.
+        /// </summary>
+        /// <param name="bv"></param>
+        /// <param name="fp"></param>
+        /// <param name="screenRelativePosition"></param>
+        protected void handleStandardDoubleClick(BufferView bv, ScreenPosition fp, ScreenPosition screenRelativePosition)
+        {
+            Logger.logMsg("Friendlier::handleStandardDoubleClick()");
+
+            // All we need to do here is find the line, see if we're clicking in a word and
+            // highlight it if so
+
+            string line = bv.getFileBuffer().getLine(fp.Y);
+
+            // Are we on a space?  If not highlight the word
+            //
+            if (fp.X < line.Length && line[fp.X] != ' ')
+            {
+                // Find first and last occurences of spaces after splitting the string effectively
+                int startWord = line.Substring(0, fp.X).LastIndexOf(' ') + 1;
+                int endWord = line.Substring(fp.X, line.Length - fp.X).IndexOf(' ');
+
+                // Adjust for no space to end of line
+                //
+                if (endWord == -1)
+                {
+                    endWord = line.Length;
+                }
+                else
+                {
+                    endWord += fp.X;
+                }
+
+                ScreenPosition sp1 = new ScreenPosition(startWord, fp.Y);
+                ScreenPosition sp2 = new ScreenPosition(endWord, fp.Y);
+                bv.setHighlight(sp1, sp2);
+            }
+        }
+
+        /// <summary>
+        /// Help to activate, set cursor and center a highlighted row on the active BufferView
+        /// </summary>
+        /// <param name="bv"></param>
+        /// <param name="sp"></param>
+        protected void setHighlightAndCenter(BufferView bv, ScreenPosition sp)
+        {
+            string line = bv.getFileBuffer().getLine(sp.Y);
+
+            setActiveBuffer(bv);
+            bv.setCursorPosition(sp);
+            bv.setBufferShowStartY(sp.Y - bv.getBufferShowLength() / 2);
+
+            ScreenPosition sp1 = new ScreenPosition(0, sp.Y);
+            ScreenPosition sp2 = new ScreenPosition(line.Length, sp.Y);
+            bv.setHighlight(sp1, sp2);
+        }
+
+        /// <summary>
+        /// How we handle a double click on a tailing view
+        /// </summary>
+        /// <param name="bv"></param>
+        /// <param name="fp"></param>
+        /// <param name="screenRelativePosition"></param>
+        protected void handleTailingDoubleClick(BufferView bv, ScreenPosition fp, ScreenPosition screenRelativePosition)
+        {
+            Logger.logMsg("Friendlier::handleTailingDoubleClick()");
+
+            if (!bv.testCursorPosition(fp))
+            {
+                Logger.logMsg("Friendlier::handleTailingDoubleClick() - failed in testCursorPosition");
+            }
+            else
             {
                 // Fetch the line indicated from the file into the line variable
                 //
@@ -3825,11 +4038,11 @@ namespace Xyglo
                 try
                 {
                     line = bv.getFileBuffer().getLine(fp.Y);
-                    Logger.logMsg("Friendlier::checkMouse() - GOT LINE = " + line);
+                    Logger.logMsg("Friendlier::handleTailingDoubleClick() - got a line = " + line);
                 }
                 catch (Exception)
                 {
-                    Logger.logMsg("Friendlier::checkMouse() - couldn't fetch line " + fp.Y);
+                    Logger.logMsg("Friendlier::handleTailingDoubleClick() - couldn't fetch line " + fp.Y);
                 }
 
                 
@@ -3844,29 +4057,50 @@ namespace Xyglo
                     FileBuffer fb = (FileBuffer)found.First;
                     ScreenPosition sp = (ScreenPosition)found.Second;
 
+                    // Try to find a BufferView for this FileBuffer
+                    //
                     bv = m_project.getBufferView(fb.getFilepath());
 
+                    // If we have one then zap to it
+                    //
                     if (bv != null)
                     {
                         try
                         {
-                            Logger.logMsg("Friendlier::checkMouse() - trying to active BufferView and zap to line");
-                            setActiveBuffer(bv);
-                            bv.setCursorPosition(sp);
+                            Logger.logMsg("Friendlier::handleTailingDoubleClick() - trying to active BufferView and zap to line");
+                            setHighlightAndCenter(bv, sp);
                         }
                         catch (Exception)
                         {
-                            Logger.logMsg("Friendlier::checkMouse() - couldn't activate and zap to line in file");
+                            Logger.logMsg("Friendlier::handleTailingDoubleClick() - couldn't activate and zap to line in file");
                         }
+                    }
+                    else 
+                    {
+                        // Create a new FileBuffer at calculated position and add it to the project
+                        //
+                        Vector3 newPos = m_project.getBestBufferViewPosition(m_project.getSelectedBufferView());
+                        BufferView newBV = new BufferView(m_project.getFontManager(), fb, newPos, 0, 20, m_project.getFileIndex(fb), false);
+                        m_project.addBufferView(newBV);
+
+                        // Load the file
+                        //
+                        fb.loadFile(m_project.getSyntaxManager());
+
+                        // Activate and centre
+                        //
+                        setHighlightAndCenter(newBV, sp);
+
+                        return;
                     }
                 }
                 else // not found anything - look on the filesystem
                 {
                     // Can 
-                    Logger.logMsg("LOOKING ON FILESYSTEM");
+                    Logger.logMsg("Friendlier::handleTailingDoubleClick() - inspecting filesystem");
 
-                    //string baseDir = @"C:\dev-alpha2\win32-mingw-rtmidi";
-                    string baseDir = @"D:\win32-mingw-rtmidi";
+                    string baseDir = @"C:\dev-alpha2\win32-mingw-rtmidi";
+                    //string baseDir = @"D:\win32-mingw-rtmidi";
 
                     // If we have retrieved a line to test
                     //
@@ -3893,7 +4127,7 @@ namespace Xyglo
 
                             if (rL.Count > 0)
                             {
-                                Logger.logMsg("Got " + rL.Count + " matches for file " + fpEntry.First);
+                                Logger.logMsg("Friendlier::handleTailingDoubleClick() - got " + rL.Count + " matches for file " + fpEntry.First);
 
                                 // Set a highlight on the current BufferView
                                 //
@@ -3907,8 +4141,8 @@ namespace Xyglo
                                 // Open file and zap to it
                                 //
                                 BufferView newBv = addNewFileBuffer(rL[0]);
-                                setActiveBuffer(newBv);
-
+                                ScreenPosition sp = new ScreenPosition(fpEntry.Second.Second, fpEntry.Second.First);
+                                setHighlightAndCenter(newBv, sp);
                                 break;
                             }
                         }
@@ -3922,19 +4156,21 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Use this for highlighting a selected BufferView temporarily
-        /// </summary>
-        protected Pair<BufferView, Highlight> m_clickHighlight = new Pair<BufferView, Highlight>();
-
-        /// <summary>
-        /// Handle mouse clicks
+        /// Handle mouse click and double clicks and farm out the responsibility to other
+        /// helper methods.
         /// </summary>
         /// <param name="gameTime"></param>
         public void checkMouse(GameTime gameTime)
         {
             MouseState mouseState = Mouse.GetState();
 
+            // If our main XNA window is inactive then ignore mouse clicks
+            //
             if (IsActive == false) return;
+
+            // If we are flying somewhere then ignore mouse clicks
+            //
+            if (m_changingEyePosition) return;
 
             // Left button
             //
@@ -3948,8 +4184,8 @@ namespace Xyglo
 
                 if (m_lastMouseState.LeftButton == ButtonState.Released)
                 {
-                    //m_lastClickPosition = pickRay.Position;
-
+                    // Handle double clicks
+                    //
                     m_lastClickPosition.X = mouseX;
                     m_lastClickPosition.Y = mouseY;
                     m_lastClickPosition.Z = 0;
@@ -3974,9 +4210,9 @@ namespace Xyglo
 
                     Logger.logMsg("Friender::checkMouse() - mouse clicked");
                 }
-                else
+                else  // We have held down the left button - so pan
                 {
-                    // Set cursor to a hand
+                    // Do panning - first set cursor to a hand
                     //
                     System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.Hand;
 
@@ -3998,7 +4234,7 @@ namespace Xyglo
                     Vector3 diffPosition = (nowPosition - m_lastClickPosition);
                     diffPosition.Z = 0;
 
-                    Logger.logMsg("Friendlier::checkMouse() - mouse dragged: X = " + diffPosition.X + ", Y = " + diffPosition.Y);
+                    //Logger.logMsg("Friendlier::checkMouse() - mouse dragged: X = " + diffPosition.X + ", Y = " + diffPosition.Y);
 
                     float multiplier = m_zoomLevel / m_zoomLevel;
                     m_eye.X = m_lastClickEyePosition.X - diffPosition.X * multiplier;
@@ -4013,38 +4249,25 @@ namespace Xyglo
                     }
                 }
 
-            } else if (mouseState.LeftButton == ButtonState.Released)
+            }
+            else if (mouseState.LeftButton == ButtonState.Released)
             {
-                if (m_lastMouseState.LeftButton == ButtonState.Pressed) // Have just released
+                if (m_lastMouseState.LeftButton == ButtonState.Pressed) // Have just released on a single click
                 {
                     if ((gameTime.TotalGameTime - m_lastClickTime).TotalSeconds < 0.15f)
                     {
-                        Logger.logMsg("Friendlier::checkMouse() - quick click");
 
-                        // Convert mouse position to cursor position
-                        //
-                        //Logger.logMsg("MOUSE X = " + mouseState.X + ", Y = " + mouseState.Y);
-
-                        Pair<BufferView, Pair<ScreenPosition, ScreenPosition>> testFind = m_project.testRayIntersection(getPickRay());
-
-                        if (testFind.First != null && testFind.Second.First != null)
+                        if (m_state == FriendlierState.DiffPicker)
                         {
-                            BufferView bv = (BufferView)testFind.First;
-                            ScreenPosition fp = (ScreenPosition)testFind.Second.First;
-
-                            if (bv.testCursorPosition(fp))
-                            {
-                                setActiveBuffer(bv);
-                                
-                                bv.mouseCursorTo(m_shiftDown, fp);
-                                //Logger.logMsg("RAY INTERSECTS A BV");
-                            }
+                            handleDiffPick(gameTime);
+                        }
+                        else
+                        {
+                            handleSingleClick(gameTime);
                         }
                     }
-                    else
+                    else // we've done a long click and release we're dragging - on the release handle the drag result
                     {
-                        Logger.logMsg("Friendlier::checkMouse() - mouse released");
-
                         // At this point test to see which bufferview centre we're nearest and if we're near a
                         // different one then switch to that.
                         //
@@ -4052,7 +4275,7 @@ namespace Xyglo
 
                         if (newView != null)
                         {
-                            Logger.logMsg("Friendlier::checkMouse() - switching to new buffer view");
+                            //Logger.logMsg("Friendlier::checkMouse() - switching to new buffer view");
                             setActiveBuffer(newView);
                         }
                         else
@@ -4076,7 +4299,7 @@ namespace Xyglo
             //
             if (m_lastMouseWheelValue != Mouse.GetState().ScrollWheelValue)
             {
-                Logger.logMsg("Friendlier::checkMouse() - mouse wheel value now = " + Mouse.GetState().ScrollWheelValue);
+                //Logger.logMsg("Friendlier::checkMouse() - mouse wheel value now = " + Mouse.GetState().ScrollWheelValue);
 
                 // If shift down then scroll current view - otherwise zoom in/out
                 //
@@ -4127,10 +4350,14 @@ namespace Xyglo
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Draw(GameTime gameTime)
         {
+            // Draw onto the Bloom component - this is the only modification we need to make
+            //
+            m_bloom.BeginDraw();
+
             // First off render the text scroller to a texture.  We actually render the texture
             // somewhere further down.
             //
-            renderTextScroller();
+            //renderTextScroller();
 
             // Set background colour
             //
@@ -4354,6 +4581,92 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Split at string along a given length along word boundaries
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="width"></param>
+        /// <returns></returns>
+        protected List<string> splitStringNicely(string line, int width)
+        {
+            List<string> rS = new List<string>();
+
+            if (line.Length < width)
+            {
+                rS.Add(line);
+                return rS;
+            }
+
+            int splitPos = 0;
+            while (splitPos < line.Length)
+            {
+                string splitString = line.Substring(splitPos, line.Substring(splitPos, width).LastIndexOf(" "));
+                splitPos += splitString.Length;
+                rS.Add(splitString);
+            }
+
+            return rS;
+        }
+
+        /// <summary>
+        /// Draw temporary message by fade in/fade out
+        /// </summary>
+        /// <param name="gameTime"></param>
+        /// <param name="overlayColour"></param>
+        protected void drawTemporaryMessage(GameTime gameTime, Color overlayColour)
+        {
+            if (m_temporaryMessage == "" || gameTime.TotalGameTime.TotalSeconds > m_temporaryMessageEndTime)
+            {
+                return;
+            }
+
+            // Now calculate the colour according to the time - fade in/fade out is currently linear
+            //
+            Color fadeColour = overlayColour;
+            
+            float blankTime = 0.25f; // seconds
+            float fadeTime = 1.0f; // seconds
+            if (gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime < blankTime)
+            {
+                fadeColour = Color.Black;
+                fadeColour.A = 0;
+            }
+            else if (gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime < fadeTime)
+            {
+                double percent = (gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime - blankTime) / (fadeTime - blankTime);
+                fadeColour.R = (byte)((double)overlayColour.R * percent);
+                fadeColour.G = (byte)((double)overlayColour.G * percent);
+                fadeColour.B = (byte)((double)overlayColour.B * percent);
+                fadeColour.A = (byte)((double)overlayColour.A * percent);
+            }
+            else if (gameTime.TotalGameTime.TotalSeconds > m_temporaryMessageEndTime - fadeTime)
+            {
+                double percent = (m_temporaryMessageEndTime - gameTime.TotalGameTime.TotalSeconds) / fadeTime;
+                fadeColour.R = (byte)((double)overlayColour.R * percent);
+                fadeColour.G = (byte)((double)overlayColour.G * percent);
+                fadeColour.B = (byte)((double)overlayColour.B * percent);
+                fadeColour.A = (byte)((double)overlayColour.A * percent);
+            }
+
+            // How many lines are we going to show for this temporary message?
+            //
+            List<string> splitString = splitStringNicely(m_temporaryMessage, m_project.getSelectedBufferView().getBufferShowWidth());
+
+            // Set x and Y accordingly
+            //
+            float yPos = m_graphics.GraphicsDevice.Viewport.Height - ((splitString.Count + 3) * m_project.getFontManager().getOverlayFont().LineSpacing);
+
+            m_overlaySpriteBatch.Begin();
+            for (int i = 0; i < splitString.Count; i++)
+            {
+                float xPos = m_graphics.GraphicsDevice.Viewport.Width / 2 - m_project.getFontManager().getOverlayFont().MeasureString("X").X * splitString[i].Length / 2;
+                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), splitString[i], new Vector2(xPos, yPos), fadeColour, 0, Vector2.Zero, 1.0f, 0, 0);
+                yPos += m_project.getFontManager().getOverlayFont().LineSpacing;
+            }
+            m_overlaySpriteBatch.End();
+        }
+
+
+        /// <summary>
         /// Draw the HUD Overlay for the editor with information about the current file we're viewing
         /// and position in that file.
         /// </summary>
@@ -4440,32 +4753,6 @@ namespace Xyglo
                     fileName += " [ALT]";
                 }
 
-                double dTS = gameTime.TotalGameTime.TotalSeconds;
-                if (dTS < m_temporaryMessageEndTime && m_temporaryMessage != "")
-                {
-                    // Add any temporary message on to the end of the message
-                    //
-
-                    // If the temporary message is going to be too long for the space we have then
-                    // we need to change the scroll space to for it.
-                    //
-                    int availableWidth = (int)(positionStringXPos - ((fileName.Length + 2) * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay)));
-                    if (availableWidth > m_textScroller.Width)
-                    {
-                        setTextScrollerWidth(availableWidth);
-                    }
-
-                    // Now check if the temporary message is longer than the scroll space - scroll if it is
-                    //
-                    if ((m_temporaryMessage.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay)) < m_textScroller.Width)
-                    {
-                        fileName += " " + m_temporaryMessage;
-                    }
-                    else
-                    {
-                        drawScrollingText = true; // we render this later down this method
-                    }
-                }
             }
 
             // Convert lineHeight back to normal size by dividing by m_textSize modifier
@@ -4525,6 +4812,11 @@ namespace Xyglo
             m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), filePercentString, new Vector2((int)filePercentStringXPos, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
             m_overlaySpriteBatch.End();
 
+
+            // Draw any temporary message
+            //
+            drawTemporaryMessage(gameTime, Color.HotPink);
+
             // Draw the scrolling text
             //
             if (m_textScrollTexture != null && drawScrollingText)
@@ -4537,7 +4829,6 @@ namespace Xyglo
             // Draw system load
             //
             drawSystemLoad(gameTime);
-
         }
 
         /// <summary>
@@ -4659,7 +4950,7 @@ namespace Xyglo
 
                 // Test for when we're showing this
                 //
-                if (Convert.ToInt16(dTS * blinkRate) % 2 != 0)
+                if (Convert.ToInt32(dTS * blinkRate) % 2 != 0)
                 {
                     return;
                 }
@@ -5037,6 +5328,8 @@ namespace Xyglo
                         }
                     }
 
+                    // Get the highlighting for the line
+                    //
                     List<Highlight> highlights = view.getFileBuffer().getHighlighting(i + bufPos);
 
                     // Only do syntax highlighting when we're not greyed out
@@ -5059,31 +5352,90 @@ namespace Xyglo
                             highlightColour.G = (byte)(highlightColour.G / greyDivisor);
                             highlightColour.B = (byte)(highlightColour.B / greyDivisor);
                             highlightColour.A = (byte)(highlightColour.A / greyDivisor);
-
                         }
 
                         // Need to print the line by section with some unhighlighted
                         //
+                        int nextHighlight = 0;
+                        int xPos = 0;
 
-                        //Logger.logMsg("Friendlier::drawFileBuffer() - got " + highlights.Count + " highlights");
+                        // Step through with xPos all the highlights in our collection
+                        //
+                        while (nextHighlight < highlights.Count && xPos < line.Length)
+                        {
+                            // If the highlight starts beyond the string end then skip it -
+                            // and we quit out of the highlighting process as highlights are
+                            // sorted (hopefully correctly).
+                            //
+                            if (highlights[nextHighlight].m_startHighlight.X >= line.Length)
+                            {
+                                xPos = line.Length;
+                                continue;
+                            }
 
-                        //int j = 0;
-                        // Step through the 
-                        //while(j < line.Length)
-                        //{
+                            if (xPos < highlights[nextHighlight].m_startHighlight.X || nextHighlight >= highlights.Count)
+                            {
+                                string subLineToHighlight = line.Substring(xPos, highlights[nextHighlight].m_startHighlight.X - xPos);
+
+                                m_spriteBatch.DrawString(
+                                    m_project.getFontManager().getFont(),
+                                    subLineToHighlight,
+                                    new Vector2((int)viewSpaceTextPosition.X + m_project.getFontManager().getCharWidth() * xPos, (int)(viewSpaceTextPosition.Y + yPosition)),
+                                    bufferColour,
+                                    0,
+                                    Vector2.Zero,
+                                    m_project.getFontManager().getTextScale(),
+                                    0,
+                                    0);
+
+                                xPos = highlights[nextHighlight].m_startHighlight.X;
+                            }
+
+                            if (xPos == highlights[nextHighlight].m_startHighlight.X)
+                            {
+                                // Capture substring, increment xPos and draw the highlighted area - watch for
+                                // highlights that span lines longer than our presented line (line).
+                                //
+                                string subLineInHighlight = line.Substring(highlights[nextHighlight].m_startHighlight.X,
+                                                                           Math.Min(highlights[nextHighlight].m_endHighlight.X - highlights[nextHighlight].m_startHighlight.X, line.Length - highlights[nextHighlight].m_startHighlight.X));
+
+                                m_spriteBatch.DrawString(
+                                    m_project.getFontManager().getFont(),
+                                    subLineInHighlight,
+                                    new Vector2((int)viewSpaceTextPosition.X + m_project.getFontManager().getCharWidth() * xPos, (int)(viewSpaceTextPosition.Y + yPosition)),
+                                    highlightColour,
+                                    0,
+                                    Vector2.Zero,
+                                    m_project.getFontManager().getTextScale(),
+                                    0,
+                                    0);
+
+                                // Step past this highlight
+                                //
+                                xPos = highlights[nextHighlight].m_endHighlight.X;
+                                nextHighlight++;
+                            }
+                        }
+
+                        // Draw the remainder of the line
+                        //
+                        if (xPos < line.Length)
+                        {
+                            string remainder = line.Substring(xPos, line.Length - xPos);
+
                             m_spriteBatch.DrawString(
                                 m_project.getFontManager().getFont(),
-                                line,
-                                new Vector2((int)viewSpaceTextPosition.X, (int)(viewSpaceTextPosition.Y + yPosition)),
-                                highlightColour,
+                                remainder,
+                                new Vector2((int)viewSpaceTextPosition.X + m_project.getFontManager().getCharWidth() * xPos, (int)(viewSpaceTextPosition.Y + yPosition)),
+                                bufferColour,
                                 0,
                                 Vector2.Zero,
                                 m_project.getFontManager().getTextScale(),
                                 0,
                                 0);
-                        //}
+                        }
                     }
-                    else
+                    else  // draw the line without highlighting
                     {
                         m_spriteBatch.DrawString(
                             m_project.getFontManager().getFont(),
@@ -5627,7 +5979,7 @@ namespace Xyglo
             {
                 Logger.logMsg("Friendlier::doBuildCommand() - build in progress");
                 setActiveBuffer(m_buildStdOutView);
-                setTemporaryMessage("Checking build status", 3);
+                setTemporaryMessage("Checking build status", 3,  m_gameTime);
                 return;
             }
 
@@ -5642,7 +5994,7 @@ namespace Xyglo
 
                 if (commandList.Length == 0)
                 {
-                    setTemporaryMessage("Build command not defined", gameTime, 2);
+                    setTemporaryMessage("Build command not defined", 2, gameTime);
                 }
                 else
                 {
@@ -5650,7 +6002,7 @@ namespace Xyglo
                     //
                     if (!File.Exists(commandList[0]))
                     {
-                        setTemporaryMessage("Build command not found : \"" + commandList[0] + "\"", gameTime, 5);
+                        setTemporaryMessage("Build command not found : \"" + commandList[0] + "\"", 5, gameTime);
                     }
                     else
                     {
@@ -5662,7 +6014,7 @@ namespace Xyglo
                         //
                         if (!Directory.Exists(buildDir))
                         {
-                            setTemporaryMessage("Build directory doesn't exist : \"" + buildDir + "\"", gameTime, 2);
+                            setTemporaryMessage("Build directory doesn't exist : \"" + buildDir + "\"", 2, gameTime);
                             return;
                         }
 
@@ -5751,7 +6103,7 @@ namespace Xyglo
                         m_buildProcess.BeginErrorReadLine();
 
                         //Process.Start(m_project.getBuildCommand());
-                        setTemporaryMessage("Starting build..", gameTime, 4);
+                        setTemporaryMessage("Starting build..", 4, gameTime);
                         startBanner(m_gameTime, "Build started", 5);
 
                         //string stdout = proc.StandardOutput.ReadToEnd();
@@ -5876,14 +6228,14 @@ namespace Xyglo
             if (m_buildProcess.ExitCode != 0)
             {
                 setActiveBuffer(m_buildStdErrView);
-                setTemporaryMessage("Build failed with exit code " + m_buildProcess.ExitCode, 30);
+                setTemporaryMessage("Build failed with exit code " + m_buildProcess.ExitCode, 5, m_gameTime);
                 m_buildStdErrView.setTailColour(Color.Red);
 
                 startBanner(m_gameTime, "Build failed", 5);
             }
             else
             {
-                setTemporaryMessage("Build completed successfully.", 3);
+                setTemporaryMessage("Build completed successfully.", 3, m_gameTime);
 
                 // Also colour the error log green
                 //
@@ -6138,7 +6490,7 @@ namespace Xyglo
                 //
                 if (message != "")
                 {
-                    setTemporaryMessage(message, 5);
+                    setTemporaryMessage(message, 5, m_gameTime);
                 }
             }
         }

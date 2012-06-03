@@ -14,6 +14,7 @@ namespace Xyglo
             m_name = name;
             m_fileBuffer = buffer;
             m_startPos = start;
+            m_screenPosition = new ScreenPosition(start);
             m_endPos = end;
             m_project = project;
             m_highlightStart = startHighlight;

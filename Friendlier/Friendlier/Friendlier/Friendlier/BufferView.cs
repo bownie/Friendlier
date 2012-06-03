@@ -142,7 +142,7 @@ namespace Xyglo
         /// Current cursor coordinates in this BufferView
         /// </summary>
         [DataMember]
-        protected ScreenPosition m_cursorPosition;
+        protected ScreenPosition m_cursorPosition = new ScreenPosition(0, 0);
 
         /// <summary>
         /// The position in the buffer at which this view is locked
@@ -233,10 +233,6 @@ namespace Xyglo
             {
                 m_searchText = "";
             }
-
-            // Initialise the wrapped map
-            //
-            m_wrappedMap = new Dictionary<int, int>();
         }
        
         /// <summary>
@@ -251,10 +247,6 @@ namespace Xyglo
             }
 
             m_fontManager = fontManager;
-
-            // Initialise the wrapped map
-            //
-            m_wrappedMap = new Dictionary<int, int>();
         }
        
         /// <summary>
@@ -273,10 +265,6 @@ namespace Xyglo
             m_fileBufferIndex = rootBV.m_fileBufferIndex;
             m_readOnly = rootBV.m_readOnly;
             m_fontManager = fontManager;
-            
-            // Initialise the wrapped map
-            //
-            m_wrappedMap = new Dictionary<int, int>();
         }
 
         /// <summary>
@@ -296,10 +284,6 @@ namespace Xyglo
             m_fileBufferIndex = fileIndex;
             m_readOnly = readOnly;
             m_fontManager = fontManager;
-
-            // Initialise the wrapped map
-            //
-            m_wrappedMap = new Dictionary<int, int>();
         }
 
         /// <summary>
@@ -335,10 +319,6 @@ namespace Xyglo
             {
                 m_position = rootBV.calculateRelativePosition(position);
             }
-
-            // Initialise the wrapped map
-            //
-            m_wrappedMap = new Dictionary<int, int>();
         }
 
 
@@ -556,6 +536,17 @@ namespace Xyglo
 #if DEBUG_HIGHLIGHT
             Logger.logMsg("BufferView::extendHighlight() - extending at X = " + m_cursorPosition.X + ", Y = " + m_cursorPosition.Y);
 #endif
+        }
+
+        /// <summary>
+        /// Set our highlight
+        /// </summary>
+        /// <param name="h1"></param>
+        /// <param name="h2"></param>
+        public void setHighlight(ScreenPosition h1, ScreenPosition h2)
+        {
+            m_highlightStart = h1;
+            m_highlightEnd = h2;
         }
 
         /// <summary>
@@ -988,12 +979,16 @@ namespace Xyglo
 
         /// <summary>
         /// Calculate the position of the next BufferView relative to us - these factors aren't constant
-        /// and shouldn't be declared as such but for the moment they usually do.
+        /// and shouldn't be declared as such but for the moment they usually do.  We can also specify a 
+        /// factor to spread out the bounding boxes further if they are required.
         /// </summary>
         /// <param name="position"></param>
+        /// <param name="factor"></param>
         /// <returns></returns>
-        public Vector3 calculateRelativePosition(BufferPosition position)
+        public Vector3 calculateRelativePosition(BufferPosition position, int factor = 1)
         {
+            Vector3 rP = m_position;
+
             try
             {
                 if (m_fontManager.getLineSpacing() == 0 || m_fontManager.getCharWidth() == 0)
@@ -1003,26 +998,32 @@ namespace Xyglo
             }
             catch (Exception)
             {
-                return m_position;
+                return rP;
             }
 
             switch (position)
             {
                 case BufferPosition.Above:
-                    return m_position - (new Vector3(0.0f, (m_bufferShowLength + 10) * m_fontManager.getLineSpacing(), 0.0f));
+                    rP = m_position - (new Vector3(0.0f, factor * (m_bufferShowLength + 10) * m_fontManager.getLineSpacing(), 0.0f));
+                    break;
 
                 case BufferPosition.Below:
-                    return m_position + (new Vector3(0.0f, (m_bufferShowLength + 10) * m_fontManager.getLineSpacing(), 0.0f));
+                    rP = m_position + (new Vector3(0.0f, factor * (m_bufferShowLength + 10) * m_fontManager.getLineSpacing(), 0.0f));
+                    break;
 
                 case BufferPosition.Left:
-                    return m_position - (new Vector3(m_fontManager.getCharWidth() * (m_bufferShowWidth + 15), 0.0f, 0.0f));
+                    rP = m_position - (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + 15), 0.0f, 0.0f));
+                    break;
 
                 case BufferPosition.Right:
-                    return m_position + (new Vector3(m_fontManager.getCharWidth() * (m_bufferShowWidth + 15), 0.0f, 0.0f));
+                    rP = m_position + (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + 15), 0.0f, 0.0f));
+                    break;
 
                 default:
                     throw new Exception("Unknown position parameter passed");
             }
+
+            return rP;
         }
 
         /// <summary>
@@ -1479,6 +1480,9 @@ namespace Xyglo
         /// </summary>
         public void deleteSingle(Project project)
         {
+            if (m_fileBuffer.getLineCount() == 0)
+                return;
+
             m_fileBuffer.deleteSelection(project, screenToFilePosition(project, m_cursorPosition), screenToFilePosition(project, m_cursorPosition), m_highlightStart, m_highlightEnd);
 
             // Update the syntax highlighting
@@ -2300,12 +2304,15 @@ namespace Xyglo
                 m_logRunTerminator = 0;
             }
 
-            // Initialise the wrapped map
+            // Initialise the wrapped map the first time we check this
             //
             if (m_wrappedMap == null)
             {
                 m_wrappedMap = new Dictionary<int, int>();
             }
+
+            // Clear wrapped map
+            //
             m_wrappedMap.Clear();
 
             while (lineNumber < Math.Min(m_bufferShowStartY + m_bufferShowLength, m_fileBuffer.getLineCount()))
@@ -2382,6 +2389,8 @@ namespace Xyglo
             try
             {
                 var result = m_wrappedMap.Where(item => item.Key == wrappedLine + m_wrapAdjustment).First();
+
+                string line = m_fileBuffer.getLine(result.Value);
                 return result.Value;
             }
             catch (Exception)

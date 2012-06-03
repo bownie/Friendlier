@@ -180,6 +180,28 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Fetch the whole file as a single string
+        /// </summary>
+        /// <returns></returns>
+        public string getTextString()
+        {
+            string rs = "";
+
+            foreach (string addString in m_lines)
+            {
+                rs += addString;
+
+                //if (addString.IndexOf('\n') != addString.Length - 1)
+                if (!rs.Contains('\n'))
+                {
+                    rs += "\n";
+                }
+            }
+            return rs;
+            //return String.Join(String.Empty, m_lines.ToArray());
+        }
+
+        /// <summary>
         /// Fetch the current undo position
         /// </summary>
         /// <returns></returns>

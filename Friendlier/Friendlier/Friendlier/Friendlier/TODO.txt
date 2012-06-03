@@ -6,7 +6,8 @@ USE CASES
 
   - generated Makefile from QtCreator/QMake already
   - Use Qt lrelease to generate QM files
-  - 
+  - build and zap to error line
+  - diff file versions
 
 - The writer - writing a book, researching
 - The journalist - writing a story, researching
@@ -26,22 +27,26 @@ BUILD and USABILITY FEATURES TODO and BUGS
 
 OLD
 ----
+
+- highlighting keywords
 - undo bug when repeating (Dummys appearing)
 - Paging on File Management
 - Elegant long lines File Management
 - Elegant long line Config
 - resize bufferview
 
-- import makefile?
-- remove all non-showing FileBuffers?
+- GOTO line implementation
+- zap to definition of method/class/#define
+- double click on normal canvas to highlight
+
 
 - update help [PARTIALLY DONE]
 - performance meters on the overlay [THINK I WILL LEAVE IT]
 
-
+- import makefile?
+- remove all non-showing FileBuffers?
 - scroller is jerky
 - get highlighting to show the tabs
-- click on error lines to open files and zap to line
 - project management (adding, changing projects)
 - brace matching
 - remember last directory indent
@@ -50,7 +55,6 @@ OLD
 - Depth buffer for kinect improved
 - improve search
 - resizing window [IN PROGRESS]
-- zooming is not very good at the moment [IN PROGRESS]
 - scrolling and cut and paste on parameter editing and information screen
 
 - Licence file [STARTED]
@@ -78,6 +82,8 @@ http://autobuildversion.codeplex.com/
 
 ALPHA 2 DONE
 ------------
+- zooming is not very good at the moment [FIXED]
+- click on error lines to open files and zap to line [DONE]
 - commands remember highlights [DONE]
 - refactor the keyboard code as it's a mess [DONE]
 - autorepeat is broken [FIXED]

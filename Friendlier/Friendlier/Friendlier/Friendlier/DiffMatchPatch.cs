@@ -445,6 +445,35 @@ namespace DiffMatchPatch {
       return diffs;
     }
 
+    /// <summary>
+    /// Suggested for line level diffs from here:
+    /// http://code.google.com/p/google-diff-match-patch/wiki/LineOrWordDiffs
+    /// </summary>
+    /// <param name="text1"></param>
+    /// <param name="text2"></param>
+    /// <returns></returns>
+    /*
+    public List<Diff> diff_lineMode(string text1, string text2)
+    {
+        var dmp = new diff_match_patch();
+        var a = dmp.diff_linesToChars(text1, text2);
+        string lineText1 = (string)a[0];
+        string lineText2 = (string)a[1];
+        List<string> lineArray = (List<string>)a[2];
+
+        List<Diff> diffs = dmp.diff_main(lineText1, lineText2, false);
+
+        dmp.diff_charsToLines(diffs, lineArray);
+        dmp.diff_cleanupSemantic(diffs);
+        return diffs;
+    }
+     * */
+
+    public List<Diff> diff_lineMode(string text1, string text2)
+    {
+        return diff_lineMode(text1, text2, DateTime.Now.AddMinutes(1));
+    }
+
     /**
      * Find the 'middle snake' of a diff, split the problem in two
      * and return the recursively constructed diff.
