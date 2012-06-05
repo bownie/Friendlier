@@ -16,11 +16,19 @@ USE CASES
 BUILD and USABILITY FEATURES TODO and BUGS
 ----
 
+- File backups for project file
+- Resize window and BufferViews
+- Reposition BufferViews
+- Visual Diff mechanism
+- cluster control/command (undoable)
+- difference between bufferview level and project level undo???  possible??
+
+
 - slow when editing.. [TRACING]
-- double click error line to file editor [ALMOST WORKING]
+- double click error line to file editor [DONE]
 - make clean [DONE]
 - make debug/release options [CAN WORKAROUND THIS]
-- Cancel build option [HALF DONE]
+- Cancel build option [DONE]
 - browse up error messages in build log [DONE]
 - error with collections during background build [ADDED NEW MUTEX WHICH MAY FIX]
 - Build in Progress - ensure confirmation of exit [PARTIALLY DONE]

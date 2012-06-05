@@ -10,13 +10,11 @@ using System.Xml.Serialization;
 
 namespace Xyglo
 {
-
-
     /// <summary>
     /// A view on a buffer - can be independent from a FileBuffer but carries a reference if needed (undecided on this)
     /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
-    public class BufferView
+    public class BufferView : XygloView
     {
         /// <summary>
         /// BufferPosition is used to help determine positions of other BufferViews
@@ -60,7 +58,6 @@ namespace Xyglo
         /// </summary>
         protected ViewCycleDirection m_cycleDirection;
 
-
         /// <summary>
         /// A little struct used to hold relative positions of BufferViews
         /// </summary>
@@ -73,19 +70,14 @@ namespace Xyglo
         /// <summary>
         /// The FileBuffer associated with this BufferView
         /// </summary>
+        [NonSerialized]
         protected FileBuffer m_fileBuffer;
 
         /// <summary>
-        /// Index of the FileBuffer associated with this BufferView so we can recontruct the link
+        /// Index of the FileBuffer associated with this BufferView so we can reconstruct the link
         /// </summary>
         [DataMember]
         protected int m_fileBufferIndex = 0;
-
-        /// <summary>
-        /// 3d position of the BufferView
-        /// </summary>
-        [DataMember]
-        protected Vector3 m_position;
 
         /// <summary>
         /// What line the buffer is showing from
@@ -211,16 +203,9 @@ namespace Xyglo
         protected string m_searchText = "";
 
         /// <summary>
-        /// Font manager reference passed in to provide font sizes for rendering
-        /// </summary>
-        [NonSerialized]
-        protected FontManager m_fontManager = null;
-
-        /// <summary>
         /// Get my search locations in the BufferView
         /// </summary>
         protected List<int> m_searchLocations = new List<int>();
-
 
         /////// CONSTRUCTORS /////////
 
@@ -1910,14 +1895,13 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Find the text and move the cursor and highlight it
+        /// Find the m_searchText and move the cursor and highlight it
         /// </summary>
         /// <param name="text"></param>
-        public bool find(string text)
+        public bool find()
         {
             ScreenPosition searchPos = m_cursorPosition;
             bool searching = true;
-            m_searchText = text;
 
             if (m_fileBuffer.getLineCount() == 0)
             {
@@ -1934,7 +1918,7 @@ namespace Xyglo
                 }
 
                 // Ensure that 
-                int findPos = line.IndexOf(text);
+                int findPos = line.IndexOf(m_searchText);
 
                 if (findPos != -1) // found something
                 {
@@ -1957,7 +1941,7 @@ namespace Xyglo
                         //
                         m_highlightStart = searchPos;
                         m_highlightEnd = searchPos;
-                        m_highlightEnd.X += text.Length;
+                        m_highlightEnd.X += m_searchText.Length;
 
                         return true;
                     }
@@ -1990,6 +1974,27 @@ namespace Xyglo
         {
             return m_searchText;
         }
+
+        /// <summary>
+        /// Set the search text
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public void setSearchText(string text)
+        {
+            m_searchText = text;
+        }
+        
+        /// <summary>
+        /// Append a string to the search text
+        /// </summary>
+        /// <param name="text"></param>
+        /// <returns></returns>
+        public void appendToSearchText(string text)
+        {
+            m_searchText += text;
+        }
+
 
         /// <summary>
         /// Provide a nice interface for undoing things
@@ -2448,16 +2453,30 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Returns a list of Highlights for the visible BufferView segment
+        /// BufferView width defined by font size
         /// </summary>
         /// <returns></returns>
-        public List<Highlight> getVisibleHighlighting()
+        public override float getWidth()
         {
-            if (m_fileBuffer != null)
-            {
-                return m_fileBuffer.getHighlighting(m_bufferShowStartY, m_bufferShowStartY + m_bufferShowLength);
-            }
-            return null;
+            return m_fontManager.getCharWidth() * m_bufferShowWidth;
+        }
+
+        /// <summary>
+        /// BufferView height defined by font size
+        /// </summary>
+        /// <returns></returns>
+        public override float getHeight()
+        {
+            return m_fontManager.getLineSpacing() * m_bufferShowLength;
+        }
+
+        /// <summary>
+        /// We have no depth as a BufferView
+        /// </summary>
+        /// <returns></returns>
+        public override float getDepth()
+        {
+            return 0.0f;
         }
     }
 }

@@ -8,6 +8,17 @@ using System.Runtime.Serialization;
 
 namespace Xyglo
 {
+    /// <summary>
+    /// An enum for marking specific lines in a FileBuffer dictionary
+    /// </summary>
+    public enum LineMarker
+    {
+        Normal,
+        Deleted,
+        Inserted,
+        Modified
+    }
+
 
     /// <summary>
     /// Open and buffer a file and provide an interface for handling large files efficiently
@@ -27,7 +38,12 @@ namespace Xyglo
         /// The local buffering of our file lines - we don't want to persist this
         /// </summary>
         List<string> m_lines = new List<string>();
-        
+
+        /// <summary>
+        /// Dictionary object for LineMarkers used when diffing FileBuffers
+        /// </summary>
+        Dictionary<int, LineMarker> m_lineMarkers = new Dictionary<int, LineMarker>();
+
         /// <summary>
         /// Our list of commands for undo/redo - don't persist
         /// </summary>
@@ -89,20 +105,6 @@ namespace Xyglo
         protected TimeSpan m_fetchWindow;
 
         /// <summary>
-        /// List of highlight information - this is updated via a SyntaxManager but is retrieved directly
-        /// from this class.  We persist this information to avoid having to regenerate it every time we
-        /// load the file.
-        /// </summary>
-        //[DataMember]
-        //protected List<Highlight> m_highlightList = new List<Highlight>();
-
-        /// <summary>
-        /// Dictionary of highlight information, these are unique by FilePosition key
-        /// </summary>
-        [DataMember]
-        protected Dictionary<FilePosition, Highlight> m_highlightDictionary = new Dictionary<FilePosition, Highlight>();
-
-        /// <summary>
         /// Sortedlist of 
         /// </summary>
         [DataMember]
@@ -147,6 +149,19 @@ namespace Xyglo
             initialise();
         }
 
+        /// <summary>
+        /// Copy constructor - we only copy the lines though making a facsimile 
+        /// of a FileBuffer that we can discard.
+        /// </summary>
+        /// <param name="fb"></param>
+        public FileBuffer(FileBuffer fb)
+        {
+            for (int i = 0; i < fb.getLineCount(); i++)
+            {
+                m_lines.Add(fb.getLine(i));
+            }
+        }
+
 
         /////////////// METHODS ///////////////////
 
@@ -170,6 +185,21 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Clear the FileBuffer
+        /// </summary>
+        public void clear()
+        {
+            m_filename = "";
+            m_shortName = "";
+            m_readOnly = false;
+
+            // Clear collections
+            //
+            m_lines.Clear();
+            m_lineMarkers.Clear();
+        }
+
+        /// <summary>
         /// Set the full file path
         /// </summary>
         /// <param name="filepath"></param>
@@ -177,6 +207,57 @@ namespace Xyglo
         {
             m_filename = filepath;
             fixPaths();
+        }
+
+        /// <summary>
+        /// Add some text and a LineMarker to a specific line
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="marker"></param>
+        /// <param name="text"></param>
+        public void addLineWithMarker(LineMarker marker, string text)
+        {
+            m_lines.Add(text);
+            int line = m_lines.Count() - 1;
+            m_lineMarkers[line] = marker;
+        }
+
+        /// <summary>
+        /// Append a piece of text and check LineMarker to a specific line
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="marker"></param>
+        /// <param name="text"></param>
+        public void appendLineWithMarker(LineMarker marker, string text)
+        {
+//            if (m_lineMarkers.ContainsKey(line) && m_lineMarkers[line] != marker)
+            //{
+                //throw new Exception("Attempting to repurpose an existing LineMarker");
+            //}
+
+            if (m_lines.Count() == 0)
+            {
+                m_lines.Add(text);
+
+            }
+            // Set line to append the new text
+            //
+            //m_lines[line] = m_lines[line] + text;
+        }
+
+        /// <summary>
+        /// Get a LineMarker for a given line if it exists
+        /// </summary>
+        /// <param name="line"></param>
+        /// <returns></returns>
+        public LineMarker getLineMarker(int line)
+        {
+            if (!m_lineMarkers.ContainsKey(line))
+            {
+                throw new Exception("LineMarker for line " + line + " does not exist");
+            }
+
+            return m_lineMarkers[line];
         }
 
         /// <summary>
@@ -191,8 +272,8 @@ namespace Xyglo
             {
                 rs += addString;
 
-                //if (addString.IndexOf('\n') != addString.Length - 1)
-                if (!rs.Contains('\n'))
+                //if (addString.IndexOf('\n') != Math.Min(addString.Length - 1, 1))
+                if (!addString.Contains('\n'))
                 {
                     rs += "\n";
                 }
@@ -424,7 +505,6 @@ namespace Xyglo
         {
             m_lines.Add(value);
         }
-
 
         /// <summary>
         /// Inserts a line at a given position in the list
@@ -698,7 +778,7 @@ namespace Xyglo
                     endHighlight = m_commands[i].getHighlightEnd();
                 }
 
-                // Incremenet the m_undoPosition accordingly
+                // Increment the m_undoPosition accordingly
                 //
                 m_undoPosition += steps;
             }
@@ -784,7 +864,7 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Save this FileBuffer
+        /// Save this FileBuffer to a File
         /// </summary>
         /// <returns></returns>
         public void save()
@@ -864,35 +944,6 @@ namespace Xyglo
                     m_returnLineList.Add(item.Value);
             }
 
-            return m_returnLineList;
-        }
-
-        /// <summary>
-        /// Get some highlighting suggestions from the indicated line range
-        /// </summary>
-        /// <param name="line"></param>
-        /// <returns></returns>
-        public List<Highlight> getHighlighting(int startLine, int endLine)
-        {
-            m_returnLineList.Clear();
-
-            /*
-            // Find all highlighting for this line
-            //
-            m_returnLineList = m_highlightList.FindAll(
-            delegate(Highlight h)
-            {
-                return (h.m_startHighlight.Y >= startLine && h.m_startHighlight.Y <= endLine);
-            }
-            );
-
-            // Ensure it's sorted
-            //
-            m_returnLineList.Sort();
-            */
-
-            // Return 
-            //
             return m_returnLineList;
         }
 

@@ -35,7 +35,8 @@ namespace Xyglo
         FindText,           // Enter some text to find
         ManageProject,      // View and edit the files in our project
         SplashScreen,       // What we see when we're arriving in the application
-        DiffPicker          // Mode for picking two files for differences checking
+        DiffPicker,         // Mode for picking two files for differences checking
+        WindowsRearranging  // When windows are flying between positions themselves
     };
 
 
@@ -149,6 +150,11 @@ namespace Xyglo
         /// Is either Alt key being held down?
         /// </summary>
         protected bool m_altDown = false;
+
+        /// <summary>
+        /// Is either Windows key held down?
+        /// </summary>
+        protected bool m_windowsDown = false;
 
         /// <summary>
         /// Use this to store number when we've got ALT down - to select a new BufferView
@@ -407,11 +413,6 @@ namespace Xyglo
         /// The thread that is used for Kinect
         /// </summary>
         protected Thread m_kinectWorkerThread;
-
-        /// <summary>
-        /// What we're searching for
-        /// </summary>
-        protected string m_searchText = "";
 
         /// <summary>
         /// Lock the Standard out log file for writing
@@ -1190,6 +1191,17 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// This is the generic method for setting an active view - for the moment this
+        /// sets an additional parameter.
+        /// </summary>
+        /// <param name="view"></param>
+        protected void setActiveBuffer(XygloView view)
+        {
+            m_project.setSelectedView(view);
+
+        }
+
+        /// <summary>
         /// Set which BufferView is the active one with a cursor in it
         /// </summary>
         /// <param name="view"></param>
@@ -1211,6 +1223,10 @@ namespace Xyglo
                     m_project.addFileBuffer(fb);
                     bv.setFileBuffer(fb);
                 }
+
+                // Unset the view selection
+                //
+                m_project.setSelectedView(null);
             }
             catch (Exception e)
             {
@@ -1220,19 +1236,9 @@ namespace Xyglo
 
             Logger.logMsg("Friendlier:setActiveBuffer() - active buffer view is " + m_project.getSelectedBufferViewId());
 
-                // Set the font manager up with a zoom level
-                //
+            // Set the font manager up with a zoom level
+            //
             m_project.getFontManager().setScreenState(m_zoomLevel, m_project.isFullScreen());
-
-            /*
-                // Now we need to make all of our BufferViews have this setting too
-                //
-                foreach (BufferView bv in m_project.getBufferViews())
-                {
-                    bv.setCharWidth(m_project.getFontManager().getCharWidth());
-                    bv.setLineHeight(m_project.getFontManager().getLineSpacing());
-                }
-            */
 
             // Now recalculate positions
             //
@@ -1247,26 +1253,12 @@ namespace Xyglo
 
             flyToPosition(eyePos);
 
-            // Set the search text per buffer
-            //
-            m_searchText = m_project.getSelectedBufferView().getSearchText();
-
 #if ACTIVE_BUFFER_DEBUG
             Logger.logMsg("Friendlier:setActiveBuffer() - buffer position = " + m_activeBufferView.getPosition());
             Logger.logMsg("Friendlier:setActiveBuffer() - look position = " + m_target);
             Logger.logMsg("Friendlier:setActiveBuffer() - eye position = " + m_eye);
 #endif
         }
-
-        /*
-        protected void setFileView()
-        {
-            Vector3 eyePos = m_fileSystemView.getEyePosition();
-            eyePos.Z = m_zoomLevel;
-
-            flyToPosition(eyePos);
-        }
-         * */
 
         // Y axis rotation - also known as Yaw
         //
@@ -1880,6 +1872,23 @@ namespace Xyglo
                     m_altDown = true;
                 }
             }
+
+            // Windows key state
+            //
+            if (m_windowsDown && Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.LeftWindows) &&
+                Keyboard.GetState(PlayerIndex.One).IsKeyUp(Keys.RightWindows))
+            {
+                m_windowsDown = false;
+            }
+            else
+            {
+                if (!m_windowsDown && (Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.LeftWindows) ||
+                    Keyboard.GetState(PlayerIndex.One).IsKeyDown(Keys.RightWindows)))
+                {
+                    m_windowsDown = true;
+                }
+            }
+
         }
 
         /// <summary>
@@ -2287,11 +2296,12 @@ namespace Xyglo
                 }
                 else if (m_state == FriendlierState.FindText && checkKeyState(Keys.Back, gameTime))
                 {
+                    string searchText = m_project.getSelectedBufferView().getSearchText();
                     // Delete charcters from the file name if we have one
                     //
-                    if (m_searchText.Length > 0)
+                    if (searchText.Length > 0)
                     {
-                        m_searchText = m_searchText.Substring(0, m_searchText.Length - 1);
+                        m_project.getSelectedBufferView().setSearchText(searchText.Substring(0, searchText.Length - 1));
                     }
                 }
                 else if (m_state == FriendlierState.Configuration && m_editConfigurationItem && checkKeyState(Keys.Back, gameTime))
@@ -2618,7 +2628,7 @@ namespace Xyglo
                     rC = true;
                 }
             }
-            else if (m_ctrlDown)  // CTRL down action
+            else if (m_ctrlDown && !m_altDown)  // CTRL down and no ALT
             {
                 if (checkKeyState(Keys.C, gameTime)) // Copy
                 {
@@ -2746,7 +2756,7 @@ namespace Xyglo
                 }
 
             }
-            else if (m_altDown) // ALT down action
+            else if (m_altDown && !m_ctrlDown) // ALT down action and no CTRL down
             {
                 if (checkKeyState(Keys.S, gameTime) && m_project.getSelectedBufferView().getFileBuffer().isModified())
                 {
@@ -2882,6 +2892,22 @@ namespace Xyglo
                     m_state = FriendlierState.FindText;
                 }
             }
+            else if (m_windowsDown) // Windows keys
+            {
+                // Initialially tried CTRL and ALT combinations but ran up against this:
+                //
+                // http://forums.create.msdn.com/forums/t/41522.aspx
+                // 
+                // and then this solution which I ignored:
+                //
+                // http://bnoerj.codeplex.com/wikipage?title=Bnoerj.Winshoked&referringTitle=Home
+                //
+                //
+                if (checkKeyState(Keys.A, gameTime))
+                {
+                    Logger.logMsg("RELAYOUT AND FLY");  //???
+                }
+            }
             return rC;
         }
 
@@ -2926,9 +2952,12 @@ namespace Xyglo
             processActionKeys(gameTime);
 
             // Actions bound to key combinations - if we don't consume a key here then we print it
+            // inside the processKeys() method.
             //
-            if (processCombinationsCommands(gameTime) == false)
+            if (!processCombinationsCommands(gameTime))
             {
+                // Process keys that are left over if the above is false
+                //
                 processKeys(gameTime);
             }
 
@@ -3371,7 +3400,7 @@ namespace Xyglo
                 }
                 else if (m_state == FriendlierState.FindText)
                 {
-                    m_searchText += key;
+                    m_project.getSelectedBufferView().appendToSearchText(key);
                 }
                 else if (m_state == FriendlierState.TextEditing)
                 {
@@ -3397,14 +3426,14 @@ namespace Xyglo
         {
             // Don't search for nothing
             //
-            if (m_searchText == "")
+            if (m_project.getSelectedBufferView().getSearchText() == "")
             {
                 return;
             }
 
-            if (!m_project.getSelectedBufferView().find(m_searchText))
+            if (!m_project.getSelectedBufferView().find())
             {
-                setTemporaryMessage("[\"" + m_searchText + "\" not found]", 1, gameTime);
+                setTemporaryMessage("[\"" + m_project.getSelectedBufferView().getSearchText() + "\" not found]", 3, gameTime);
             }
 
             m_state = FriendlierState.TextEditing;
@@ -3837,6 +3866,11 @@ namespace Xyglo
 
         }
 
+        /// <summary>
+        /// At this point we should have two BufferView - one selected and one we've clicked on.
+        /// Now we can run a diff on the two and present some results.  Somehow.
+        /// </summary>
+        /// <param name="gameTime"></param>
         protected void handleDiffPick(GameTime gameTime)
         {
             Pair<BufferView, Pair<ScreenPosition, ScreenPosition>> testFind = m_project.testRayIntersection(getPickRay());
@@ -3850,69 +3884,118 @@ namespace Xyglo
 
                 if (bv1 != bv2)
                 {
-#if DIFFMATCHPATCH
+
+                    DiffView diffView = new DiffView(m_project, bv1, bv2);
+
+                    if (diffView.process())
+                    {
+                        m_project.addView(diffView);
+
+                        // Show the differences and break out a new diff view
+                        //
+                        setActiveBuffer(diffView);
+                    }
+                    else
+                    {
+                        setTemporaryMessage("No differences found.", 3, gameTime);
+                    }
+                    
+                    
+                    // Set state back to default
+                    //
+                    m_state = FriendlierState.TextEditing;
+
+
+
+                    /*
+                    //#if DIFFMATCHPATCH
                     //DiffMatchPatch dm = new DiffMatchPatch;
                     DiffMatchPatch.diff_match_patch dm = new DiffMatchPatch.diff_match_patch();
 
-                    List<DiffMatchPatch.Diff> rL = dm.diff_main(bv1.getFileBuffer().getTextString(), bv2.getFileBuffer().getTextString());
+                    //List<DiffMatchPatch.Diff> rL = dm.diff_main(bv1.getFileBuffer().getTextString(), bv2.getFileBuffer().getTextString());
                     //string string1 = bv1.getFileBuffer().getTextString();
                     //string st2 = bv2.getFileBuffer().getTextString();
 
 
-                    //List<DiffMatchPatch.Diff> rL = dm.diff_lineMode(bv1.getFileBuffer().getTextString(), bv2.getFileBuffer().getTextString());
+                    List<DiffMatchPatch.Diff> rL = dm.diff_lineMode(bv1.getFileBuffer().getTextString(), bv2.getFileBuffer().getTextString());
                     //List<DiffMatchPatch.Diff> rL = dm.diff_lineMode(string1, st2);
 
                     if (rL.Count > 0)
                     {
+                        setTemporaryMessage(rL.Count + " differences found", 3, gameTime);
+
+
                         // Make the diffs human readable
                         //
                         dm.diff_cleanupSemantic(rL);
-
-                        setTemporaryMessage(rL.Count + " differences found", 3, gameTime);
-
                         BufferView newBV = addNewFileBuffer();
+                        
 
-                        foreach(DiffMatchPatch.Diff diff in rL)
+                        // We have to do some state management here to make some sense
+                        // of our diff.
+                        //
+                        DiffMatchPatch.Diff lastDiff;
+
+                        // Leftline and rightline store the line we're currently on in the
+                        // relevant diff output file.
+                        //
+                        int leftLine = 0;
+                        int rightLine = 0;
+
+                        foreach (DiffMatchPatch.Diff diff in rL)
                         {
-                            //Logger.logMsg("TEXT = " + diff.text);
+                            // A DELETE means that something is removed from the left hand file
+                            // but if this is followed by an INSERT then this is a change.  In 
+                            // this was we have to reconstruct the line meanings from the Diff
+                            // context.
+                            //
                             if (diff.operation == DiffMatchPatch.Operation.DELETE)
                             {
-                                foreach (string thing in diff.text.Split('\n'))
-                                {
-                                    newBV.getFileBuffer().appendLine("DELETE : " + thing);
-                                }
-                                
+                                //if (leftLine > 0) // Only process after first line
+                                //{
+                                    // If the last operation was a delete then does that make sense?
+                                    //
+                                    //if (lastDiff.operation == DiffMatchPatch.Operation.DELETE)
+                                    //{
+                                    //}
+                                //}
+                                //foreach (string thing in diff.text.Split('\n'))
+                                //{
+                                    newBV.getFileBuffer().appendLine("DELETE : " + diff);
+                                //}
+
                             }
                             else if (diff.operation == DiffMatchPatch.Operation.INSERT)
                             {
-                                foreach (string thing in diff.text.Split('\n'))
-                                {
-                                    newBV.getFileBuffer().appendLine("INSERT : " + thing);
-                                }
+                                //foreach (string thing in diff.text.Split('\n'))
+                                //{
+                                    newBV.getFileBuffer().appendLine("INSERT : " + diff);
+                                //}
                             }
                             else // EQUAL
                             {
-                                foreach (string thing in diff.text.Split('\n'))
-                                {
-                                    newBV.getFileBuffer().appendLine(thing);
-                                }
+                                // Always write equals out.
+                                // Pretend we're writing the left hand side (SOURCE)
+                                //
+                                //foreach (string subString in diff.text.Split('\n'))
+                                //{
+                                    //newBV.getFileBuffer().appendLine(diff.text);
+                                    //leftLine++;
+                                //}
+                                newBV.getFileBuffer().appendLine(diff.text);
                             }
+
+                            lastDiff = diff;
                         }
+                    
+                     * */
+                    //#endif
 
-                        setActiveBuffer(newBV);
-
-                        // Set state back to default
-                        //
-                        m_state = FriendlierState.TextEditing;
-                    }
-                    else
-                    {
-                        setTemporaryMessage("No differences found", 3, gameTime);
-                    }
-#endif
-
+#if OCCAM_DIFF
+                    // Perl Diff algorithm
+                    //
                     // http://razor.occams.info/code/diff/
-
+                    //
                     Algorithm.Diff.Diff diff = new Algorithm.Diff.Diff(bv1.getFileBuffer().getFilepath(), bv2.getFileBuffer().getFilepath(), true, true);
 
                     Algorithm.Diff.Patch patch = diff.CreatePatch();
@@ -3925,10 +4008,12 @@ namespace Xyglo
 
                     Logger.logMsg("PATCH = " + patch.ToString());
 
+#endif // OCCAM_DIFF
+
                 }
                 else
                 {
-                    setTemporaryMessage("Makes no sense to diff a BufferView with itself", 3, gameTime);
+                    setTemporaryMessage("Makes no sense to diff a BufferView with itself.", 3, gameTime);
                 }
             }
         }
@@ -4698,7 +4783,7 @@ namespace Xyglo
             if (m_state == FriendlierState.FindText)
             {
                 // Draw the search string down there
-                fileName = "Search: " + m_searchText;
+                fileName = "Search: " + m_project.getSelectedBufferView().getSearchText();
             }
             else
             {

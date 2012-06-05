@@ -80,15 +80,28 @@ namespace Xyglo
         protected List<BufferView> m_bufferViews = new List<BufferView>();
 
         /// <summary>
+        /// List of generic views - for the moment we only push DiffViews on to them
+        /// </summary>
+        [DataMember]
+        protected List<XygloView> m_views = new List<XygloView>();
+
+        /// <summary>
         /// Length of the visible BufferView for this project
         /// </summary>
         [DataMember]
         protected int m_bufferViewLength = 20;
 
-        // Which view is currently selected in the project
-        //
+        /// <summary>
+        /// Which BufferView is currently selected in the project - to be superceded
+        /// </summary>
         [DataMember]
         protected int m_selectedViewId = 0;
+
+        /// <summary>
+        /// The generic view id which will supercede the m_selectedViewId eventually
+        /// </summary>
+        [DataMember]
+        protected int m_selectedXygloViewId = 0;
 
         /// <summary>
         /// When this project was initially created - when we persist this it should
@@ -518,6 +531,16 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Return the list of Views - these are called generic for the moment until m_bufferViews are
+        /// integrated with them.
+        /// </summary>
+        /// <returns></returns>
+        public List<XygloView> getGenericViews()
+        {
+            return m_views;
+        }
+
+        /// <summary>
         /// Return the list of BufferViews
         /// </summary>
         /// <returns></returns>
@@ -760,6 +783,17 @@ namespace Xyglo
         public string getProjectFile()
         {
             return m_projectFile;
+        }
+
+        /// <summary>
+        /// Add a pre-existing View to the collection
+        /// </summary>
+        /// <param name="view"></param>
+        /// <returns></returns>
+        public int addView(XygloView view)
+        {
+            m_views.Add(view);
+            return m_views.IndexOf(view);
         }
 
         /// <summary>
@@ -1131,6 +1165,22 @@ namespace Xyglo
         public void setSelectedBufferView(BufferView view)
         {
             m_selectedViewId = m_bufferViews.IndexOf(view);
+        }
+
+        /// <summary>
+        /// Set a View selection - differs to BufferView selection for the moment
+        /// </summary>
+        /// <param name="view"></param>
+        public void setSelectedView(XygloView view)
+        {
+            if (view == null)
+            {
+                m_selectedXygloViewId = -1;
+            }
+            else
+            {
+                m_selectedXygloViewId = m_views.IndexOf(view);
+            }
         }
 
         /// <summary>
@@ -2094,6 +2144,75 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Find some room for a specified rectangle somewhere in the vicinity of the
+        /// supplied bufferview.
+        /// </summary>
+        /// <param name="bb"></param>
+        /// <returns></returns>
+        public Vector3 getFreePosition(BufferView bv, float width, float height)
+        {
+            // Scale factor
+            //
+            int factor = 1;
+
+            // Initial BoundingBox setup
+            //
+            Vector3 newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Right, factor);
+
+            // maxPosition of BoundingBox
+            //
+            Vector3 bbSize = new Vector3(width, height, 0);
+            Vector3 maxPosition = newPosition + bbSize;
+
+            // New BoundingBox
+            //
+            BoundingBox newBB = new BoundingBox(newPosition, maxPosition);
+
+            while (checkBufferViewOverlaps(newBB))
+            {
+                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Right, factor);
+                newBB.Min = newPosition;
+                newBB.Max = newPosition + bbSize;
+
+                if (!checkBufferViewOverlaps(newBB))
+                {
+                    break;
+                }
+
+                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Above, factor);
+                newBB.Min = newPosition;
+                newBB.Max = newPosition + bbSize;
+
+                if (!checkBufferViewOverlaps(newBB))
+                {
+                    break;
+                }
+
+                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Left, factor);
+                newBB.Min = newPosition;
+                newBB.Max = newPosition + bbSize;
+
+                if (!checkBufferViewOverlaps(newBB))
+                {
+                    break;
+                }
+
+                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Below, factor);
+                newBB.Min = newPosition;
+                newBB.Max = newPosition + bbSize;
+
+                if (!checkBufferViewOverlaps(newBB))
+                {
+                    break;
+                }
+
+                factor++;
+            }
+
+            return newPosition;
+        }
+
+        /// <summary>
         /// Calculate a good position for a new BufferView close to the existing one.
         /// </summary>
         /// <param name="bv"></param>
@@ -2105,7 +2224,7 @@ namespace Xyglo
             BoundingBox newBB = bv.getBoundingBox();
 
             // Store the size of it
-
+            //
             Vector3 bbSize = newBB.Max - newBB.Min;
 
             // Our new potential position

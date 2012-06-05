@@ -139,6 +139,7 @@
     <Compile Include="DateTimeNowCache.cs" />
     <Compile Include="DeleteTextCommand.cs" />
     <Compile Include="DiffMatchPatch.cs" />
+    <Compile Include="DiffView.cs" />
     <Compile Include="FileBuffer.cs" />
     <Compile Include="FilePosition.cs" />
     <Compile Include="FileSystemFile.cs" />
@@ -173,6 +174,7 @@
     <Compile Include="TreeBuilder.cs" />
     <Compile Include="Undoable.cs" />
     <Compile Include="VersionInformation.cs" />
+    <Compile Include="XygloView.cs" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="ACKNOWLEDGEMENTS.txt" />
