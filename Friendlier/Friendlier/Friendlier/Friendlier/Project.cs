@@ -63,6 +63,9 @@ namespace Xyglo
         public string m_projectName
         { get; set; }
 
+        /// <summary>
+        /// Project file location
+        /// </summary>
         [DataMember]
         public string m_projectFile
         { get; set; }
@@ -80,9 +83,10 @@ namespace Xyglo
         protected List<BufferView> m_bufferViews = new List<BufferView>();
 
         /// <summary>
-        /// List of generic views - for the moment we only push DiffViews on to them
+        /// List of generic views - for the moment we only push DiffViews on to them and
+        /// we cannot serialise this list as it's an abstract class.
         /// </summary>
-        [DataMember]
+        [NonSerialized]
         protected List<XygloView> m_views = new List<XygloView>();
 
         /// <summary>
@@ -393,9 +397,13 @@ namespace Xyglo
                 addConfigurationItem("AUTOINDENT", "TRUE");
             }
 
-            // Recreate this here
+            // Initialise m_views if we've persisted none (more than likely)
             //
-            //m_syntaxManager = new CppSyntaxManager(this);
+            if (m_views == null)
+            {
+                m_views = new List<XygloView>();
+            }
+
         }
 
         /// <summary>
@@ -790,7 +798,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="view"></param>
         /// <returns></returns>
-        public int addView(XygloView view)
+        public int addGenericView(XygloView view)
         {
             m_views.Add(view);
             return m_views.IndexOf(view);
@@ -857,7 +865,7 @@ namespace Xyglo
         /// <param name="rootbv"></param>
         /// <param name="position"></param>
         /// <param name="text"></param>
-        public BufferView addFileBufferRelative(FontManager fontManager, string filePath, BufferView rootbv, BufferView.BufferPosition position)
+        public BufferView addFileBufferRelative(FontManager fontManager, string filePath, BufferView rootbv, BufferView.ViewPosition position)
         {
             FileBuffer newFB = new FileBuffer(filePath);
             m_fileBuffers.Add(newFB);
@@ -2157,7 +2165,7 @@ namespace Xyglo
 
             // Initial BoundingBox setup
             //
-            Vector3 newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Right, factor);
+            Vector3 newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Right, factor);
 
             // maxPosition of BoundingBox
             //
@@ -2170,7 +2178,7 @@ namespace Xyglo
 
             while (checkBufferViewOverlaps(newBB))
             {
-                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Right, factor);
+                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Right, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2179,7 +2187,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Above, factor);
+                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Above, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2188,7 +2196,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Left, factor);
+                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Left, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2197,7 +2205,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Below, factor);
+                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Below, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2237,7 +2245,7 @@ namespace Xyglo
 
             while (checkBufferViewOverlaps(newBB))
             {
-                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Right, factor);
+                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Right, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2246,7 +2254,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Above, factor);
+                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Above, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2255,7 +2263,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Left, factor);
+                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Left, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2264,7 +2272,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.BufferPosition.Below, factor);
+                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Below, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 

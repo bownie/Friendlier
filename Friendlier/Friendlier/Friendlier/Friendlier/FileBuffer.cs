@@ -474,6 +474,35 @@ namespace Xyglo
             }
         }
 
+
+        /// <summary>
+        /// Set a line even if there is no entry for it yet
+        /// </summary>
+        /// <param name="line"></param>
+        /// <param name="value"></param>
+        public void appendLineIfNotExist(int line, string value)
+        {
+            if (m_readOnly)
+            {
+                Logger.logMsg("FileBuffer::setLine() - file is read only.  Cannot set.");
+                return;
+            }
+
+            if (line >= m_lines.Count)
+            {
+                // Add enough lines to ensure we can reference it
+                //
+                for (int i = 0; i <= line - m_lines.Count; i++)
+                {
+                    m_lines.Add("");
+                }
+            }
+
+            // Now set the line
+            //
+            m_lines[line] += value;
+        }
+
         /// <summary>
         /// Appends to an existing line
         /// </summary>

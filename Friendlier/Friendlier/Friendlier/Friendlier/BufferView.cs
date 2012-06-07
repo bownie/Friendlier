@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using System.Runtime.Serialization;
 using System.Xml;
 using System.Xml.Serialization;
@@ -16,37 +17,6 @@ namespace Xyglo
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class BufferView : XygloView
     {
-        /// <summary>
-        /// BufferPosition is used to help determine positions of other BufferViews
-        /// </summary>
-        public enum BufferPosition
-        {
-            Above,
-            Below,
-            Left,
-            Right
-        };
-
-        /// <summary>
-        /// Which Quadrant of four BufferViews are we viewing from the current one - cycling
-        /// through these possibilities makes it nine total screens we can view
-        /// </summary>
-        public enum ViewQuadrant
-        {
-            TopRight,
-            BottomRight,
-            BottomLeft,
-            TopLeft
-        }
-
-        /// <summary>
-        /// Which direction we're cycling through quadrant views
-        /// </summary>
-        public enum ViewCycleDirection
-        {
-            Clockwise,
-            Anticlockwise
-        }
 
         /// <summary>
         /// Which quadrant are we viewing
@@ -64,7 +34,7 @@ namespace Xyglo
         public struct BufferViewPosition
         {
             public BufferView rootBV { get; set; }
-            public BufferPosition position { get; set; }
+            public ViewPosition position { get; set; }
         }
 
         /// <summary>
@@ -119,18 +89,6 @@ namespace Xyglo
         protected Vector3 m_cursorCoordinates = new Vector3();
 
         /// <summary>
-        /// Length of visible buffer
-        /// </summary>
-        [DataMember]
-        protected int m_bufferShowLength = 20;
-
-        /// <summary>
-        /// Number of characters to show in a BufferView line
-        /// </summary>
-        [DataMember]
-        protected int m_bufferShowWidth = 80;
-
-        /// <summary>
         /// Current cursor coordinates in this BufferView
         /// </summary>
         [DataMember]
@@ -147,24 +105,6 @@ namespace Xyglo
         /// </summary>
         [DataMember]
         protected bool m_viewLocked = false;
-
-        /// <summary>
-        /// Text colour
-        /// </summary>
-        [DataMember]
-        protected Color m_textColour = Color.White;
-
-        /// <summary>
-        /// Cursor colour
-        /// </summary>
-        [DataMember]
-        protected Color m_cursorColour = Color.Yellow;
-
-        /// <summary>
-        /// Highlight colour
-        /// </summary>
-        [DataMember]
-        protected Color m_highlightColour = Color.PaleVioletRed;
 
         /// <summary>
         /// Tailing colour
@@ -276,7 +216,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="rootBV"></param>
         /// <param name="position"></param>
-        public BufferView(FontManager fontManager, BufferView rootBV, BufferPosition position)
+        public BufferView(FontManager fontManager, BufferView rootBV, ViewPosition position)
         {
             m_fileBuffer = rootBV.m_fileBuffer;
             m_bufferShowStartY = rootBV.m_bufferShowStartY;
@@ -698,28 +638,14 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Get BufferShow length
+        /// Is this view locked?
         /// </summary>
         /// <returns></returns>
-        public int getBufferShowLength()
-        {
-            return m_bufferShowLength;
-        }
-
-        /// <summary>
-        /// Accessor for BufferShowWidth
-        /// </summary>
-        /// <returns></returns>
-        public int getBufferShowWidth()
-        {
-            return m_bufferShowWidth;
-        }
-
         public bool isLocked()
         {
             return m_viewLocked;
         }
-
+        
         /// <summary>
         /// Set the lock on this view at a position
         /// </summary>
@@ -963,55 +889,6 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Calculate the position of the next BufferView relative to us - these factors aren't constant
-        /// and shouldn't be declared as such but for the moment they usually do.  We can also specify a 
-        /// factor to spread out the bounding boxes further if they are required.
-        /// </summary>
-        /// <param name="position"></param>
-        /// <param name="factor"></param>
-        /// <returns></returns>
-        public Vector3 calculateRelativePosition(BufferPosition position, int factor = 1)
-        {
-            Vector3 rP = m_position;
-
-            try
-            {
-                if (m_fontManager.getLineSpacing() == 0 || m_fontManager.getCharWidth() == 0)
-                {
-                    throw new Exception("BufferView::calculateRelativePosition() - some of our basic settings are zero - cannot calculate");
-                }
-            }
-            catch (Exception)
-            {
-                return rP;
-            }
-
-            switch (position)
-            {
-                case BufferPosition.Above:
-                    rP = m_position - (new Vector3(0.0f, factor * (m_bufferShowLength + 10) * m_fontManager.getLineSpacing(), 0.0f));
-                    break;
-
-                case BufferPosition.Below:
-                    rP = m_position + (new Vector3(0.0f, factor * (m_bufferShowLength + 10) * m_fontManager.getLineSpacing(), 0.0f));
-                    break;
-
-                case BufferPosition.Left:
-                    rP = m_position - (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + 15), 0.0f, 0.0f));
-                    break;
-
-                case BufferPosition.Right:
-                    rP = m_position + (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + 15), 0.0f, 0.0f));
-                    break;
-
-                default:
-                    throw new Exception("Unknown position parameter passed");
-            }
-
-            return rP;
-        }
-
-        /// <summary>
         /// Return the vector of the centre of this BufferView
         /// </summary>
         /// <returns></returns>
@@ -1029,7 +906,7 @@ namespace Xyglo
         /// Return the eye vector of the centre of this BufferView
         /// </summary>
         /// <returns></returns>
-        public Vector3 getEyePosition()
+        public override Vector3 getEyePosition()
         {
             Vector3 rV = m_position;
             rV.Y = -rV.Y; // invert Y
@@ -1038,6 +915,7 @@ namespace Xyglo
             rV.Z += 600.0f;
             return rV;
         }
+
 
         /// <summary>
         /// Rotate our BufferView at quadrant viewing height
@@ -1080,7 +958,7 @@ namespace Xyglo
         /// - at a certain height we ensure that we're using Quadrant view
         /// </summary>
         /// <returns></returns>
-        public Vector3 getEyePosition(float zoomLevel)
+        public override Vector3 getEyePosition(float zoomLevel)
         {
             Vector3 rV = m_position;
 
@@ -2477,6 +2355,23 @@ namespace Xyglo
         public override float getDepth()
         {
             return 0.0f;
+        }
+
+        /// <summary>
+        /// This is not implemented yet at this level
+        /// </summary>
+        public override void draw(Project project, FriendlierState state, GameTime gameTime, SpriteBatch spriteBatch, Effect effect)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Draw textures such as highlights
+        /// </summary>
+        /// <param name="effect"></param>
+        public override void drawTextures(Effect effect)
+        {
+            throw new NotImplementedException();
         }
     }
 }

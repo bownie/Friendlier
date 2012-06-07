@@ -3,8 +3,15 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace Xyglo
 {
+    /// <summary>
+    /// Manage our fonts - load them, ensure we're providing the correct one for
+    /// the resolution of the screen we're looking at - provider helper functions
+    /// to access the fonts and their properties.
+    /// </summary>
     public class FontManager
     {
+        // Font type enumerator
+        //
         public enum FontType
         {
             Small,
@@ -12,6 +19,16 @@ namespace Xyglo
             Full,
             Overlay
         }
+
+
+        // --------------------------------- CONSTRUCTORS --------------------------------------
+        //
+        public FontManager()
+        {
+        }
+
+        // ------------------------------- MEMBER VARIABLES ------------------------------------
+        //
 
         /// <summary>
         /// Current font state selected - not sure if we use this at the moment
@@ -63,6 +80,8 @@ namespace Xyglo
         /// </summary>
         protected float m_aspectRatio;
 
+        // -------------------------------- MEMBERS -----------------------------------------
+        //
 
         /// <summary>
         /// Initialise the font manager with some basic details

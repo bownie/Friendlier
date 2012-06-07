@@ -245,7 +245,7 @@ namespace Xyglo
         /// <summary>
         /// Position in which we should open or create a new screen
         /// </summary>
-        protected BufferView.BufferPosition m_newPosition;
+        protected BufferView.ViewPosition m_newPosition;
 
         /// <summary>
         /// Store the last performance counter for CPU
@@ -541,13 +541,12 @@ namespace Xyglo
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
         /// <summary>
-        /// f constructor
+        /// Default constructor
         /// </summary>
         public Friendlier()
         {
             initialise();
         }
-
 
         /// <summary>
         /// Project constructor
@@ -738,24 +737,11 @@ namespace Xyglo
                 m_project.loadFiles();
             }
 
-            /*
-            // Ensure that all the BufferViews are populated with the charwidth and lineheights and
-            // also that the relative positioning is correct - we have to do this in two passes.
-            foreach (BufferView bv in m_project.getBufferViews())
-            {
-                bv.setCharWidth(m_project.getFontManager().getCharWidth());
-                bv.setLineHeight(m_project.getFontManager().getLineSpacing());
-            }*/
-
             // Now do some jiggery pokery to make sure positioning is correct and that
             // any cursors or highlights are within bounds.
             //
             foreach (BufferView bv in m_project.getBufferViews())
             {
-                // check positions
-                //
-                //bv.calculateMyRelativePosition();
-
                 // check boundaries for cursor and highlighting
                 //
                 bv.verifyBoundaries();
@@ -810,11 +796,6 @@ namespace Xyglo
 
             // Ensure that we are in the correct position to view this buffer so there's no initial movement
             //
-            /*
-            m_eye = m_project.getSelectedBufferView().getEyePosition();
-            m_target = m_project.getSelectedBufferView().getLookPosition();
-            m_eye.Z = m_zoomLevel;
-             */
             m_eye = m_project.getEyePosition();
             m_target = m_project.getTargetPosition();
             m_zoomLevel = m_eye.Z;
@@ -1197,7 +1178,20 @@ namespace Xyglo
         /// <param name="view"></param>
         protected void setActiveBuffer(XygloView view)
         {
-            m_project.setSelectedView(view);
+            //m_project.setSelectedView(view);
+
+            // Now recalculate positions
+            //
+            //foreach (BufferView bv in m_project.getBufferViews())
+            //{
+                //bv.calculateMyRelativePosition();
+            //}
+
+            // All the maths is done in the Buffer View
+            //
+            Vector3 eyePos = view.getEyePosition(m_zoomLevel);
+            flyToPosition(eyePos);
+
 
         }
 
@@ -1737,24 +1731,24 @@ namespace Xyglo
                 if (checkKeyState(Keys.Left, gameTime))
                 {
                     Logger.logMsg("Friendler::Update() - position screen left");
-                    m_newPosition = BufferView.BufferPosition.Left;
+                    m_newPosition = BufferView.ViewPosition.Left;
                     gotSelection = true;
                 }
                 else if (checkKeyState(Keys.Right, gameTime))
                 {
-                    m_newPosition = BufferView.BufferPosition.Right;
+                    m_newPosition = BufferView.ViewPosition.Right;
                     gotSelection = true;
                     Logger.logMsg("Friendler::Update() - position screen right");
                 }
                 else if (checkKeyState(Keys.Up, gameTime))
                 {
-                    m_newPosition = BufferView.BufferPosition.Above;
+                    m_newPosition = BufferView.ViewPosition.Above;
                     gotSelection = true;
                     Logger.logMsg("Friendler::Update() - position screen up");
                 }
                 else if (checkKeyState(Keys.Down, gameTime))
                 {
-                    m_newPosition = BufferView.BufferPosition.Below;
+                    m_newPosition = BufferView.ViewPosition.Below;
                     gotSelection = true;
                     Logger.logMsg("Friendler::Update() - position screen down");
                 }
@@ -1925,7 +1919,7 @@ namespace Xyglo
                     {
                         // Attempt to move right if there's a BufferView there
                         //
-                        detectMove(BufferView.BufferPosition.Above, gameTime);
+                        detectMove(BufferView.ViewPosition.Above, gameTime);
                     }
                     else
                     {
@@ -1986,7 +1980,7 @@ namespace Xyglo
                     {
                         // Attempt to move right if there's a BufferView there
                         //
-                        detectMove(BufferView.BufferPosition.Below, gameTime);
+                        detectMove(BufferView.ViewPosition.Below, gameTime);
                     }
                     else
                     {
@@ -2045,7 +2039,7 @@ namespace Xyglo
                     {
                         // Attempt to move right if there's a BufferView there
                         //
-                        detectMove(BufferView.BufferPosition.Left, gameTime);
+                        detectMove(BufferView.ViewPosition.Left, gameTime);
                     }
                     else
                     {
@@ -2078,7 +2072,7 @@ namespace Xyglo
                     {
                         // Attempt to move right if there's a BufferView there
                         //
-                        detectMove(BufferView.BufferPosition.Right, gameTime);
+                        detectMove(BufferView.ViewPosition.Right, gameTime);
                     }
                     else
                     {
@@ -2265,7 +2259,7 @@ namespace Xyglo
                         else // create and activate
                         {
                             FileBuffer fb = m_project.getFileBuffer(fileToEdit);
-                            bv = new BufferView(m_project.getFontManager(), m_project.getBufferViews()[0], BufferView.BufferPosition.Left);
+                            bv = new BufferView(m_project.getFontManager(), m_project.getBufferViews()[0], BufferView.ViewPosition.Left);
                             bv.setFileBuffer(fb);
 
                             int bvIndex = m_project.addBufferView(bv);
@@ -2845,7 +2839,7 @@ namespace Xyglo
                 else if (checkKeyState(Keys.D, gameTime))
                 {
                     m_state = FriendlierState.DiffPicker;
-                    setTemporaryMessage("Pick a BufferView to diff against", 10, gameTime);
+                    setTemporaryMessage("Pick a BufferView to diff against", 5, gameTime);
                     rC = true;
                 }
                 else if (checkKeyState(Keys.M, gameTime))
@@ -3586,7 +3580,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="position"></param>
         /// <returns></returns>
-        protected Vector3 getFreeBufferViewPosition(BufferView.BufferPosition position)
+        protected Vector3 getFreeBufferViewPosition(BufferView.ViewPosition position)
         {
             bool occupied = false;
 
@@ -3617,7 +3611,7 @@ namespace Xyglo
         /// Find a good position for a new BufferView relative to the current active position
         /// </summary>
         /// <param name="position"></param>
-        protected void addBufferView(BufferView.BufferPosition position)
+        protected void addBufferView(BufferView.ViewPosition position)
         {
             Vector3 newPos = getFreeBufferViewPosition(position);
 
@@ -3633,7 +3627,7 @@ namespace Xyglo
         /// we set that as the active buffer view.
         /// </summary>
         /// <param name="position"></param>
-        protected void detectMove(BufferView.BufferPosition position, GameTime gameTime)
+        protected void detectMove(BufferView.ViewPosition position, GameTime gameTime)
         {
             // First get the position of a potential BufferView
             //
@@ -3855,6 +3849,9 @@ namespace Xyglo
             ScreenPosition fp = (ScreenPosition)testFind.Second.First;
             ScreenPosition screenRelativePosition = (ScreenPosition)testFind.Second.Second;
 
+            if (bv == null) // do nothing
+                return;
+
             if (bv.isTailing())
             {
                 handleTailingDoubleClick(bv, fp, screenRelativePosition);
@@ -3863,7 +3860,6 @@ namespace Xyglo
             {
                 handleStandardDoubleClick(bv, fp, screenRelativePosition);
             }
-
         }
 
         /// <summary>
@@ -3885,11 +3881,11 @@ namespace Xyglo
                 if (bv1 != bv2)
                 {
 
-                    DiffView diffView = new DiffView(m_project, bv1, bv2);
+                    DiffView diffView = new DiffView(m_graphics, m_project, bv1, bv2);
 
                     if (diffView.process())
                     {
-                        m_project.addView(diffView);
+                        m_project.addGenericView(diffView);
 
                         // Show the differences and break out a new diff view
                         //
@@ -4053,9 +4049,14 @@ namespace Xyglo
         {
             Logger.logMsg("Friendlier::handleStandardDoubleClick()");
 
-            // All we need to do here is find the line, see if we're clicking in a word and
-            // highlight it if so
+            // We need to identify a valid line
+            //
+            if (fp.Y >= bv.getFileBuffer().getLineCount())
+                return;
 
+            // All we need to do here is find the line, see if we're clicking in a word and
+            // highlight it if so.
+            //
             string line = bv.getFileBuffer().getLine(fp.Y);
 
             // Are we on a space?  If not highlight the word
@@ -4525,6 +4526,13 @@ namespace Xyglo
                     drawFileBuffer(m_project.getBufferViews()[i], gameTime);
                 }
 
+                // Draw our generic views
+                //
+                foreach (XygloView view in m_project.getGenericViews())
+                {
+                    view.draw(m_project, m_state, gameTime, m_spriteBatch, m_basicEffect);
+                }
+
                 // If we're choosing a file then
                 //
                 if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen || m_state == FriendlierState.PositionScreenOpen || m_state == FriendlierState.PositionScreenNew || m_state == FriendlierState.PositionScreenCopy)
@@ -4568,6 +4576,13 @@ namespace Xyglo
                     //
                     drawCursor(gameTime);
                     drawHighlight(gameTime);
+                }
+
+                // Draw the textures for generic views
+                //
+                foreach (XygloView view in m_project.getGenericViews())
+                {
+                    view.drawTextures(m_basicEffect);
                 }
 
                 // Draw a background square for all buffer views if they are coloured
@@ -4648,6 +4663,11 @@ namespace Xyglo
                     }
 
                 }
+            }
+
+            if (text == "")
+            {
+                text = "[Project contains no Files]";
             }
 
             // Draw the main text screen - using the m_configPosition as the place holder
@@ -4863,6 +4883,10 @@ namespace Xyglo
 
                 case FriendlierState.FileSaveAs:
                     modeString = "saving file";
+                    break;
+
+                case FriendlierState.DiffPicker:
+                    modeString = "picking diff";
                     break;
 
                 default:
