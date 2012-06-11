@@ -102,7 +102,7 @@ namespace Xyglo
                     return Color.Red;
 
                 case LineAnnotation.LineInserted:
-                    return Color.Green;
+                    return Color.Yellow;
 
                 case LineAnnotation.LineModified:
                     return Color.Orange;

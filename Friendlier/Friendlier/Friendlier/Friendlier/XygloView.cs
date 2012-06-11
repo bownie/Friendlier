@@ -96,11 +96,13 @@ namespace Xyglo
         /// <summary>
         /// Width spacing between views
         /// </summary>
+        [DataMember]
         protected int m_viewWidthSpacing = 15;
 
         /// <summary>
         /// Height spacing between views
         /// </summary>
+        [DataMember]
         protected int m_viewHeightSpacing = 10;
 
         // ----------------------------------------- METHODS ------------------------------------------------------
@@ -174,45 +176,15 @@ namespace Xyglo
         /// <param name="position"></param>
         /// <param name="factor"></param>
         /// <returns></returns>
-        public Vector3 calculateRelativePosition(ViewPosition position, int factor = 1)
-        {
-            Vector3 rP = m_position;
+        public abstract Vector3 calculateRelativePositionVector(ViewPosition position, int factor = 1);
 
-            try
-            {
-                if (m_fontManager.getLineSpacing() == 0 || m_fontManager.getCharWidth() == 0)
-                {
-                    throw new Exception("XygloView::calculateRelativePosition() - some of our basic settings are zero - cannot calculate");
-                }
-            }
-            catch (Exception)
-            {
-                return rP;
-            }
-
-            switch (position)
-            {
-                case ViewPosition.Above:
-                    rP = m_position - (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(), 0.0f));
-                    break;
-
-                case ViewPosition.Below:
-                    rP = m_position + (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(), 0.0f));
-                    break;
-
-                case ViewPosition.Left:
-                    rP = m_position - (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
-                    break;
-
-                case ViewPosition.Right:
-                    rP = m_position + (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
-                    break;
-
-                default:
-                    throw new Exception("Unknown position parameter passed");
-            }
-
-            return rP;
-        }
+        /// <summary>
+        /// Do the same as above but return a BoundingBox
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="factor"></param>
+        /// <returns></returns>
+        public abstract BoundingBox calculateRelativePositionBoundingBox(ViewPosition position, int factor = 1);
+        
     }
 }

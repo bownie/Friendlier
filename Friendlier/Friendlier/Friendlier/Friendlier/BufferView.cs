@@ -242,7 +242,7 @@ namespace Xyglo
             //
             if (m_fontManager.getCharWidth() != 0 && m_fontManager.getLineSpacing() != 0)
             {
-                m_position = rootBV.calculateRelativePosition(position);
+                m_position = rootBV.calculateRelativePositionVector(position);
             }
         }
 
@@ -884,7 +884,7 @@ namespace Xyglo
             //
             if (m_bufferViewPosition.rootBV != null)
             {
-                m_position = m_bufferViewPosition.rootBV.calculateRelativePosition(m_bufferViewPosition.position);
+                m_position = m_bufferViewPosition.rootBV.calculateRelativePositionVector(m_bufferViewPosition.position);
             }
         }
 
@@ -2373,5 +2373,71 @@ namespace Xyglo
         {
             throw new NotImplementedException();
         }
+
+        /// <summary>
+        /// Calculate a bounding box
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="factor"></param>
+        /// <returns></returns>
+        public override BoundingBox calculateRelativePositionBoundingBox(ViewPosition position, int factor = 1)
+        {
+            BoundingBox bb = new BoundingBox();
+            bb.Min = calculateRelativePositionVector(position, factor);
+            bb.Max = bb.Min;
+            bb.Max.X += getWidth();
+            bb.Max.Y += getHeight();
+            return bb;
+        }
+
+        /// <summary>
+        /// Calculate the position of the next BufferView relative to us - these factors aren't constant
+        /// and shouldn't be declared as such but for the moment they usually do.  We can also specify a 
+        /// factor to spread out the bounding boxes further if they are required.
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="factor"></param>
+        /// <returns></returns>
+        public override Vector3 calculateRelativePositionVector(ViewPosition position, int factor = 1)
+        {
+            Vector3 rP = m_position;
+
+            try
+            {
+                if (m_fontManager.getLineSpacing() == 0 || m_fontManager.getCharWidth() == 0)
+                {
+                    throw new Exception("XygloView::calculateRelativePosition() - some of our basic settings are zero - cannot calculate");
+                }
+            }
+            catch (Exception)
+            {
+                return rP;
+            }
+
+            switch (position)
+            {
+                case ViewPosition.Above:
+                    rP = m_position - (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(), 0.0f));
+                    break;
+
+                case ViewPosition.Below:
+                    rP = m_position + (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(), 0.0f));
+                    break;
+
+                case ViewPosition.Left:
+                    rP = m_position - (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
+                    break;
+
+                case ViewPosition.Right:
+                    rP = m_position + (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
+                    break;
+
+                default:
+                    throw new Exception("Unknown position parameter passed");
+            }
+
+            return rP;
+        }
+
     }
 }

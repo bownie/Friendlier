@@ -1,4 +1,7 @@
 Content\Effects\Ambient.xnb
+Content\Effects\BloomCombine.xnb
+Content\Effects\BloomExtract.xnb
+Content\Effects\GaussianBlur.xnb
 Content\Bitstream Vera Sans Mono_fullScreen.xnb
 Content\Bitstream Vera Sans Mono_window.xnb
 Content\Bitstream Vera Sans Mono_overlaySmallScreen.xnb

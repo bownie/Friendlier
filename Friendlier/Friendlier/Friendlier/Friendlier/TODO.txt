@@ -16,54 +16,45 @@ USE CASES
 BUILD and USABILITY FEATURES TODO and BUGS
 ----
 
-- File backups for project file
-- Resize window and BufferViews
-- Reposition BufferViews
-- Visual Diff mechanism
-- cluster control/command (undoable)
-- difference between bufferview level and project level undo???  possible??
-
-
-- slow when editing.. [TRACING]
-- double click error line to file editor [DONE]
-- make clean [DONE]
-- make debug/release options [CAN WORKAROUND THIS]
-- Cancel build option [DONE]
-- browse up error messages in build log [DONE]
-- error with collections during background build [ADDED NEW MUTEX WHICH MAY FIX]
-- Build in Progress - ensure confirmation of exit [PARTIALLY DONE]
-
-OLD
-----
-
 - highlighting keywords
-- undo bug when repeating (Dummys appearing)
+- undo bug when repeating (Dummys appearing) [FIXED COMMANDS FOR DELETE AND REPLACE]
 - Paging on File Management
-- Elegant long lines File Management
-- Elegant long line Config
-- resize bufferview
+
+- Elegant long line Config 
 
 - GOTO line implementation
 - zap to definition of method/class/#define
 - double click on normal canvas to highlight
+- resizing window [IN PROGRESS]
+
+- Moving between BufferViews with Alt Cursor keys [BETTER - using BoundingBox]
+- Resize window and BufferViews
+- Reposition BufferViews
+- Visual Diff mechanism [ALMOST COMPLETED]
+- cluster control/command (undoable)
+- difference between bufferview level and project level undo???  possible??  desirable?
 
 
-- update help [PARTIALLY DONE]
-- performance meters on the overlay [THINK I WILL LEAVE IT]
+To Check
 
+--------
+- slow when editing.. [TRACING]
+- error with collections during background build [ADDED NEW MUTEX WHICH MAY FIX]
+- Build in Progress - ensure confirmation of exit [PARTIALLY DONE]
+
+
+MORE FEATURES
+-------------
 - import makefile?
 - remove all non-showing FileBuffers?
-- scroller is jerky
 - get highlighting to show the tabs
 - project management (adding, changing projects)
 - brace matching
 - remember last directory indent
-- indenting [PARTLY WORKING]
-- Bloom highlight?
 - Depth buffer for kinect improved
 - improve search
-- resizing window [IN PROGRESS]
-- scrolling and cut and paste on parameter editing and information screen
+- indenting [PARTLY WORKING]
+
 
 - Licence file [STARTED]
 
@@ -90,6 +81,18 @@ http://autobuildversion.codeplex.com/
 
 ALPHA 2 DONE
 ------------
+- Elegant long lines File Management [WORKED AROUND]
+- File backups for project file [DONE]
+- double click error line to file editor [DONE]
+- scrolling and cut and paste on parameter editing and information screen [DONEISH]
+- make clean [DONE]
+- make debug/release options [CAN WORKAROUND THIS]
+- Cancel build option [DONE]
+- browse up error messages in build log [DONE]
+- Bloom highlight? [DONE]
+- update help [PARTIALLY DONE]
+- performance meters on the overlay [THINK I WILL LEAVE IT]
+- scroller is jerky [NOT USING IT ANY MORE]
 - zooming is not very good at the moment [FIXED]
 - click on error lines to open files and zap to line [DONE]
 - commands remember highlights [DONE]

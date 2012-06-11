@@ -110,7 +110,7 @@ namespace Xyglo
         /// <summary>
         /// Colour of a Keyword
         /// </summary>
-        static public Color m_keywordColour = Color.Green;
+        static public Color m_keywordColour = Color.LightGreen;
 
         /// <summary>
         /// For a given line number return the indent of it - we use this when the previous line has been

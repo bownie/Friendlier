@@ -1586,6 +1586,10 @@ namespace Xyglo
                 m_project.setTargetPosition(m_target);
                 m_project.setOpenDirectory(m_fileSystemView.getPath());
 
+                // Do some file management to ensure we have some backup copies
+                //
+                m_project.manageSerialisations();
+
                 // Save our project including any updated file statuses
                 //
                 m_project.dataContractSerialise();
@@ -2626,40 +2630,79 @@ namespace Xyglo
             {
                 if (checkKeyState(Keys.C, gameTime)) // Copy
                 {
-                    Logger.logMsg("Friendlier::processCombinationsCommands() - copying to clipboard");
-                    string text = m_project.getSelectedBufferView().getSelection().getClipboardString();
-
-                    // We can only set this is the text is not empty
-                    if (text != "")
+                    if (m_state == FriendlierState.Configuration && m_editConfigurationItem)
                     {
-                        System.Windows.Forms.Clipboard.SetText(text);
+                        Logger.logMsg("Friendlier::processCombinationsCommands() - copying from configuration");
+                        System.Windows.Forms.Clipboard.SetText(m_editConfigurationItemValue);
                     }
-                    rC = true;
+                    else
+                    {
+                        Logger.logMsg("Friendlier::processCombinationsCommands() - copying to clipboard");
+                        string text = m_project.getSelectedBufferView().getSelection().getClipboardString();
+
+                        // We can only set this is the text is not empty
+                        if (text != "")
+                        {
+                            System.Windows.Forms.Clipboard.SetText(text);
+                        }
+                        rC = true;
+                    }
                 }
                 else if (checkKeyState(Keys.X, gameTime)) // Cut
                 {
-                    Logger.logMsg("Friendlier::processCombinationsCommands() - cut");
+                    if (m_state == FriendlierState.Configuration && m_editConfigurationItem)
+                    {
+                        Logger.logMsg("Friendlier::processCombinationsCommands() - cutting from configuration");
+                        System.Windows.Forms.Clipboard.SetText(m_editConfigurationItemValue);
+                        m_editConfigurationItemValue = "";
+                    }
+                    else
+                    {
+                        Logger.logMsg("Friendlier::processCombinationsCommands() - cut");
 
-                    System.Windows.Forms.Clipboard.SetText(m_project.getSelectedBufferView().getSelection().getClipboardString());
-                    m_project.getSelectedBufferView().deleteCurrentSelection(m_project);
-                    rC = true;
+                        System.Windows.Forms.Clipboard.SetText(m_project.getSelectedBufferView().getSelection().getClipboardString());
+                        m_project.getSelectedBufferView().deleteCurrentSelection(m_project);
+                        rC = true;
+                    }
                 }
                 else if (checkKeyState(Keys.V, gameTime)) // Paste
                 {
                     if (System.Windows.Forms.Clipboard.ContainsText())
                     {
-                        Logger.logMsg("Friendlier::processCombinationsCommands() - pasting text");
-                        // If we have a selection then replace it - else insert
-                        //
-                        if (m_project.getSelectedBufferView().gotHighlight())
+                        if (m_state == FriendlierState.Configuration && m_editConfigurationItem)
                         {
-                            m_project.getSelectedBufferView().replaceCurrentSelection(m_project, System.Windows.Forms.Clipboard.GetText());
+                            Logger.logMsg("Friendlier::processCombinationsCommands() - pasting into configuration");
+
+                            // Ensure that we only get one line out of the clipboard and make sure
+                            // it's the last meaningful one.
+                            //
+                            string lastPasteText = "";
+                            foreach (string text in System.Windows.Forms.Clipboard.GetText().Split('\n'))
+                            {
+                                if (text != "")
+                                {
+                                    lastPasteText = text;
+                                }
+                            }
+
+                            m_editConfigurationItemValue = lastPasteText;
                         }
                         else
                         {
-                            m_project.getSelectedBufferView().insertText(m_project, System.Windows.Forms.Clipboard.GetText());
+                            Logger.logMsg("Friendlier::processCombinationsCommands() - pasting text");
+                            // If we have a selection then replace it - else insert
+                            //
+                            if (m_project.getSelectedBufferView().gotHighlight())
+                            {
+                                m_project.getSelectedBufferView().replaceCurrentSelection(m_project, System.Windows.Forms.Clipboard.GetText());
+                            }
+                            else
+                            {
+                                m_project.getSelectedBufferView().insertText(m_project, System.Windows.Forms.Clipboard.GetText());
+                            }
+                            rC = true;
+                     
                         }
-                        rC = true;
                     }
                 }
                 else if (checkKeyState(Keys.Z, gameTime))  // Undo
@@ -2701,7 +2744,6 @@ namespace Xyglo
                         if (m_project.getSelectedBufferView().getFileBuffer().getUndoPosition() <
                             m_project.getSelectedBufferView().getFileBuffer().getCommandStackLength())
                         {
-                            //m_project.getSelectedBufferView().setCursorPosition(m_project.getSelectedBufferView().getFileBuffer().redo(1));
                             m_project.getSelectedBufferView().redo(m_project.getSyntaxManager(), 1);
                         }
                         else
@@ -2982,9 +3024,12 @@ namespace Xyglo
         /// <param name="gameTime"></param>
         protected void processKeys(GameTime gameTime)
         {
-            // Do nothing if no keys are pressed except check for auto repeat and clear if necessary
+            // Do nothing if no keys are pressed except check for auto repeat and clear if necessary.
+            // We have to adjust for any held down modifier keys here and also clear the variable as 
+            // necessary.
             //
-            if (Keyboard.GetState().GetPressedKeys().Length == 0)
+            if (Keyboard.GetState().GetPressedKeys().Length == 0 || 
+                (Keyboard.GetState().GetPressedKeys().Length == 1 && (m_altDown || m_shiftDown || m_ctrlDown)))
             {
                 //m_heldDownStartTime = gameTime.TotalGameTime.TotalSeconds;
                 //m_heldDownLastRepeatTime = gameTime.TotalGameTime.TotalSeconds;
@@ -3586,7 +3631,7 @@ namespace Xyglo
 
             // Initial new pos is here from active BufferView
             //
-            Vector3 newPos = m_project.getSelectedBufferView().calculateRelativePosition(position);
+            Vector3 newPos = m_project.getSelectedBufferView().calculateRelativePositionVector(position);
             do
             {
                 occupied = false;
@@ -3597,7 +3642,7 @@ namespace Xyglo
                     {
                         // We get the next available slot in the same direction away from original
                         //
-                        newPos = cur.calculateRelativePosition(position);
+                        newPos = cur.calculateRelativePositionVector(position);
                         occupied = true;
                         break;
                     }
@@ -3631,7 +3676,7 @@ namespace Xyglo
         {
             // First get the position of a potential BufferView
             //
-            Vector3 searchPosition = m_project.getSelectedBufferView().calculateRelativePosition(position);
+            BoundingBox searchBox = m_project.getSelectedBufferView().calculateRelativePositionBoundingBox(position);
 
             // Store the id of the current view
             //
@@ -3641,7 +3686,7 @@ namespace Xyglo
             //
             for (int i = 0; i < m_project.getBufferViews().Count; i++)
             {
-                if (m_project.getBufferViews()[i].getPosition() == searchPosition)
+                if (m_project.getBufferViews()[i].getBoundingBox().Intersects(searchBox))
                 {
                     m_project.setSelectedBufferViewId(i);
                     break;
@@ -5449,20 +5494,6 @@ namespace Xyglo
                     {
                         highlights.Sort();
 
-                        // Sort out the colour
-                        //
-                        highlightColour = highlights[0].m_colour;
-
-                        // If not active view then temper colour
-                        //
-                        if (view != m_project.getSelectedBufferView())
-                        {
-                            highlightColour.R = (byte)(highlightColour.R / greyDivisor);
-                            highlightColour.G = (byte)(highlightColour.G / greyDivisor);
-                            highlightColour.B = (byte)(highlightColour.B / greyDivisor);
-                            highlightColour.A = (byte)(highlightColour.A / greyDivisor);
-                        }
-
                         // Need to print the line by section with some unhighlighted
                         //
                         int nextHighlight = 0;
@@ -5472,6 +5503,20 @@ namespace Xyglo
                         //
                         while (nextHighlight < highlights.Count && xPos < line.Length)
                         {
+                            // Sort out the colour
+                            //
+                            highlightColour = highlights[nextHighlight].m_colour;
+
+                            // If not active view then temper colour
+                            //
+                            if (view != m_project.getSelectedBufferView())
+                            {
+                                highlightColour.R = (byte)(highlightColour.R / greyDivisor);
+                                highlightColour.G = (byte)(highlightColour.G / greyDivisor);
+                                highlightColour.B = (byte)(highlightColour.B / greyDivisor);
+                                highlightColour.A = (byte)(highlightColour.A / greyDivisor);
+                            }
+
                             // If the highlight starts beyond the string end then skip it -
                             // and we quit out of the highlighting process as highlights are
                             // sorted (hopefully correctly).
@@ -5485,6 +5530,15 @@ namespace Xyglo
                             if (xPos < highlights[nextHighlight].m_startHighlight.X || nextHighlight >= highlights.Count)
                             {
                                 string subLineToHighlight = line.Substring(xPos, highlights[nextHighlight].m_startHighlight.X - xPos);
+
+                                // Not sure we need this for the moment
+                                //
+                                int screenXpos = m_project.fileToScreen(line.Substring(0, xPos)).Length;
+
+                                //if (screenXpos != xPos)
+                                //{
+                                    //Logger.logMsg("GOT TAB");
+                                //}
 
                                 m_spriteBatch.DrawString(
                                     m_project.getFontManager().getFont(),
@@ -6041,11 +6095,10 @@ namespace Xyglo
                 m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), text, new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
                 yPos += m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * 2;
 
-                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), m_project.getConfigurationItem(m_configPosition).Name, new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), m_project.getConfigurationItem(m_configPosition).Name, new Vector2((int)xPos, (int)yPos), m_itemColour, 0, Vector2.Zero, 1.0f, 0, 0);
                 yPos += m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay);
 
-
-                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), m_editConfigurationItemValue, new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
+                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), m_editConfigurationItemValue, new Vector2((int)xPos, (int)yPos), m_highlightColour, 0, Vector2.Zero, 1.0f, 0, 0);
             }
             else
             {

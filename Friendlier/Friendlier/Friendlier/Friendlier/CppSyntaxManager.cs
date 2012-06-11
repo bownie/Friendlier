@@ -170,7 +170,11 @@ namespace Xyglo
             //
             for (int i = startLine; i < toLine; i++)
             {
-                string line = fileBuffer.getLine(i);
+                // If we're displaying with expanded tabs then make sure we also expand them
+                // here.  We might want to change this back if we have any issues with wanting
+                // to work back from Highlights to meaningful words.
+                //
+                string line = fileBuffer.getLine(i).Replace("\t", m_project.getTab());
 
                 // Reset xPosition
                 //
@@ -222,22 +226,11 @@ namespace Xyglo
                         foundPosition = line.Substring(xPosition).IndexOf("/*");
                         //foundPosition = indexOf(CppSyntaxManager.m_openComment, line.Substring(xPosition));
 
-                        if (foundPosition != -1)
-                        {
-                            // Insert highlight if this is only thing on line
-                            //
-                            Highlight newHighlight = new Highlight(i, foundPosition, foundPosition + 2, line.Substring(xPosition, 2), SyntaxManager.m_commentColour);
-                            //fileBuffer.m_highlightList.Add(newHighlight);
-                            fileBuffer.setHighlight(newHighlight);
-
-                            // Move past comment start
-                            //
-                            xPosition += foundPosition + 2; // might go over end of line so beware this
-
-                            inMLComment = true;
-                        }
-                        else // other comments and everything that is not commented but requires highlighting
-                        {
+                        //if (foundPosition < xPosition)
+                        //{
+                        //}
+                        //else
+                        //{
                             // #defines etc
                             if (line.IndexOf("#") == 0)
                             //if (indexOf(CppSyntaxManager.m_hashLineComment, line) == 0)
@@ -262,7 +255,7 @@ namespace Xyglo
                             // Now process any other characters ensuring that we're still within the string
                             // and we're not beyond the start of a line comment boundary.
                             //
-                            if (xPosition < line.Length && xPosition < lineCommentPosition)
+                            if (xPosition < line.Length && ( xPosition < lineCommentPosition || lineCommentPosition == -1))
                             {
                                 if (line[xPosition] == '{') 
                                 {
@@ -295,6 +288,21 @@ namespace Xyglo
                                         m_bracePositions.Add(bd, newDepth);
                                     }
                                 }
+                                else if (line[xPosition] == '/' && (xPosition + 1 < line.Length && line[xPosition + 1] == '*'))
+                                {
+                                    // Insert highlight if this is only thing on line
+                                    //
+                                    Highlight newHighlight = new Highlight(i, xPosition, xPosition + 2, line.Substring(xPosition, 2), SyntaxManager.m_commentColour);
+                                    //fileBuffer.m_highlightList.Add(newHighlight);
+                                    fileBuffer.setHighlight(newHighlight);
+
+                                    // Move past comment start
+                                    //
+                                    xPosition += 2; // might go over end of line so beware this
+
+                                    inMLComment = true;
+                                }
+
                                 else
                                 {
                                     // Fetch a token
@@ -305,17 +313,17 @@ namespace Xyglo
                                     //
                                     if (m.Success)
                                     {
-                                        //Logger.logMsg("GOT TOKEN " + m.Value);
+                                        // Not sure we need this
                                         string stripWhitespace = m.Value.Replace(" ", "");
                                         int adjustLength = m.Value.Length - stripWhitespace.Length;
 
-                                        GroupCollection coll = m.Groups;
+                                        //GroupCollection coll = m.Groups;
 
                                         if (m_keywords.Contains(stripWhitespace))
                                         {
-                                            //Highlight newHighlight = new Highlight(i, m.Index - adjustLength, m.Index + stripWhitespace.Length - adjustLength, stripWhitespace, SyntaxManager.m_keywordColour);
-                                            //fileBuffer.setHighlight(newHighlight);
-                                            //xPosition += m.Value.Length;
+                                            Highlight newHighlight = new Highlight(i, xPosition + m.Index - adjustLength, xPosition + m.Index + stripWhitespace.Length - adjustLength, stripWhitespace, SyntaxManager.m_keywordColour);
+                                            fileBuffer.setHighlight(newHighlight);
+                                            xPosition += m.Value.Length;
                                         }
                                     }
                                 }
@@ -334,7 +342,7 @@ namespace Xyglo
                                 }
 #endif
                             }
-                        }
+                        //}
                     }
 
                     if (lastXPosition == xPosition)

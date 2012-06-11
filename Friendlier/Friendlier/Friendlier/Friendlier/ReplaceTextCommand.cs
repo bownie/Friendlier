@@ -50,6 +50,11 @@ namespace Xyglo
         {
             string newLine, bufLine;
 
+            // Clear the snippet and then append all the lines we're going to delete
+            //
+            m_saveSnippet.m_lines.Clear();
+            m_saveSnippet.setLinesDeleted(0);
+
             // Are we deleting on the same line?
             //
             if (m_startPos.Y == m_endPos.Y)
@@ -101,11 +106,6 @@ namespace Xyglo
             }
             else  // Multi-line delete
             {
-                // Clear the snippet and then append all the lines we're going to delete
-                //
-                //
-                m_saveSnippet.m_lines.Clear();
-
                 for (int i = m_startPos.Y; i < m_endPos.Y; i++)
                 {
                     bufLine = m_fileBuffer.getLine(i);

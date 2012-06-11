@@ -236,27 +236,27 @@ namespace Xyglo
 
                         if (newLine && i != splitString.Count() - 1)
                         {
-                            m_targetBufferView1.setAnnotation(leftLine, LineAnnotation.LineDeleted);
+                            m_targetBufferView1.setAnnotation(leftLine, LineAnnotation.LineInserted);
                             leftLine++;
                         }
                         else
                         {
-                            m_targetBufferView1.setAnnotation(leftLine, LineAnnotation.LineModified);
+                            m_targetBufferView1.setAnnotation(leftLine, LineAnnotation.LineDeleted);
                         }
 
                     } else if (diff.operation == DiffMatchPatch.Operation.INSERT)
                     {
                         m_fileBuffer2.appendLineIfNotExist(rightLine, splitString[i]);
-                        m_targetBufferView1.setAnnotation(leftLine, LineAnnotation.LineModified);
+                        //m_targetBufferView1.setAnnotation(leftLine, LineAnnotation.LineModified);
 
                         if (newLine && i != splitString.Count() - 1)
                         {
-                            m_targetBufferView2.setAnnotation(rightLine, LineAnnotation.LineInserted);
+                            m_targetBufferView2.setAnnotation(rightLine, LineAnnotation.LineDeleted);
                             rightLine++;
                         }
                         else
                         {
-                            m_targetBufferView2.setAnnotation(rightLine, LineAnnotation.LineModified);
+                            m_targetBufferView2.setAnnotation(rightLine, LineAnnotation.LineInserted);
                         }
                     }
                 }
@@ -457,8 +457,13 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// We can draw ourselves here
+        /// Draw ourselves using some passed in parameters
         /// </summary>
+        /// <param name="project"></param>
+        /// <param name="state"></param>
+        /// <param name="gameTime"></param>
+        /// <param name="spriteBatch"></param>
+        /// <param name="effect"></param>
         public override void draw(Project project, FriendlierState state, GameTime gameTime, SpriteBatch spriteBatch, Effect effect)
         {
             Color bufferColour = m_textColour;
@@ -497,17 +502,34 @@ namespace Xyglo
                 if (i + m_targetBufferView1.getBufferShowStartY() >= m_fileBuffer1.getLineCount())
                     break;
 
+                Color lineColour = bufferColour;
+                if (m_targetBufferView1.hasAnnotation(i + m_targetBufferView1.getBufferShowStartY()))
+                {
+                    lineColour = m_targetBufferView1.getLineHighlightColour(i + m_targetBufferView1.getBufferShowStartY());
+
+                    // Add a coloured block in if the annotation is padding
+                    //
+                    if (m_targetBufferView1.getAnnotation(i + m_targetBufferView1.getBufferShowStartY()) == LineAnnotation.LinePadding)
+                    {
+                        Vector3 startQuad = viewSpaceTextPosition;
+                        startQuad.Y += yPosition;
+                        Vector3 endQuad = startQuad + new Vector3(m_targetBufferView2.getVisibleWidth(), project.getFontManager().getLineSpacing(), 0);
+                        m_highlightList.Add(new Pair<Pair<Vector3, Vector3>, Color>(new Pair<Vector3, Vector3>(startQuad, endQuad), m_targetBufferView1.getLineHighlightColour(i + m_targetBufferView1.getBufferShowStartY())));
+                    }
+                }
+
                 spriteBatch.DrawString(
                     project.getFontManager().getFont(),
                     m_fileBuffer1.getLine(i + m_targetBufferView1.getBufferShowStartY()),
                     new Vector2((int)viewSpaceTextPosition.X, (int)(viewSpaceTextPosition.Y + yPosition)),
-                    bufferColour,
+                    lineColour,
                     0,
                     Vector2.Zero,
                     project.getFontManager().getTextScale(),
                     0,
                     0);
 
+                /*
                 // Draw an annotation
                 //
                 if (m_targetBufferView1.hasAnnotation(i + m_targetBufferView1.getBufferShowStartY()))
@@ -526,7 +548,7 @@ namespace Xyglo
                     // Push onto highlight list
                     //
                     m_highlightList.Add(new Pair<Pair<Vector3, Vector3>, Color>(new Pair<Vector3, Vector3>(startQuad, endQuad), m_targetBufferView1.getLineHighlightColour(i + m_targetBufferView1.getBufferShowStartY())));
-                }
+                }*/
 
                 yPosition += project.getFontManager().getLineSpacing();
             }
@@ -543,20 +565,27 @@ namespace Xyglo
                 if (i + m_targetBufferView2.getBufferShowStartY() >= m_fileBuffer2.getLineCount())
                     break;
 
+                Color lineColour = bufferColour;
+                if (m_targetBufferView2.hasAnnotation(i + m_targetBufferView2.getBufferShowStartY()))
+                {
+                    lineColour = m_targetBufferView2.getLineHighlightColour(i + m_targetBufferView2.getBufferShowStartY());
+                }
+
                 spriteBatch.DrawString(
                     project.getFontManager().getFont(),
                     m_fileBuffer2.getLine(i + m_targetBufferView2.getBufferShowStartY()),
                     new Vector2((int)viewSpaceTextPosition.X, (int)(viewSpaceTextPosition.Y + yPosition)),
-                    bufferColour,
+                    lineColour,
                     0,
                     Vector2.Zero,
                     project.getFontManager().getTextScale(),
                     0,
                     0);
 
+                /*
                 // Draw an annotation
                 //
-                if (m_targetBufferView2.hasAnnotation(i + m_targetBufferView1.getBufferShowStartY()))
+                if (m_targetBufferView2.hasAnnotation(i + m_targetBufferView2.getBufferShowStartY()))
                 {
                     //Logger.logMsg("DRAWING ANNOTATION (2)");
 
@@ -573,8 +602,8 @@ namespace Xyglo
 
                     // Push to highlight list
                     //
-                    m_highlightList.Add(new Pair<Pair<Vector3, Vector3>, Color>(new Pair<Vector3, Vector3>(startQuad, endQuad), m_targetBufferView2.getLineHighlightColour(i + m_targetBufferView1.getBufferShowStartY())));
-                }
+                    m_highlightList.Add(new Pair<Pair<Vector3, Vector3>, Color>(new Pair<Vector3, Vector3>(startQuad, endQuad), m_targetBufferView2.getLineHighlightColour(i + m_targetBufferView2.getBufferShowStartY())));
+                }*/
 
                 yPosition += project.getFontManager().getLineSpacing();
             }
@@ -653,5 +682,70 @@ namespace Xyglo
             return rV;
         }
 
+        /// <summary>
+        /// Calculate a bounding box
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="factor"></param>
+        /// <returns></returns>
+        public override BoundingBox calculateRelativePositionBoundingBox(ViewPosition position, int factor = 1)
+        {
+            BoundingBox bb = new BoundingBox();
+            bb.Min = calculateRelativePositionVector(position, factor);
+            bb.Max = bb.Min;
+            bb.Max.X += getWidth();
+            bb.Max.Y += getHeight();
+            return bb;
+        }
+
+
+        /// <summary>
+        /// Calculate the position of the next BufferView relative to us - these factors aren't constant
+        /// and shouldn't be declared as such but for the moment they usually do.  We can also specify a 
+        /// factor to spread out the bounding boxes further if they are required.
+        /// </summary>
+        /// <param name="position"></param>
+        /// <param name="factor"></param>
+        /// <returns></returns>
+        public override Vector3 calculateRelativePositionVector(ViewPosition position, int factor = 1)
+        {
+            Vector3 rP = m_position;
+
+            try
+            {
+                if (m_fontManager.getLineSpacing() == 0 || m_fontManager.getCharWidth() == 0)
+                {
+                    throw new Exception("XygloView::calculateRelativePosition() - some of our basic settings are zero - cannot calculate");
+                }
+            }
+            catch (Exception)
+            {
+                return rP;
+            }
+
+            switch (position)
+            {
+                case ViewPosition.Above:
+                    rP = m_position - (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(), 0.0f));
+                    break;
+
+                case ViewPosition.Below:
+                    rP = m_position + (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(), 0.0f));
+                    break;
+
+                case ViewPosition.Left:
+                    rP = m_position - (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
+                    break;
+
+                case ViewPosition.Right:
+                    rP = m_position + (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
+                    break;
+
+                default:
+                    throw new Exception("Unknown position parameter passed");
+            }
+
+            return rP;
+        }
     }
 }

@@ -943,6 +943,53 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Method we can use to make some backups of the project file before we serialise it
+        /// </summary>
+        public void manageSerialisations()
+        {
+            int versionsToMaintain = 5;
+            List<string> filesExist = new List<string>();
+
+            // Test for which versions exist
+            //
+            for (int i = 1; i <= versionsToMaintain; i++)
+            {
+                // Pad out a file name
+                //
+                string testFilePath = m_projectFile + "." + i.ToString().PadLeft(4, '0');
+
+                // If the file exists then 
+                if (File.Exists(testFilePath))
+                {
+                    filesExist.Add(testFilePath);
+                }
+            }
+
+            // Shift versions if any exist up one number and remove the oldest
+            //
+            if (filesExist.Count > 0)
+            {
+                // Remove/Move in reverse order
+                //
+                for(int i = filesExist.Count; i > 0; i--)
+                {
+                    if (i == versionsToMaintain)
+                    {
+                        File.Delete(filesExist[i - 1]);
+                    }
+                    else
+                    {
+                        File.Move(filesExist[i - 1], m_projectFile + "." + (i + 1).ToString().PadLeft(4, '0'));
+                    }
+                }
+            }
+
+            // Copy file to the first position
+            //
+            File.Copy(m_projectFile, m_projectFile + ".0001");
+        }
+
+        /// <summary>
         /// XML Serialise - we don't use this
         /// </summary>
         public void xmlSerialise()
@@ -2165,7 +2212,7 @@ namespace Xyglo
 
             // Initial BoundingBox setup
             //
-            Vector3 newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Right, factor);
+            Vector3 newPosition = bv.calculateRelativePositionVector(BufferView.ViewPosition.Right, factor);
 
             // maxPosition of BoundingBox
             //
@@ -2178,7 +2225,7 @@ namespace Xyglo
 
             while (checkBufferViewOverlaps(newBB))
             {
-                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Right, factor);
+                newPosition = bv.calculateRelativePositionVector(BufferView.ViewPosition.Right, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2187,7 +2234,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Above, factor);
+                newPosition = bv.calculateRelativePositionVector(BufferView.ViewPosition.Above, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2196,7 +2243,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Left, factor);
+                newPosition = bv.calculateRelativePositionVector(BufferView.ViewPosition.Left, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2205,7 +2252,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Below, factor);
+                newPosition = bv.calculateRelativePositionVector(BufferView.ViewPosition.Below, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2245,7 +2292,7 @@ namespace Xyglo
 
             while (checkBufferViewOverlaps(newBB))
             {
-                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Right, factor);
+                newPosition = bv.calculateRelativePositionVector(BufferView.ViewPosition.Right, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2254,7 +2301,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Above, factor);
+                newPosition = bv.calculateRelativePositionVector(BufferView.ViewPosition.Above, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2263,7 +2310,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Left, factor);
+                newPosition = bv.calculateRelativePositionVector(BufferView.ViewPosition.Left, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2272,7 +2319,7 @@ namespace Xyglo
                     break;
                 }
 
-                newPosition = bv.calculateRelativePosition(BufferView.ViewPosition.Below, factor);
+                newPosition = bv.calculateRelativePositionVector(BufferView.ViewPosition.Below, factor);
                 newBB.Min = newPosition;
                 newBB.Max = newPosition + bbSize;
 
@@ -2315,6 +2362,7 @@ namespace Xyglo
 
             return false;
         }
+
 
     }
 
