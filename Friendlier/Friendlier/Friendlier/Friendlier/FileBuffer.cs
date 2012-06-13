@@ -516,9 +516,13 @@ namespace Xyglo
                 return;
             }
 
-            if (line >= m_lines.Count)
+            if (line > m_lines.Count)
             {
                 Logger.logMsg("FileBuffer::appendLine() - line " + line + " is not available in the FileBuffer");
+            }
+            else if (line == m_lines.Count)
+            {
+                m_lines.Add(value);
             }
             else
             {

@@ -51,7 +51,8 @@ namespace Xyglo
         public enum ViewMode
         {
             Formal,
-            Coloured
+            Coloured,
+            Fun
         }
 
         //////////// MEMBER VARIABLES ///////////////
@@ -88,6 +89,18 @@ namespace Xyglo
         /// </summary>
         [NonSerialized]
         protected List<XygloView> m_views = new List<XygloView>();
+
+        /// <summary>
+        /// The LHS BufferView of a diff
+        /// </summary>
+        [DataMember]
+        protected int m_leftDiffBufferViewIndex = -1;
+
+        /// <summary>
+        /// The RHS BufferView of a diff
+        /// </summary>
+        [DataMember]
+        protected int m_rightDiffBufferViewIndex = -1;
 
         /// <summary>
         /// Length of the visible BufferView for this project
@@ -2363,7 +2376,59 @@ namespace Xyglo
             return false;
         }
 
+        /// <summary>
+        /// Set the LHS of a diff
+        /// </summary>
+        /// <param name="view"></param>
+        public void setLHSDiff(BufferView view)
+        {
+            m_leftDiffBufferViewIndex = m_bufferViews.IndexOf(view);
+        }
 
+        /// <summary>
+        /// Set the RHS of a diff
+        /// </summary>
+        /// <param name="view"></param>
+        public void setRHSDiff(BufferView view)
+        {
+            m_rightDiffBufferViewIndex = m_bufferViews.IndexOf(view);
+        }
+
+        /// <summary>
+        /// RHS diff
+        /// </summary>
+        /// <returns></returns>
+        public int getRHSDiff()
+        {
+            return m_rightDiffBufferViewIndex;
+        }
+
+        /// <summary>
+        /// LHS diff
+        /// </summary>
+        /// <returns></returns>
+        public int getLHSDiff()
+        {
+            return m_leftDiffBufferViewIndex;
+        }
+
+        /// <summary>
+        /// Set RHS by index
+        /// </summary>
+        /// <param name="index"></param>
+        public void setRHSDiff(int index)
+        {
+            m_rightDiffBufferViewIndex = index;
+        }
+
+        /// <summary>
+        /// Set LHS by index
+        /// </summary>
+        /// <param name="index"></param>
+        public void setLHSDiff(int index)
+        {
+            m_leftDiffBufferViewIndex = index;
+        }
     }
 
     /// <summary>

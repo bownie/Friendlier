@@ -219,7 +219,7 @@ namespace Xyglo
                 // Fetch the line if it's available
                 //
                 string fetchLine = "";
-                if (m_fileBuffer.getLineCount() > 0)
+                if (m_fileBuffer.getLineCount() > 0 && m_startPos.Y < m_fileBuffer.getLineCount())
                 {
                     fetchLine = m_fileBuffer.getLine(m_startPos.Y);
                 }
@@ -227,11 +227,11 @@ namespace Xyglo
                 string firstLine = fetchLine.Substring(0, m_startPos.X);
                 string secondLine = "";
 
-                foreach (string line in m_writeSnippet.m_lines)
-                {
-                    Logger.logMsg("Line = " + line);
-                    ;// do something
-                }
+                //foreach (string line in m_writeSnippet.m_lines)
+                //{
+                    // do something
+                    //Logger.logMsg("Line = " + line);
+                //}
 
                 m_fileBuffer.appendToLine(m_startPos.Y, m_writeSnippet.m_lines[0]);
                 if (m_writeSnippet.m_lines.Count() == 1)
@@ -269,7 +269,7 @@ namespace Xyglo
 
             // If we need to re-insert a line then do so
             //
-            for (int i = 0; i < m_saveSnippet.getLinesDeleted(); i++)
+            for (int i = 0; i < m_saveSnippet.getLinesDeleted() - 1; i++)
             {
                 Logger.logMsg("ReplaceTextCommand::undoCommand() - inserted line at " + m_startPos.Y);
                 m_fileBuffer.insertLine(m_startPos.Y, "dummy");

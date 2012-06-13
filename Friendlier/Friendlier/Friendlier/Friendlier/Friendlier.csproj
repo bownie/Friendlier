@@ -139,6 +139,7 @@
     <Compile Include="CppSyntaxManager.cs" />
     <Compile Include="DateTimeNowCache.cs" />
     <Compile Include="DeleteTextCommand.cs" />
+    <Compile Include="Differ.cs" />
     <Compile Include="DiffMatchPatch.cs" />
     <Compile Include="DiffView.cs" />
     <Compile Include="FileBuffer.cs" />

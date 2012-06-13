@@ -16,23 +16,10 @@ USE CASES
 BUILD and USABILITY FEATURES TODO and BUGS
 ----
 
-- highlighting keywords
-- undo bug when repeating (Dummys appearing) [FIXED COMMANDS FOR DELETE AND REPLACE]
-- Paging on File Management
-
-- Elegant long line Config 
-
+- Visual Diff mechanism [REDESIGNING]
 - GOTO line implementation
-- zap to definition of method/class/#define
-- double click on normal canvas to highlight
-- resizing window [IN PROGRESS]
-
-- Moving between BufferViews with Alt Cursor keys [BETTER - using BoundingBox]
-- Resize window and BufferViews
-- Reposition BufferViews
-- Visual Diff mechanism [ALMOST COMPLETED]
-- cluster control/command (undoable)
-- difference between bufferview level and project level undo???  possible??  desirable?
+- Paging on File Management
+- Elegant long line Config 
 
 
 To Check
@@ -45,6 +32,12 @@ To Check
 
 MORE FEATURES
 -------------
+- zap to definition of method/class/#define
+- resizing window [IN PROGRESS - DECIDED TO DISABLE]
+- cluster control/command (undoable)
+- difference between bufferview level and project level undo???  possible??  desirable?
+- Resize window and BufferViews
+- Reposition BufferViews
 - import makefile?
 - remove all non-showing FileBuffers?
 - get highlighting to show the tabs
@@ -53,7 +46,6 @@ MORE FEATURES
 - remember last directory indent
 - Depth buffer for kinect improved
 - improve search
-- indenting [PARTLY WORKING]
 
 
 - Licence file [STARTED]
@@ -81,6 +73,11 @@ http://autobuildversion.codeplex.com/
 
 ALPHA 2 DONE
 ------------
+- indenting [DONE SOMEWHAT]
+- Moving between BufferViews with Alt Cursor keys [BETTER - using BoundingBox]
+- double click on normal canvas to highlight [DONE]
+- undo bug when repeating (Dummys appearing) [FIXED COMMANDS FOR DELETE AND REPLACE]
+- highlighting keywords [DONE]
 - Elegant long lines File Management [WORKED AROUND]
 - File backups for project file [DONE]
 - double click error line to file editor [DONE]

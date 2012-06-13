@@ -313,17 +313,36 @@ namespace Xyglo
                                     //
                                     if (m.Success)
                                     {
-                                        // Not sure we need this
-                                        string stripWhitespace = m.Value.Replace(" ", "");
-                                        int adjustLength = m.Value.Length - stripWhitespace.Length;
 
-                                        //GroupCollection coll = m.Groups;
-
-                                        if (m_keywords.Contains(stripWhitespace))
+                                        // Note that our pattern might match on a substring but not be valid in the
+                                        // whole string - so check previous character to see if it's a word boundary
+                                        //
+                                        bool startBoundary = true;
+                                        if (xPosition > 0)
                                         {
-                                            Highlight newHighlight = new Highlight(i, xPosition + m.Index - adjustLength, xPosition + m.Index + stripWhitespace.Length - adjustLength, stripWhitespace, SyntaxManager.m_keywordColour);
-                                            fileBuffer.setHighlight(newHighlight);
-                                            xPosition += m.Value.Length;
+                                            Match m2 = m_token.Match(line.Substring(xPosition - 1));
+
+                                            if (m2.Success && line[xPosition - 1] != ' ' && line[xPosition - 1] != '\t' )
+                                            {
+                                                startBoundary = false;
+                                            }
+                                        }
+
+                                        if (startBoundary)
+                                        {
+
+                                            // Not sure we need this
+                                            //string stripWhitespace = m.Value.Replace(" ", "");
+                                            //int adjustLength = m.Value.Length - stripWhitespace.Length;
+
+                                            //GroupCollection coll = m.Groups;
+
+                                            if (m_keywords.Contains(m.Value))
+                                            {
+                                                Highlight newHighlight = new Highlight(i, xPosition + m.Index, xPosition + m.Index + m.Value.Length, m.Value, SyntaxManager.m_keywordColour);
+                                                fileBuffer.setHighlight(newHighlight);
+                                                xPosition += m.Value.Length;
+                                            }
                                         }
                                     }
                                 }

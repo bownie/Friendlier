@@ -378,5 +378,14 @@ namespace Xyglo
                     return 0.0f;
             }
         }
+
+        /// <summary>
+        /// Get the aspect ratio
+        /// </summary>
+        /// <returns></returns>
+        public float getAspectRatio()
+        {
+            return m_aspectRatio;
+        }
     }
 }
