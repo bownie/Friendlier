@@ -84,7 +84,7 @@ namespace Xyglo
         /// <summary>
         /// BasicEffect for panner
         /// </summary>
-        BasicEffect m_pannerEffect;
+        //BasicEffect m_pannerEffect;
 
         /// <summary>
         /// Projection Matrix
@@ -119,6 +119,11 @@ namespace Xyglo
         /// A local Differ object
         /// </summary>
         protected Differ m_differ = null;
+
+        /// <summary>
+        /// Position we are in the diff
+        /// </summary>
+        protected int m_diffPosition = 0;
 
         /// <summary>
         /// Current project
@@ -1129,6 +1134,7 @@ namespace Xyglo
                 //DiffuseColor = Vector3.One
             };
 
+            /*
             m_pannerEffect = new BasicEffect(m_graphics.GraphicsDevice)
             {
                 TextureEnabled = true,
@@ -1138,6 +1144,8 @@ namespace Xyglo
             m_pannerEffect.View = Matrix.Identity;
             m_pannerEffect.Projection = Matrix.Identity;
             m_pannerEffect.World = Matrix.Identity;
+             * */
+
 
             // Create and initialize our effect
             m_lineEffect = new BasicEffect(m_graphics.GraphicsDevice);
@@ -1779,6 +1787,11 @@ namespace Xyglo
                         m_editConfigurationItem = false;
                         break;
 
+                    case FriendlierState.DiffPicker:
+                        m_state = FriendlierState.TextEditing;
+                        m_differ.clear();
+                        break;
+                        
                     case FriendlierState.FileOpen:
                     case FriendlierState.Information:
                     case FriendlierState.Configuration:
@@ -2021,6 +2034,13 @@ namespace Xyglo
                         m_configPosition--;
                     }
                 }
+                else if (m_state == FriendlierState.DiffPicker)
+                {
+                    if (m_diffPosition > 0)
+                    {
+                        m_diffPosition--;
+                    }
+                }
                 else
                 {
                     if (m_altDown && m_shiftDown) // Do zoom
@@ -2079,6 +2099,13 @@ namespace Xyglo
                     if (m_configPosition < m_modelBuilder.getLeafNodesPlaces() - 1)
                     {
                         m_configPosition++;
+                    }
+                }
+                else if (m_state == FriendlierState.DiffPicker)
+                {
+                    if (m_differ != null && m_diffPosition < m_differ.getMaxDiffLength())
+                    {
+                        m_diffPosition++;
                     }
                 }
                 else
@@ -2991,6 +3018,18 @@ namespace Xyglo
                 {
                     m_state = FriendlierState.DiffPicker;
                     setTemporaryMessage("Pick a BufferView to diff against", 5, gameTime);
+
+                    // Set up the differ
+                    //
+                    if (m_differ == null)
+                    {
+                        m_differ = new Differ();
+                    }
+                    else
+                    {
+                        m_differ.clear();
+                    }
+
                     rC = true;
                 }
                 else if (checkKeyState(Keys.M, gameTime))
@@ -3567,6 +3606,8 @@ namespace Xyglo
         /// <returns></returns>
         protected void doSearch(GameTime gameTime)
         {
+            m_state = FriendlierState.TextEditing;
+
             // Don't search for nothing
             //
             if (m_project.getSelectedBufferView().getSearchText() == "")
@@ -3574,12 +3615,28 @@ namespace Xyglo
                 return;
             }
 
-            if (!m_project.getSelectedBufferView().find())
+            // If we find something from cursor we're finished here
+            //
+            if (m_project.getSelectedBufferView().findFromCursor())
             {
-                setTemporaryMessage("[\"" + m_project.getSelectedBufferView().getSearchText() + "\" not found]", 3, gameTime);
+                return;
             }
 
-            m_state = FriendlierState.TextEditing;
+            // Now try to find from the top of the file
+            //
+            if (m_project.getSelectedBufferView().getCursorPosition().Y > 0)
+            {
+                // Try find from the top - if it finds something then let user know we've
+                // wrapped around.
+                //
+                if (m_project.getSelectedBufferView().find(new ScreenPosition(0, 0)))
+                {
+                    setTemporaryMessage("Search wrapped around end of file", 1.5f, gameTime);
+                    return;
+                }
+            }
+
+            setTemporaryMessage("\"" + m_project.getSelectedBufferView().getSearchText() + "\" not found", 3, gameTime);
         }
 
 
@@ -3997,7 +4054,9 @@ namespace Xyglo
             ScreenPosition fp = (ScreenPosition)testFind.Second.First;
             ScreenPosition screenRelativePosition = (ScreenPosition)testFind.Second.Second;
 
-            if (bv == null) // do nothing
+            // Check for validity of bv and position here
+            //
+            if (bv == null || fp.Y < 0 || fp.Y > bv.getFileBuffer().getLineCount()) // do nothing
                 return;
 
             if (bv.isTailing())
@@ -4051,11 +4110,6 @@ namespace Xyglo
                         setTemporaryMessage("No differences found.", 3, gameTime);
                     }
 #endif
-                    if (m_differ == null)
-                    {
-                        m_differ = new Differ();
-                    }
-
                     // Set the BufferViews
                     //
                     m_differ.setBufferViews(bv1, bv2);
@@ -4063,19 +4117,52 @@ namespace Xyglo
                     if (!m_differ.process())
                     {
                         setTemporaryMessage("No differences found.", 3, gameTime);
+
+                        // Set state back to default
+                        //
+                        m_state = FriendlierState.TextEditing;
                     }
                     else
                     {
                         setTemporaryMessage("Diff selected", 1.5f, gameTime);
-                    }
 
-                    // Set state back to default
-                    //
-                    m_state = FriendlierState.TextEditing;
+                        // Now set up the position of the diff previews and make sure we've
+                        // pregenerated the lines
+                        //
+                        Vector2 leftBox = Vector2.Zero;
+                        leftBox.X = (int)((m_graphics.GraphicsDevice.Viewport.Width / 2) - m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 20);
+                        leftBox.Y = (int)(m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * 3);
+
+                        Vector2 leftBoxEnd = leftBox;
+                        leftBoxEnd.X += (int)(m_project.getFontManager().getCharWidth() * 16);
+                        leftBoxEnd.Y += (int)(m_project.getFontManager().getLineSpacing() * 10);
+
+                        Vector2 rightBox = Vector2.Zero;
+                        rightBox.X = (int)((m_graphics.GraphicsDevice.Viewport.Width / 2) + m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 4);
+                        rightBox.Y = leftBox.Y;
+
+                        Vector2 rightBoxEnd = rightBox;
+                        rightBoxEnd.X += (int)(m_project.getFontManager().getCharWidth() * 16);
+                        rightBoxEnd.Y += (int)(m_project.getFontManager().getLineSpacing() * 10);
+
+                        // Now generate some previews and store these positions
+                        //
+                        m_differ.generateDiffPreviews(leftBox, leftBoxEnd, rightBox, rightBoxEnd);
+
+                        // Store the diff position as the left hand current cursor position - still need
+                        // to check that this is valid and correct when it is expanded into the 'real' diff
+                        // position.
+                        //
+                        m_diffPosition = m_differ.originalLhsFileToDiffPosition(m_project.getSelectedBufferView().getBufferShowStartY());
+                    }
                 }
                 else
                 {
                     setTemporaryMessage("Can't diff a BufferView with itself.", 3, gameTime);
+
+                    // Set state back to default
+                    //
+                    m_state = FriendlierState.TextEditing;
                 }
             }
         }
@@ -4589,7 +4676,16 @@ namespace Xyglo
                 //
                 for (int i = 0; i < m_project.getBufferViews().Count; i++)
                 {
-                    drawFileBuffer(m_project.getBufferViews()[i], gameTime);
+                    if (m_differ != null && m_differ.hasDiffs() &&
+                        (m_differ.getSourceBufferViewLhs() == m_project.getBufferViews()[i] ||
+                         m_differ.getSourceBufferViewRhs() == m_project.getBufferViews()[i]))
+                    {
+                        drawDiffBuffer(m_project.getBufferViews()[i], gameTime);
+                    }
+                    else
+                    {
+                        drawFileBuffer(m_project.getBufferViews()[i], gameTime);
+                    }
                 }
 
                 // Draw our generic views
@@ -4640,12 +4736,19 @@ namespace Xyglo
 
                     // Cursor and cursor highlight
                     //
-                    drawCursor(gameTime);
-                    drawHighlight(gameTime);
+                    if (m_state != FriendlierState.DiffPicker)
+                    {
+                        drawCursor(gameTime);
+                        drawHighlight(gameTime);
+                    }
 
                     // Draw any differ overlay
                     //
                     drawDiffer(gameTime);
+
+                    // Draw system load
+                    //
+                    drawSystemLoad(gameTime);
                 }
 
                 // Draw the textures for generic views
@@ -4956,7 +5059,7 @@ namespace Xyglo
                     break;
 
                 case FriendlierState.DiffPicker:
-                    modeString = "picking diff";
+                    modeString = "performing diff";
                     break;
 
                 default:
@@ -5004,10 +5107,6 @@ namespace Xyglo
                 m_spriteBatch.Draw(m_textScrollTexture, new Rectangle((int)((fileName.Length + 1) * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay)), (int)yPos, m_textScrollTexture.Width, m_textScrollTexture.Height), Color.White);
                 m_spriteBatch.End();
             }
-
-            // Draw system load
-            //
-            drawSystemLoad(gameTime);
         }
 
         /// <summary>
@@ -5016,11 +5115,11 @@ namespace Xyglo
         /// <param name="gameTime"></param>
         protected void drawSystemLoad(GameTime gameTime)
         {
-            Vector3 startPosition = m_project.getSelectedBufferView().getPosition();
+            Vector2 startPosition = Vector2.Zero;
             int linesHigh = 6;
 
-            startPosition.X = startPosition.X + m_project.getSelectedBufferView().getVisibleWidth() + m_project.getFontManager().getCharWidth() * 8;
-            startPosition.Y = startPosition.Y + (m_project.getSelectedBufferView().getVisibleHeight() / 2) - (m_project.getFontManager().getLineSpacing() * linesHigh / 2);
+            startPosition.X += m_graphics.GraphicsDevice.Viewport.Width - m_project.getFontManager().getCharWidth() * 8;
+            startPosition.Y += ( m_graphics.GraphicsDevice.Viewport.Height / 2 ) - m_project.getFontManager().getLineSpacing() * linesHigh / 2;
 
             float height = m_project.getFontManager().getLineSpacing() * linesHigh;
             float width = m_project.getFontManager().getCharWidth() / 2;
@@ -5028,10 +5127,6 @@ namespace Xyglo
             // Only fetch some new samples when this timespan has elapsed
             //
             TimeSpan mySpan = gameTime.TotalGameTime;
-
-            //Logger.logMsg("MYSPAN = " + mySpan.ToString());
-            //Logger.logMsg("LAST FETCH = " + m_lastSystemFetch.ToString());
-            //Logger.logMsg("DIFFERENCE = " + (mySpan - m_lastSystemFetch).ToString());
 
             if (mySpan - m_lastSystemFetch > m_systemFetchSpan)
             {
@@ -5060,16 +5155,18 @@ namespace Xyglo
 #endif
             }
 
+            m_pannerSpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone /*, m_pannerEffect */ );
 
             // Draw background for CPU counter
             //
-            Vector3 p1 = startPosition;
-            Vector3 p2 = startPosition;
+            Vector2 p1 = startPosition;
+            Vector2 p2 = startPosition;
 
             p1.Y += height;
             p1.X += 1;
 
-            renderQuad(p1, p2, Color.DarkGray);
+            //renderQuad(p1, p2, Color.DarkGray, m_pannerSpriteBatch);
+            drawBox(p1, p2, Color.DarkGray, 0.8f);
 
             // Draw CPU load over the top
             //
@@ -5080,7 +5177,8 @@ namespace Xyglo
             p2.Y += height - (m_systemLoad * height / 100.0f);
             p1.X += 1;
 
-            renderQuad(p1, p2, Color.DarkGreen);
+            drawBox(p1, p2, Color.DarkGreen, 0.8f);
+            //renderQuad(p1, p2, Color.DarkGreen, m_pannerSpriteBatch);
 
             // Draw background for Memory counter
             //
@@ -5091,7 +5189,8 @@ namespace Xyglo
             p1.Y += height;
             p1.X += 1;
 
-            renderQuad(p1, p2, Color.DarkGray);
+            drawBox(p1, p2, Color.DarkGray, 0.8f);
+            //renderQuad(p1, p2, Color.DarkGray, m_pannerSpriteBatch);
 
             // Draw Memory over the top
             //
@@ -5102,7 +5201,10 @@ namespace Xyglo
             p2.Y += height - (height * m_memoryAvailable / m_physicalMemory);
             p1.X += 1;
 
-            renderQuad(p1, p2, Color.DarkOrange);
+            drawBox(p1, p2, Color.DarkOrange, 0.8f);
+            //renderQuad(p1, p2, Color.DarkOrange, m_pannerSpriteBatch);
+
+            m_pannerSpriteBatch.End();
         }
 
         /// <summary>
@@ -5114,36 +5216,75 @@ namespace Xyglo
             // Don't draw the cursor if we're not the active window or if we're confirming 
             // something on the screen.
             //
-            if (m_differ == null || !this.IsActive || m_confirmState != ConfirmState.None || m_state == FriendlierState.FindText)
+            if (m_differ == null || !this.IsActive || m_state != FriendlierState.DiffPicker || m_differ.hasDiffs() ==false)
             {
                 return;
             }
 
-            
-            // Blinks rate
+            // Start spritebatch
             //
-            Vector2 v1 = Vector2.Zero;
-            v1.X = m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 5;
-            v1.Y = m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * 3;
-
-            Vector2 v2 = v1;
-            v2.X += m_project.getFontManager().getCharWidth() * 20;
-            v2.Y += m_project.getFontManager().getLineSpacing();
-
-            v1.X = 0.0f;
-            v1.Y = 0.0f;
-            v2.X = 0.1f;
-            v2.Y = 0.1f;
-
-            m_pannerSpriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_pannerEffect);
+            m_pannerSpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone /*, m_pannerEffect */ );
 
             //renderQuad(v1, v2, Color.White, m_pannerSpriteBatch);
-            m_pannerSpriteBatch.Draw(m_flatTexture, new Rectangle((int)v1.X, (int)v1.Y, 1, 1), Color.White); 
-            //renderQuad(v1, v2, m_project.getSelectedBufferView().getHighlightColor(), false);
-            //m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), fileName, new Vector2(0.0f, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
-            //renderQuad(h1, h2, h.m_colour);
+            //m_pannerSpriteBatch.Draw(m_flatTexture, new Rectangle((int)v1.X, (int)v1.Y, 1, 100), Color.White);
+
+            Color myColour = Color.White;
+
+            drawBox(m_differ.getLeftBox(), m_differ.getLeftBoxEnd(), myColour, 0.75f);
+            drawBox(m_differ.getRightBox(), m_differ.getRightBoxEnd(), myColour, 0.75f);
+
+            foreach(DiffPreview dp in m_differ.getLhsDiffPreview())
+            {
+                drawLine(dp.m_startPos, dp.m_endPos, dp.m_colour, 0.75f);
+            }
+
+            foreach(DiffPreview dp in m_differ.getRhsDiffPreview())
+            {
+                drawLine(dp.m_startPos, dp.m_endPos, dp.m_colour, 0.75f);
+            }
 
             m_pannerSpriteBatch.End();
+        }
+
+        /// <summary>
+        /// Draw line wrapper - accepts floats and we don't force these to int so watch
+        /// your inputs please.
+        /// </summary>
+        /// <param name="topLeft"></param>
+        /// <param name="bottomRight"></param>
+        /// <param name="colour"></param>
+        /// <param name="width"></param>
+        protected void drawLine(Vector2 topLeft, Vector2 bottomRight, Color colour, float alpha = 1.0f, int width = 1)
+        {
+            float angle = (float)Math.Atan2(bottomRight.Y - topLeft.Y, bottomRight.X - topLeft.X);
+            float length = Vector2.Distance(topLeft, bottomRight);
+
+            //m_pannerSpriteBatch.Draw(m_flatTexture, new Rectangle((int)topLeft.X, (int)topLeft.Y, (int)(bottomRight.X - topLeft.X), (int)(bottomRight.Y - topLeft.Y)), colour);
+            
+            m_pannerSpriteBatch.Draw(m_flatTexture, topLeft, null, colour * alpha,
+              angle, Vector2.Zero, new Vector2(length, width),
+              SpriteEffects.None, 0);
+        }
+
+        /// <summary>
+        /// Draw a box for us - accepts floats and we don't force these to int so watch
+        /// your inputs please.
+        /// </summary>
+        /// <param name="topLeft"></param>
+        /// <param name="bottomRight"></param>
+        /// <param name="colour"></param>
+        /// <param name="width"></param>
+        protected void drawBox(Vector2 topLeft, Vector2 bottomRight, Color colour, float alpha = 1.0f, int width = 1)
+        {
+            Vector2 xDiff = bottomRight - topLeft;
+            Vector2 yDiff = xDiff;
+            xDiff.Y = 0;
+            yDiff.X = 0;
+
+            drawLine(topLeft, topLeft + xDiff, colour, alpha, width);
+            drawLine(topLeft + xDiff, bottomRight, colour, alpha, width);
+            drawLine(bottomRight, topLeft + yDiff, colour, alpha, width);
+            drawLine(topLeft + yDiff, topLeft, colour, alpha, width);
         }
 
         /// <summary>
@@ -5416,6 +5557,130 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// How to draw a diff'd BufferView on the screen - we key on m_diffPosition rather
+        /// than using the cursor.  Always start from the translated lhs window position.
+        /// </summary>
+        /// <param name="view"></param>
+        /// <param name="gameTime"></param>
+        protected void drawDiffBuffer(BufferView view, GameTime gameTime)
+        {
+            // Only process for diff views
+            //
+            if (view != m_differ.getSourceBufferViewLhs() && view != m_differ.getSourceBufferViewRhs())
+            {
+                return;
+            }
+
+            int sourceLine = m_diffPosition;
+            string line = "";
+            Color colour = Color.White;
+            Vector3 viewSpaceTextPosition = view.getPosition();
+            float yPosition = 0;
+            List<Pair<DiffResult, int>> diffList;
+
+            // Get the diffList generated in the Differ object - this holds all the expanded
+            // diff information which we'll need to adjust for (on the right hand side) if we're
+            // to generate a meaningful side by side diff whilst we scroll through it.
+            //
+            if (view == m_differ.getSourceBufferViewLhs())
+            {
+                diffList = m_differ.getLhsDiff();
+            }
+            else
+            {
+                diffList = m_differ.getRhsDiff();
+            }
+
+
+            // Need to adjust the sourceLine by the number of padding lines in the diffList up to this
+            // point - otherwise we lost alignment as we scroll through the document.
+            //
+            for (int j = 0; j < m_diffPosition; j++)
+            {
+                if (j < diffList.Count)
+                {
+                    if (diffList[j].First == DiffResult.Padding)
+                    {
+                        sourceLine--;
+                    }
+                }
+            }
+
+            // Now iterate down the view and pull in the lines as required
+            //
+            for(int i = 0; i < view.getBufferShowLength(); i++)
+            {
+                if ((i + m_diffPosition) < diffList.Count)
+                {
+                    switch (diffList[i + m_diffPosition].First)
+                    {
+                        case DiffResult.Unchanged:
+                            colour = m_differ.m_unchangedColour;
+
+                            if (sourceLine < view.getFileBuffer().getLineCount())
+                            {
+                                line = view.getFileBuffer().getLine(sourceLine++);
+                            }
+                            // print line
+                            break;
+
+                        case DiffResult.Deleted:
+                            // print deleted line (colour change?)
+                            colour = m_differ.m_deletedColour;
+
+                            if (sourceLine < view.getFileBuffer().getLineCount())
+                            {
+                                line = view.getFileBuffer().getLine(sourceLine++);
+                            }
+                            break;
+
+                        case DiffResult.Inserted:
+                            // print inserted line (colour)
+                            colour = m_differ.m_insertedColour;
+
+                            if (sourceLine < view.getFileBuffer().getLineCount())
+                            {
+                                line = view.getFileBuffer().getLine(sourceLine++);
+                            }
+                            break;
+
+                        case DiffResult.Padding:
+                        default:
+                            colour = m_differ.m_paddingColour;
+                            line = "";
+                            // add a padding line
+                            break;
+                    }
+                        
+                }
+                else
+                {
+                    // Do something to handle blank lines beyond end of list
+                    //
+                    colour = m_differ.m_paddingColour;
+                    line = "";
+                }
+
+               
+                m_spriteBatch.DrawString(
+                                m_project.getFontManager().getFont(),
+                                line,
+                                new Vector2((int)viewSpaceTextPosition.X /* + m_project.getFontManager().getCharWidth() * xPos */, (int)(viewSpaceTextPosition.Y + yPosition)),
+                                colour,
+                                0,
+                                Vector2.Zero,
+                                m_project.getFontManager().getTextScale(),
+                                0,
+                                0);
+
+                //sourceLine++;
+
+                yPosition += m_project.getFontManager().getLineSpacing();
+
+            }
+        }
+
+        /// <summary>
         /// Draw a BufferView in any state that we wish to - this means showing the lines of the
         /// file/buffer we want to see at the current cursor position with highlighting as required.
         /// </summary>
@@ -5475,7 +5740,7 @@ namespace Xyglo
                 }
             }
 
-            // We do tailiing and read only files here
+            // We do tailing and read only files here
             //
             if (view.isTailing() && view.isReadOnly())
             {
@@ -6584,7 +6849,7 @@ namespace Xyglo
             int xPosition = 0;
             int yPosition = 0;
 
-            bool isText = true;
+            bool isText = false;
 
             m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
 
@@ -6608,6 +6873,7 @@ namespace Xyglo
                     m_bannerStartTime = -1;
                     return;
                 }
+
 
                 //float scale = diff.Ticks;
                 // Draw to the render target

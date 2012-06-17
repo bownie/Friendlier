@@ -17,6 +17,8 @@ BUILD and USABILITY FEATURES TODO and BUGS
 ----
 
 - Visual Diff mechanism [REDESIGNING]
+- click on diff preview to position in file
+- change bufferviews?
 - GOTO line implementation
 - Paging on File Management
 - Elegant long line Config 
@@ -32,6 +34,7 @@ To Check
 
 MORE FEATURES
 -------------
+- search preview
 - zap to definition of method/class/#define
 - resizing window [IN PROGRESS - DECIDED TO DISABLE]
 - cluster control/command (undoable)
@@ -45,8 +48,6 @@ MORE FEATURES
 - brace matching
 - remember last directory indent
 - Depth buffer for kinect improved
-- improve search
-
 
 - Licence file [STARTED]
 
@@ -73,6 +74,10 @@ http://autobuildversion.codeplex.com/
 
 ALPHA 2 DONE
 ------------
+- Move the VU meters to the HUD [DONE]
+- Hud cursor position
+- Mouse click (think that will be 1.1) [DONE]
+- improve search - wrap [DONE]
 - indenting [DONE SOMEWHAT]
 - Moving between BufferViews with Alt Cursor keys [BETTER - using BoundingBox]
 - double click on normal canvas to highlight [DONE]
@@ -207,12 +212,10 @@ Refactoring
 For Later
 ---------
 - File browsing - new view
-- Hud cursor position
 - Hud panner overview?
 - Hud Unsaved status better?
 - Hud file system positions?
 - Command line interface
-- Mouse click (think that will be 1.1)
 - Basic interpreter
 
 

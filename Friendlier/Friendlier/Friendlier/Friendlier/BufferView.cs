@@ -143,9 +143,14 @@ namespace Xyglo
         protected string m_searchText = "";
 
         /// <summary>
-        /// Get my search locations in the BufferView
+        /// Has the search text changed?  We need to know this 
         /// </summary>
-        protected List<int> m_searchLocations = new List<int>();
+        protected bool m_searchTextModified = false;
+
+        /// <summary>
+        /// Store where the last search started from
+        /// </summary>
+        protected ScreenPosition m_searchStartPoint;
 
         /////// CONSTRUCTORS /////////
 
@@ -1755,31 +1760,83 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Rturn the locations at which we've found stuffe
+        /// Return a list of all the found matches
         /// </summary>
         /// <returns></returns>
-        public List<int> getFindLocations()
+        public List<ScreenPosition> findAll()
         {
-            return m_searchLocations;
+            // Return list
+            //
+            List<ScreenPosition> rL = new List<ScreenPosition>();
+
+            // Start at the top
+            //
+            ScreenPosition searchPos = new ScreenPosition(0, 0);
+
+            if (m_fileBuffer.getLineCount() == 0)
+            {
+                return rL;
+            }
+
+            while (searchPos.Y < m_fileBuffer.getLineCount())
+            {
+                int xPos = 0;
+                
+                string line = m_fileBuffer.getLine(searchPos.Y);
+
+                while(xPos != -1 && xPos < line.Length)
+                {
+                    int findPos = line.Substring(xPos).IndexOf(m_searchText);
+
+                    if (findPos != -1)
+                    {
+                        // Store location and search again from the ne
+                        rL.Add(new ScreenPosition(findPos + xPos, searchPos.Y));
+                        xPos = findPos + m_searchText.Length;
+                    }
+                    else
+                    {
+                        xPos = findPos;
+                    }
+                }
+
+                searchPos.Y++;
+            }
+
+            return rL;
         }
 
         /// <summary>
-        /// Update the locations of the search string so we can provide our preview
+        /// Get the position that we started this search at
         /// </summary>
-        /// <param name="text"></param>
-        protected void updateFindLocations(string text)
+        /// <returns></returns>
+        public ScreenPosition getSearchStartPoint()
         {
-            m_searchLocations.Clear();
+            return m_searchStartPoint;
+        }
+
+        /// <summary>
+        /// Find from the current cursor position
+        /// </summary>
+        /// <returns></returns>
+        public bool findFromCursor()
+        {
+            return find(m_cursorPosition);
         }
 
         /// <summary>
         /// Find the m_searchText and move the cursor and highlight it
         /// </summary>
         /// <param name="text"></param>
-        public bool find()
+        public bool find(ScreenPosition searchPos)
         {
-            ScreenPosition searchPos = m_cursorPosition;
             bool searching = true;
+
+            if (m_searchTextModified)
+            {
+                m_searchTextModified = false;
+                m_searchStartPoint = m_cursorPosition;
+            }
 
             if (m_fileBuffer.getLineCount() == 0)
             {
@@ -1861,6 +1918,7 @@ namespace Xyglo
         public void setSearchText(string text)
         {
             m_searchText = text;
+            m_searchTextModified = true;
         }
         
         /// <summary>
@@ -1871,6 +1929,7 @@ namespace Xyglo
         public void appendToSearchText(string text)
         {
             m_searchText += text;
+            m_searchTextModified = true;
         }
 
 

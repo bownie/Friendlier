@@ -93,6 +93,10 @@ namespace Xyglo
                 //
                 project.setLicenced(checkValidity);
 
+                // Force mode to formal
+                //
+                project.setViewMode(Project.ViewMode.Formal);
+
                 Friendlier friendlier = new Friendlier(project);
                 friendlier.Run();
 #if OUTER_EXCEPTION_HANDLING

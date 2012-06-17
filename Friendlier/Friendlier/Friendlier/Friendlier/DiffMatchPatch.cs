@@ -452,8 +452,7 @@ namespace DiffMatchPatch {
     /// <param name="text1"></param>
     /// <param name="text2"></param>
     /// <returns></returns>
-    /*
-    public List<Diff> diff_lineMode(string text1, string text2)
+    public List<Diff> diff_publicLineMode(string text1, string text2)
     {
         var dmp = new diff_match_patch();
         var a = dmp.diff_linesToChars(text1, text2);
@@ -464,10 +463,8 @@ namespace DiffMatchPatch {
         List<Diff> diffs = dmp.diff_main(lineText1, lineText2, false);
 
         dmp.diff_charsToLines(diffs, lineArray);
-        dmp.diff_cleanupSemantic(diffs);
         return diffs;
     }
-     * */
 
     public List<Diff> diff_lineMode(string text1, string text2)
     {
