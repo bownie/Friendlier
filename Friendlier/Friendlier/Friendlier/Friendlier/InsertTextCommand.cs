@@ -31,11 +31,18 @@ namespace Xyglo
 
             if (text != null && text.Split(m_splitCharacter).Count() > 1)
             {
-                // Populate snippet with multiple lines
+                // Append final line break to ensure the split works
+                //
+                if (text[text.Length - 1] != '\n')
+                {
+                    text += "\n";
+                }
+
+                // Populate snippet with multiple lines - make sure we strip out \r as well
                 //
                 for (int i = 0; i < text.Split(m_splitCharacter).Count(); i++)
                 {
-                    m_snippet.m_lines.Add(text.Split(m_splitCharacter)[i]);
+                    m_snippet.m_lines.Add(text.Split(m_splitCharacter)[i].Replace("\r", ""));
                 }
             }
             else

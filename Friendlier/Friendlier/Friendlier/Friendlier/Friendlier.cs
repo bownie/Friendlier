@@ -4250,10 +4250,22 @@ namespace Xyglo
                 BufferView bv = (BufferView)testFind.First;
                 ScreenPosition fp = (ScreenPosition)testFind.Second.First;
 
-                if (bv.testCursorPosition(fp))
+                if (m_state == FriendlierState.DiffPicker)
                 {
-                    setActiveBuffer(bv);
-                    bv.mouseCursorTo(m_shiftDown, fp);
+                    ScreenPosition newSP = bv.testCursorPosition(fp);
+
+                    // Do something with it
+                    //
+                }
+                else
+                {
+                    ScreenPosition sp = bv.testCursorPosition(fp);
+
+                    if (sp.X != -1 && sp.Y != -1 )
+                    {
+                        setActiveBuffer(bv);
+                        bv.mouseCursorTo(m_shiftDown, fp);
+                    }
                 }
             }
         }
@@ -4332,8 +4344,9 @@ namespace Xyglo
         protected void handleTailingDoubleClick(BufferView bv, ScreenPosition fp, ScreenPosition screenRelativePosition)
         {
             Logger.logMsg("Friendlier::handleTailingDoubleClick()");
+            ScreenPosition testSp = bv.testCursorPosition(fp);
 
-            if (!bv.testCursorPosition(fp))
+            if (testSp.X == -1 && testSp.Y == -1)
             {
                 Logger.logMsg("Friendlier::handleTailingDoubleClick() - failed in testCursorPosition");
             }
@@ -4566,7 +4579,18 @@ namespace Xyglo
 
                         if (m_state == FriendlierState.DiffPicker)
                         {
-                            handleDiffPick(gameTime);
+                            if (m_differ != null && m_differ.hasDiffs())
+                            {
+                                // We have a diff pick - let's do something to the view
+                                //
+                                handleSingleClick(gameTime);
+                            }
+                            else
+                            {
+                                // Generate a diff pick
+                                //
+                                handleDiffPick(gameTime);
+                            }
                         }
                         else
                         {

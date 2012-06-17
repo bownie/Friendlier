@@ -774,22 +774,30 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Is a given FilePosition valid in this BufferView?  i.e. is there any text there?
+        /// Is a given FilePosition valid in this BufferView - if the line is valid and the
+        /// x position is invalid then just return the last valid position.
         /// </summary>
         /// <param name="fp"></param>
-        public bool testCursorPosition(ScreenPosition fp)
+        public ScreenPosition testCursorPosition(ScreenPosition fp)
         {
+            ScreenPosition rp = fp;
+
             if (fp.Y >= 0 && fp.Y < m_fileBuffer.getLineCount())
             {
                 string line = m_fileBuffer.getLine(fp.Y);
 
-                if (fp.X <= line.Length)
+                if (line.Length > fp.X)
                 {
-                    return true;
+                    rp.X = line.Length;
                 }
             }
+            else
+            {
+                rp.X = -1;
+                rp.Y = -1;
+            }
 
-            return false;
+            return fp;
         }
         /// <summary>
         /// Set the cursor position in this view

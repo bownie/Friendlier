@@ -16,7 +16,7 @@ USE CASES
 BUILD and USABILITY FEATURES TODO and BUGS
 ----
 
-- Visual Diff mechanism [REDESIGNING]
+- Fix windows line endings?  Handle both?
 - click on diff preview to position in file
 - change bufferviews?
 - GOTO line implementation
@@ -74,6 +74,7 @@ http://autobuildversion.codeplex.com/
 
 ALPHA 2 DONE
 ------------
+- Visual Diff mechanism [DONE]
 - Move the VU meters to the HUD [DONE]
 - Hud cursor position
 - Mouse click (think that will be 1.1) [DONE]
