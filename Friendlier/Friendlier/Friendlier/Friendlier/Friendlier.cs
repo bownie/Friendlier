@@ -1737,7 +1737,13 @@ namespace Xyglo
             {
                 m_zoomLevel = 500.0f;
             }
-            setActiveBuffer();
+
+            Vector3 eyePos = m_eye;
+            eyePos.Z = m_zoomLevel;
+            flyToPosition(eyePos);
+
+            // Don't always centre on a BufferView as we don't always want this
+            //setActiveBuffer();
         }
 
         /// <summary>
@@ -1789,6 +1795,26 @@ namespace Xyglo
 
                     case FriendlierState.DiffPicker:
                         m_state = FriendlierState.TextEditing;
+
+                        // Before we clear the differ we want to translate the current viewed differ
+                        // position back to the Bufferviews we originally generated them from.
+                        BufferView bv1 = m_differ.getSourceBufferViewLhs();
+                        BufferView bv2 = m_differ.getSourceBufferViewRhs();
+
+                        bv1.setBufferShowStartY(m_differ.diffPositionLhsToOriginalPosition(m_diffPosition));
+                        bv2.setBufferShowStartY(m_differ.diffPositionRhsToOriginalPosition(m_diffPosition));
+
+                        ScreenPosition sp1 = new ScreenPosition();
+                        ScreenPosition sp2 = new ScreenPosition();
+
+                        sp1.X = 0;
+                        sp1.Y = m_differ.diffPositionLhsToOriginalPosition(m_diffPosition);
+
+                        sp2.X = 0;
+                        sp2.Y = m_differ.diffPositionRhsToOriginalPosition(m_diffPosition);
+                        bv1.setCursorPosition(sp1);
+                        bv2.setCursorPosition(sp2);
+
                         m_differ.clear();
                         break;
                         
@@ -2350,6 +2376,18 @@ namespace Xyglo
                         m_project.getSelectedBufferView().noHighlight(); // Disable
                     }
                 }
+                else if (m_state == FriendlierState.DiffPicker)
+                {
+                    if (m_differ != null && m_diffPosition < m_differ.getMaxDiffLength())
+                    {
+                        m_diffPosition += m_project.getSelectedBufferView().getBufferShowLength();
+
+                        if (m_diffPosition >= m_differ.getMaxDiffLength())
+                        {
+                            m_diffPosition = m_differ.getMaxDiffLength() - 1;
+                        }
+                    }
+                }
             }
             else if (checkKeyState(Keys.PageUp, gameTime))
             {
@@ -2364,6 +2402,18 @@ namespace Xyglo
                     else
                     {
                         m_project.getSelectedBufferView().noHighlight(); // Disable
+                    }
+                }
+                else if (m_state == FriendlierState.DiffPicker)
+                {
+                    if (m_diffPosition > 0)
+                    {
+                        m_diffPosition -= m_project.getSelectedBufferView().getBufferShowLength();
+
+                        if (m_diffPosition < 0)
+                        {
+                            m_diffPosition = 0;
+                        }
                     }
                 }
             }
@@ -4087,9 +4137,20 @@ namespace Xyglo
 
                 if (bv1 != bv2)
                 {
-                    // Just set the views we're comparing and the drawOverlay type
-                    // code should do the rest?  Once we've calculated the diffs of
-                    // course.
+                    // Just set the views we're comparing and generate a diff.
+                    // This is then drawn later on in this file.
+                    //
+
+                    // If the x positions are the wrong way around then convert them
+                    //
+                    if (bv1.getEyePosition().X > bv2.getEyePosition().X)
+                    {
+                        BufferView swap = bv1;
+                        bv1 = bv2;
+                        bv2 = swap;
+                    }
+
+                    // Set the two sides of the diff
                     //
                     m_project.setLHSDiff(bv1);
                     m_project.setRHSDiff(bv2);
@@ -4154,6 +4215,13 @@ namespace Xyglo
                         // position.
                         //
                         m_diffPosition = m_differ.originalLhsFileToDiffPosition(m_project.getSelectedBufferView().getBufferShowStartY());
+
+                        // Now we want to fly to the mid position between the two views - we have to assume they are
+                        // next to each other for this to make sense.
+                        //
+                        Vector3 look1 = (bv1.getEyePosition() + bv2.getEyePosition()) / 2;
+                        look1.Z = bv1.getEyePosition().Z * 1.8f;
+                        flyToPosition(look1);
                     }
                 }
                 else

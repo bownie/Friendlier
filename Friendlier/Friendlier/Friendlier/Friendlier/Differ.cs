@@ -258,6 +258,47 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Get Bufferview file position from diff position for LHS
+        /// </summary>
+        /// <param name="position"></param>
+        /// <returns></returns>
+        public int diffPositionLhsToOriginalPosition(int position)
+        {
+            int rV = position;
+
+            for (int i = 0; i < position; i++)
+            {
+                if (m_lhsDiff[i].First == DiffResult.Padding)
+                {
+                    rV--;
+                }
+            }
+
+            return rV;
+        }
+
+        /// <summary>
+        /// Get Bufferview file position from diff position for RHS
+        /// </summary>
+        /// <param name="position"></param>
+        /// <returns></returns>
+        public int diffPositionRhsToOriginalPosition(int position)
+        {
+            int rV = position;
+
+            for (int i = 0; i < position; i++)
+            {
+                if (m_rhsDiff[i].First == DiffResult.Padding)
+                {
+                    rV--;
+                }
+            }
+
+            return rV;
+        }
+
+
+        /// <summary>
         /// The maximum diff length
         /// </summary>
         /// <returns></returns>
@@ -378,7 +419,7 @@ namespace Xyglo
             //Logger.logMsg("LINE HEIGHT = " + lineHeight);
             //Logger.logMsg("CHAR WIDTH  = " + charWidth);
 
-            Logger.logMsg("Generating the left hand side diff preview");
+            Logger.logMsg("Differ::generateDiffPreviews() - generating the left hand side diff preview");
 
             // Populate the preview lists
             //
@@ -415,8 +456,7 @@ namespace Xyglo
                 m_lhsDiffPreview.Add(preview);
             }
 
-            Logger.logMsg("Generating the right hand side diff preview");
-
+            Logger.logMsg("generateDiffPreviews() - generating the right hand side diff preview");
             for (int i = 0; i < m_rhsDiff.Count(); i++)
             {
                 Color lineColour;
@@ -546,6 +586,13 @@ namespace Xyglo
                             for (int i = linesAffected; i < lastDeleteLines; i++)
                             {
                                 m_rhsDiff.Add(new Pair<DiffResult, int>(DiffResult.Padding, 0));
+                            }
+                        }
+                        else if (lastDeleteLines > 0 && lastDeleteLines < linesAffected)
+                        {
+                            for (int i = lastDeleteLines; i < linesAffected; i++)
+                            {
+                                m_lhsDiff.Add(new Pair<DiffResult, int>(DiffResult.Padding, 0));
                             }
                         }
 
