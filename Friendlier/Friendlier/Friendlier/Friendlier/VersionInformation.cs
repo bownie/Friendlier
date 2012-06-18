@@ -25,7 +25,7 @@ namespace Xyglo
         /// <summary>
         /// Version of this software
         /// </summary>
-        static private string m_version = "1.0.0 Alpha 2b";
+        static private string m_version = "1.0.0 Beta";
 
         /// <summary>
         /// Email to report bugs at
@@ -40,7 +40,7 @@ namespace Xyglo
         /// <summary>
         /// Define a drop dead date for this piece of software if unlicenced
         /// </summary>
-        static private DateTime m_dropDead = new DateTime(2012, 7, 1);
+        static private DateTime m_dropDead = new DateTime(2012, 7, 15);
 
         /// <summary>
         /// Current version

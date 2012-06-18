@@ -623,6 +623,21 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Get the last command executed on this FileBuffer - m_undoPosition points to the next available
+        /// undo place so make sure we return the previous command.
+        /// </summary>
+        /// <returns></returns>
+        public Command getLastCommand()
+        {
+            if (m_commands != null && m_undoPosition > 0 && m_undoPosition <= m_commands.Count)
+            {
+                return m_commands[m_undoPosition - 1];
+            }
+
+            return null;
+        }
+
+        /// <summary>
         /// If we have done a new command and the undo stack extends above the current undo position then remove
         /// everything on the undo stack above current position and push new command on at that level.
         /// </summary>
@@ -649,6 +664,17 @@ namespace Xyglo
 #endif
 
         }
+
+        /// <summary>
+        /// Remove a range from the highlighting
+        /// </summary>
+        /// <param name="startLine"></param>
+        /// <param name="endLine"></param>
+        public void removeHighlightingRange(int startLine, int endLine)
+        {
+            m_highlightSortedList.Where(item => item.Key.Y >= startLine && item.Key.Y <= endLine);
+        }
+
 
         /// <summary>
         /// Deletes a selection from a FileBuffer - returns true if it actually deleted something.

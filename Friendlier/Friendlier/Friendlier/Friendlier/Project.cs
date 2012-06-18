@@ -396,18 +396,46 @@ namespace Xyglo
             {
                 m_configuration = new List<Configuration>();
 
-                // And for the moment populate from here
-                //
-                addConfigurationItem("BUILDCOMMAND", @"C:\QtSDK\mingw\bin\mingw32-make.exe -f D:\garderobe-build-desktop\Makefile");
-                addConfigurationItem("BUILDDIRECTORY", @"D:\garderobe-build-desktop");
+            }
 
-                string stdOutLog = getUserDataPath() + "stdout.log";
-                string stdErrLog = getUserDataPath() + "stderr.log";
+            // And for the moment populate from here
+            //
+            if (addCheckConfigurationItem("BUILDCOMMAND", @"C:\QtSDK\mingw\bin\mingw32-make.exe -f D:\garderobe-build-desktop\Makefile"))
+            {
+                Logger.logMsg("Project::buildInitialConfiguration - added BUILDCOMMAND config");
+            }
 
-                addConfigurationItem("BUILDSTDOUTLOG", stdOutLog);
-                addConfigurationItem("BUILDSTDERRLOG", stdErrLog);
+            if (addCheckConfigurationItem("BUILDDIRECTORY", @"D:\garderobe-build-desktop"))
+            {
+                Logger.logMsg("Project::buildInitialConfiguration - added BUILDIRECTORY config");
+            }
 
-                addConfigurationItem("AUTOINDENT", "TRUE");
+            string stdOutLog = getUserDataPath() + "stdout.log";
+            string stdErrLog = getUserDataPath() + "stderr.log";
+
+            if (addCheckConfigurationItem("BUILDSTDOUTLOG", stdOutLog))
+            {
+                Logger.logMsg("Project::buildInitialConfiguration - added BUILDSTDOUTLOG config");
+            }
+
+            if (addCheckConfigurationItem("BUILDSTDERRLOG", stdErrLog))
+            {
+                Logger.logMsg("Project::buildInitialConfiguration - added BUILDSTDERRLOG config");
+            }
+
+            if (addCheckConfigurationItem("AUTOINDENT", "TRUE"))
+            {
+                Logger.logMsg("Project::buildInitialConfiguration - added AUTOINDENT config");
+            }
+
+            if (addCheckConfigurationItem("DIFFCENTRE", "FALSE"))
+            {
+                Logger.logMsg("Project::buildInitialConfiguration - added DIFFCENTRE config");
+            }
+
+            if (addCheckConfigurationItem("CONFIRMQUIT", "TRUE"))
+            {
+                Logger.logMsg("Project::buildInitialConfiguration - added DIFFCENTRE config");
             }
 
             // Initialise m_views if we've persisted none (more than likely)
@@ -439,6 +467,26 @@ namespace Xyglo
             m_configuration.Add(new Configuration(item, value));
             return true;
         }
+
+        /// <summary>
+        /// Add an item if it doesn't already exist
+        /// </summary>
+        /// <param name="item"></param>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        protected bool addCheckConfigurationItem(string item, string value)
+        {
+            if(m_configuration.Exists(val => val.Name == item))
+            {
+                return false;
+            }
+
+            // Add the item and return
+            //
+            m_configuration.Add(new Configuration(item, value));
+            return true;
+        }
+
 
         /// <summary>
         /// Remove a configuration item
@@ -1044,7 +1092,7 @@ namespace Xyglo
                 if (!bv.isTailing())
                 {
                     Logger.logMsg("Project::loadFiles() - generating highlighting for " + bv.getFileBuffer().getFilepath(), true);
-                    m_syntaxManager.updateHighlighting(bv.getFileBuffer());
+                    m_syntaxManager.generateHighlighting(bv.getFileBuffer());
                 }
 
             }

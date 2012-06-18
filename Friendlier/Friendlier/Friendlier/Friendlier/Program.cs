@@ -6,9 +6,13 @@
 //-----------------------------------------------------------------------------
 #endregion
 
+
+//#define OUTER_EXCEPTION_HANDLING
+
 using System;
 using System.IO;
 using System.Windows.Forms;
+
 
 namespace Xyglo
 {

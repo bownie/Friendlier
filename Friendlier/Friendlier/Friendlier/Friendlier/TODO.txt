@@ -8,6 +8,8 @@ USE CASES
   - Use Qt lrelease to generate QM files
   - build and zap to error line
   - diff file versions
+  - edit files successfully
+  - write code
 
 - The writer - writing a book, researching
 - The journalist - writing a story, researching
@@ -16,12 +18,19 @@ USE CASES
 BUILD and USABILITY FEATURES TODO and BUGS
 ----
 
-- Fix windows line endings?  Handle both?
-- click on diff preview to position in file
-- change bufferviews?
-- GOTO line implementation
-- Paging on File Management
-- Elegant long line Config 
+- 30 day limited trial/registry keys
+- auto update check from web
+- syntax highlighting slow
+- icon/logo
+
+- Paging on File Management [NOT VITAL]
+- click on diff preview to position in file [NOT VITAL BUT NICE]
+
+- change bufferviews? [NOT VITAL]
+- Elegant long line Config [NOT VITAL]
+
+- GOTO line implementation [DONE]
+- Fix windows line endings?  Handle both? [DONEish]
 
 
 To Check

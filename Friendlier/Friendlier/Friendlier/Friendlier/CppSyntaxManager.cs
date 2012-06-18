@@ -89,13 +89,13 @@ namespace Xyglo
         /// Generate highlighting for every FileBuffer for example whenever we load a project - we might want
         /// to think about persisting the highlighting and restoring it if it's onerous to work this out..
         /// </summary>
-        public override void generateHighlighting()
+        public override void generateAllHighlighting()
         {
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - starting");
 
             foreach (FileBuffer fb in m_project.getFileBuffers())
             {
-                updateHighlighting(fb /*, 0*/);
+                generateHighlighting(fb /*, 0*/);
             }
 
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - completed.");
@@ -129,12 +129,59 @@ namespace Xyglo
             return -1;
         }
 
-        /// <summary>
-        /// Regenerate the highlightList by parsing the entire file
-        /// </summary>
-        public override void updateHighlighting(FileBuffer fileBuffer , int toLine = -1)
+
+        public override void updateHighlighting(FileBuffer fileBuffer, int line)
         {
+            // Examine the last command and modify the highlighting accordingly
+            //
+            Command command = fileBuffer.getLastCommand();
+
+            if (command == null)
+            {
+                return;
+            }
+
             Logger.logMsg("CppSyntaxManager::updateHighlighting() - updating " + fileBuffer.getFilepath(), true);
+
+            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
+            if (command.GetType() == typeof(Xyglo.DeleteTextCommand))
+            {
+                Logger.logMsg("CppSyntaxManager::updateHighlighting - update following DeleteTextCommand");
+                DeleteTextCommand dtc = (DeleteTextCommand)command;
+
+                // Scan the range that is being deleted and remove any highlighting here
+                //
+                //for (int i = dtc.getStartPos().Y; i < dtc.getEndPos().Y; i++)
+                //{
+                    //if (
+                //}
+            }
+            else if (command.GetType() == typeof(Xyglo.InsertTextCommand))
+            {
+                Logger.logMsg("CppSyntaxManager::updateHighlighting - update following InsertTextCommand");
+            }
+            else if (command.GetType() == typeof(Xyglo.ReplaceTextCommand))
+            {
+                Logger.logMsg("CppSyntaxManager::updateHighlighting - update following ReplaceTextCommand");
+            }
+
+            generateHighlighting(fileBuffer);
+
+            sw.Stop();
+            Logger.logMsg("CppSyntaxManager::updateHighlighting() - completed " + fileBuffer.getFilepath() + " in " + sw.Elapsed.TotalMilliseconds + " ms", true);
+        }
+
+        /// <summary>
+        /// Generate the highlightList by parsing the entire file and throwing away all previous highlighting
+        /// information.  This is done once per file load in an ideal world as it takes a while.
+        /// </summary>
+        public override void generateHighlighting(FileBuffer fileBuffer, int toLine = -1)
+        {
+            Logger.logMsg("CppSyntaxManager::generateHighlighting() - updating " + fileBuffer.getFilepath(), true);
+
+            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+            sw.Start();
 
             // Start line for highlight update - always has to be from zero
             //
@@ -371,7 +418,8 @@ namespace Xyglo
                 }
             }
 
-            Logger.logMsg("CppSyntaxManager::updateHighlighting() - completed " + fileBuffer.getFilepath(), true);
+            sw.Stop();
+            Logger.logMsg("CppSyntaxManager::generateHighlighting() - completed " + fileBuffer.getFilepath() + " in " + sw.Elapsed.TotalMilliseconds + " ms", true);
         }
 
         /// <summary>

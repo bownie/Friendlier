@@ -508,7 +508,7 @@ namespace Xyglo
         {
             return m_lhsDiffPreview;
         }
-        
+
         /// <summary>
         /// Process the files to diff
         /// </summary>

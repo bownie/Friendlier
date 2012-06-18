@@ -124,5 +124,23 @@ namespace Xyglo
         {
             return m_highlightEnd;
         }
+
+        /// <summary>
+        /// Start position of a change
+        /// </summary>
+        /// <returns></returns>
+        public FilePosition getStartPos()
+        {
+            return m_startPos;
+        }
+
+        /// <summary>
+        /// End position of a change
+        /// </summary>
+        /// <returns></returns>
+        public FilePosition getEndPos()
+        {
+            return m_endPos;
+        }
     }
 }

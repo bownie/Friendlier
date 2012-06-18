@@ -145,12 +145,19 @@ namespace Xyglo
         /// <summary>
         /// Has the search text changed?  We need to know this 
         /// </summary>
+        [NonSerialized]
         protected bool m_searchTextModified = false;
 
         /// <summary>
         /// Store where the last search started from
         /// </summary>
         protected ScreenPosition m_searchStartPoint;
+
+        /// <summary>
+        /// Update the highlighting in this view or not?
+        /// </summary>
+        [NonSerialized]
+        protected bool m_updateHighlightingInView = true;
 
         /////// CONSTRUCTORS /////////
 
@@ -280,6 +287,7 @@ namespace Xyglo
 
             m_backgroundColour = Color.Black;
             */
+            m_updateHighlightingInView = true;
 
 
             if (m_searchText == null)
@@ -406,14 +414,27 @@ namespace Xyglo
                 }
                 else // Existing highlight
                 {
-                    if (endPosition > m_highlightEnd)
+                    /*
+                    if (m_highlightEnd < m_highlightStart)
                     {
-                        m_highlightEnd = endPosition;
+                        ScreenPosition swap = m_highlightStart;
+                        m_highlightStart = endPosition;
+                        m_highlightEnd = swap;
                     }
                     else
                     {
-                        m_highlightStart = endPosition;
-                    }
+                        if (endPosition < m_highlightStart)
+                        {
+                            m_highlightStart = endPosition;
+                        }
+                        else
+                        {
+                            m_highlightEnd = endPosition;
+                        }
+                    }*/
+                    // Don't do anything exotic
+                    //
+                    m_highlightEnd = endPosition;
                 }
             }
             else
@@ -778,27 +799,36 @@ namespace Xyglo
         /// x position is invalid then just return the last valid position.
         /// </summary>
         /// <param name="fp"></param>
-        public ScreenPosition testCursorPosition(ScreenPosition fp)
+        public ScreenPosition testCursorPosition(FilePosition fp)
         {
-            ScreenPosition rp = fp;
+            ScreenPosition rp = new ScreenPosition(fp);
 
             if (fp.Y >= 0 && fp.Y < m_fileBuffer.getLineCount())
             {
                 string line = m_fileBuffer.getLine(fp.Y);
 
-                if (line.Length > fp.X)
+                if (fp.X > line.Length)
                 {
                     rp.X = line.Length;
                 }
             }
-            else
+            else if (fp.Y < 0)
             {
-                rp.X = -1;
-                rp.Y = -1;
+                rp.Y = 0;
+                rp.X = 0;
+            }
+            else if (fp.Y >= m_fileBuffer.getLineCount())
+            {
+                rp.Y = m_fileBuffer.getLineCount() - 1;
+                rp.X = m_fileBuffer.getLine(rp.Y).Length;
             }
 
-            return fp;
+            // Return RP
+            //
+            return rp;
         }
+
+
         /// <summary>
         /// Set the cursor position in this view
         /// </summary>
@@ -1344,7 +1374,10 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            project.getSyntaxManager().updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */ );
+            if (m_updateHighlightingInView)
+            {
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            }
 
             // Cancel our highlight
             //
@@ -1363,7 +1396,10 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            project. getSyntaxManager().updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y*/);
+            if (m_updateHighlightingInView)
+            {
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            }
         }
 
         /// <summary>
@@ -1439,7 +1475,10 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            project.getSyntaxManager().updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
+            if (m_updateHighlightingInView)
+            {
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            }
 
             // Keep visible
             //
@@ -1527,7 +1566,10 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            project.getSyntaxManager().updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
+            if (m_updateHighlightingInView)
+            {
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            }
 
             keepVisible();
         }
@@ -1961,7 +2003,10 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
+            if (m_updateHighlightingInView)
+            {
+                syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            }
 
             // Ensure that the cursor is visible in the BufferView
             //
@@ -2004,7 +2049,10 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            syntaxManager.updateHighlighting(m_fileBuffer /*, m_cursorPosition.Y */);
+            if (m_updateHighlightingInView)
+            {
+                syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+            }
 
             // Ensure that the cursor is visible in the BufferView
             //
