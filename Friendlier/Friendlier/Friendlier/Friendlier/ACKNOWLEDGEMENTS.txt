@@ -1,3 +1,4 @@
-- Bitmapstream Vera Sans Mono
+- Bitmapstream Vera Sans Mono 
 - Diff Match and Patch from Google (http://code.google.com/p/google-diff-match-patch/)
-- QuickGraph graphviz implementation (NOT REALLY USED)
+- QuickGraph graphviz implementation (Not really used yet)
+- Chris, Luke, Andy, James and Rich

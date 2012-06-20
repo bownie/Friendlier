@@ -14,7 +14,7 @@ namespace Xyglo
         /// <summary>
         /// Default constructor
         /// </summary>
-        public Command() 
+        public Command()
         {
         }
 
@@ -90,6 +90,20 @@ namespace Xyglo
         protected Project m_project;
 
         /// <summary>
+        /// The FileBuffer
+        /// </summary>
+        protected FileBuffer m_fileBuffer;
+
+        /// <summary>
+        /// A snippet is where we can store text that we're adding/removing
+        /// </summary>
+        [DataMember]
+        protected TextSnippet m_snippet = SnippetFactory.getSnippet();
+
+        // ------------------------------ METHODS --------------------------------------
+        //
+
+        /// <summary>
         /// Use this to order end points in selections
         /// </summary>
         public void positionOrder()
@@ -142,5 +156,15 @@ namespace Xyglo
         {
             return m_endPos;
         }
+
+        /// <summary>
+        /// Return the snippet that this command uses
+        /// </summary>
+        /// <returns></returns>
+        public TextSnippet getSnippet()
+        {
+            return m_snippet;
+        }
+
     }
 }

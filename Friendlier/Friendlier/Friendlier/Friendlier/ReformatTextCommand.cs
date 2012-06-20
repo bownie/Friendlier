@@ -80,17 +80,5 @@ namespace Xyglo
             //m_originalText = "";
             m_fileBuffer = null;
         }
-
-        /// <summary>
-        /// Snippet for our text - the line can expand into a multi-line snippet
-        /// </summary>
-        [DataMember]
-        TextSnippet m_snippet = SnippetFactory.getSnippet();
-
-        /// <summary>
-        /// The FileBuffer we're working on
-        /// </summary>
-        FileBuffer m_fileBuffer;
-
     }
 }

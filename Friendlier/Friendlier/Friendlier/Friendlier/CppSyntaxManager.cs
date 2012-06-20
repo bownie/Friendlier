@@ -89,14 +89,11 @@ namespace Xyglo
         /// Generate highlighting for every FileBuffer for example whenever we load a project - we might want
         /// to think about persisting the highlighting and restoring it if it's onerous to work this out..
         /// </summary>
-        public override void generateAllHighlighting()
+        public override void generateAllHighlighting(FileBuffer fileBuffer)
         {
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - starting");
 
-            foreach (FileBuffer fb in m_project.getFileBuffers())
-            {
-                generateHighlighting(fb /*, 0*/);
-            }
+            generateHighlighting(fileBuffer, new FilePosition(0, 0), fileBuffer.getEndPosition());
 
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - completed.");
         }
@@ -148,25 +145,24 @@ namespace Xyglo
             if (command.GetType() == typeof(Xyglo.DeleteTextCommand))
             {
                 Logger.logMsg("CppSyntaxManager::updateHighlighting - update following DeleteTextCommand");
-                DeleteTextCommand dtc = (DeleteTextCommand)command;
 
-                // Scan the range that is being deleted and remove any highlighting here
+                // Fetch the command and remove the highlighting for affected range
                 //
-                //for (int i = dtc.getStartPos().Y; i < dtc.getEndPos().Y; i++)
-                //{
-                    //if (
-                //}
+                //DeleteTextCommand dtc = (DeleteTextCommand)command;
+                //fileBuffer.removeHighlightingRange(dtc.getStartPos(), dtc.getEndPos());
+
+                generateAllHighlighting(fileBuffer);
             }
             else if (command.GetType() == typeof(Xyglo.InsertTextCommand))
             {
                 Logger.logMsg("CppSyntaxManager::updateHighlighting - update following InsertTextCommand");
+                generateAllHighlighting(fileBuffer);
             }
             else if (command.GetType() == typeof(Xyglo.ReplaceTextCommand))
             {
                 Logger.logMsg("CppSyntaxManager::updateHighlighting - update following ReplaceTextCommand");
+                generateAllHighlighting(fileBuffer);
             }
-
-            generateHighlighting(fileBuffer);
 
             sw.Stop();
             Logger.logMsg("CppSyntaxManager::updateHighlighting() - completed " + fileBuffer.getFilepath() + " in " + sw.Elapsed.TotalMilliseconds + " ms", true);
@@ -176,23 +172,12 @@ namespace Xyglo
         /// Generate the highlightList by parsing the entire file and throwing away all previous highlighting
         /// information.  This is done once per file load in an ideal world as it takes a while.
         /// </summary>
-        public override void generateHighlighting(FileBuffer fileBuffer, int toLine = -1)
+        public override void generateHighlighting(FileBuffer fileBuffer, FilePosition fromPos, FilePosition toPos)
         {
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - updating " + fileBuffer.getFilepath(), true);
 
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
             sw.Start();
-
-            // Start line for highlight update - always has to be from zero
-            //
-            int startLine = 0;
-
-            // Default value to full FileBuffer length
-            //
-            if (toLine == -1)
-            {
-                toLine = fileBuffer.getLineCount();
-            }
 
             // We have to recalculate these every time in case we're removing or adding lines
             //
@@ -200,7 +185,7 @@ namespace Xyglo
 
             // Remove the range we're going to update
             //
-            fileBuffer.clearHighlights();
+            fileBuffer.clearHighlights(fromPos, toPos);
 
             int xPosition = 0;
             int lastXPosition = 0;
@@ -215,7 +200,7 @@ namespace Xyglo
 
             // Scan range that we have set
             //
-            for (int i = startLine; i < toLine; i++)
+            for (int i = fromPos.Y; i < toPos.Y; i++)
             {
                 // If we're displaying with expanded tabs then make sure we also expand them
                 // here.  We might want to change this back if we have any issues with wanting
@@ -377,11 +362,9 @@ namespace Xyglo
 
                                         if (startBoundary)
                                         {
-
                                             // Not sure we need this
                                             //string stripWhitespace = m.Value.Replace(" ", "");
                                             //int adjustLength = m.Value.Length - stripWhitespace.Length;
-
                                             //GroupCollection coll = m.Groups;
 
                                             if (m_keywords.Contains(m.Value))

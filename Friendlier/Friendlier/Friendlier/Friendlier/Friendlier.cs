@@ -1488,6 +1488,8 @@ namespace Xyglo
                 //m_project.setSelectedBufferViewId(index);
 
                 setActiveBuffer(index);
+
+                setTemporaryMessage("Removed BufferView.", 2, gameTime);
             }
             else
             {
@@ -2374,7 +2376,8 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.F7, gameTime))
             {
-                doBuildCommand(gameTime, "clean");
+                string command = m_project.getConfigurationValue("ALTERNATEBUILDCOMMAND");
+                doBuildCommand(gameTime, command);
             }
             else if (checkKeyState(Keys.F11, gameTime)) // Toggle full screen
             {
@@ -2740,25 +2743,14 @@ namespace Xyglo
                         Logger.logMsg("Friendlier::Update() - couldn't get AUTOINDENT from config - " + e.Message);
                     }
 
-                    m_project.getSelectedBufferView().insertNewLine(m_project, indent);
-
-                    //fp = m_activeBufferView.getFileBuffer().insertNewLine(m_activeBufferView.getCursorPosition());
-
-                    // When we come back from the insertNewLine call we have to check to see if
-                    // the new position given to us is outside the viewable area and adjust if
-                    // so.
-                    //
-                    /*
-                    if (fp.Y >= m_activeBufferView.getBufferShowLength())
+                    if (m_project.getSelectedBufferView().gotHighlight())
                     {
-                        // Move down by the number of rows we're overlapping
-                        //
-                        for (int i = m_activeBufferView.getBufferShowLength(); i <= fp.Y; i++)
-                        {
-                            m_activeBufferView.moveCursorDown(false);
-                        }
+                        m_project.getSelectedBufferView().replaceCurrentSelection(m_project, "\n");
                     }
-                        * */
+                    else
+                    {
+                        m_project.getSelectedBufferView().insertNewLine(m_project, indent);
+                    }
                 }
             }
         }
@@ -3740,7 +3732,7 @@ namespace Xyglo
 
             if (key != "")
             {
-                Logger.logMsg("Friendlier::processKeys() - processing key " + key);
+                //Logger.logMsg("Friendlier::processKeys() - processing key " + key);
 
                 if (m_state == FriendlierState.FileSaveAs) // File name
                 {
@@ -3950,7 +3942,7 @@ namespace Xyglo
 
                 // Now generate highlighting
                 //
-                m_project.getSyntaxManager().generateHighlighting(newFB);
+                m_project.getSyntaxManager().generateAllHighlighting(newFB);
             }
 
             return newBV;
@@ -4834,6 +4826,16 @@ namespace Xyglo
                 }
                 //renderTextScroller();
             }
+            else
+            {
+                // Set the welcome message once
+                //
+                if (m_flipFlop)
+                {
+                    setTemporaryMessage(VersionInformation.getProductName() + " " + VersionInformation.getProductVersion(), 3, gameTime);
+                    m_flipFlop = false;
+                }
+            }
 
             // Set background colour
             //
@@ -4846,7 +4848,7 @@ namespace Xyglo
                 base.Draw(gameTime);
                 return;
             }
-            
+
             // If spinning then spin around current position based on time.
             //
             if (m_spinning)
@@ -4890,14 +4892,14 @@ namespace Xyglo
             //
             //if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
             //{
-                //m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-                m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-                //m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, m_basicEffect);
-                
+            //m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+            m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+            //m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, m_basicEffect);
+
             //}
             //else
             //{
-                //m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Additive, SamplerState.LinearClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+            //m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Additive, SamplerState.LinearClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
             //}
 
             // In the manage project mode we zoom off into the distance
@@ -4939,7 +4941,7 @@ namespace Xyglo
                     m_spriteBatch.End();
 
                     drawDirectoryChooser(gameTime);
-                    
+
                 }
                 else if (m_state == FriendlierState.Help)
                 {
@@ -5921,10 +5923,17 @@ namespace Xyglo
                     line = "";
                 }
 
-               
+                // Truncate the line as necessary
+                //
+                string drawLine = line.Substring(view.getBufferShowStartX(), Math.Min(line.Length - view.getBufferShowStartX(), view.getBufferShowWidth()));
+                if (view.getBufferShowStartX() + view.getBufferShowWidth() < line.Length)
+                {
+                    drawLine += " [>]";
+                }
+
                 m_spriteBatch.DrawString(
                                 m_project.getFontManager().getFont(),
-                                line,
+                                drawLine,
                                 new Vector2((int)viewSpaceTextPosition.X /* + m_project.getFontManager().getCharWidth() * xPos */, (int)(viewSpaceTextPosition.Y + yPosition)),
                                 colour,
                                 0,
@@ -6753,7 +6762,7 @@ namespace Xyglo
                 {
                     string item = m_project.getConfigurationItem(i).Name + "  =  " + m_project.getConfigurationItem(i).Value;
 
-                    item = m_project.estimateFileStringTruncation("", item, 60);
+                    item = m_project.estimateFileStringTruncation("", item, m_project.getSelectedBufferView().getBufferShowWidth());
 
                     /*
                     if (item.Length > m_project.getSelectedBufferView().getBufferShowWidth())
@@ -6773,7 +6782,7 @@ namespace Xyglo
         /// <summary>
         /// Perform an external build
         /// </summary>
-        protected void doBuildCommand(GameTime gameTime, string options = "")
+        protected void doBuildCommand(GameTime gameTime, string overrideString = "")
         {
 
             if (m_buildProcess != null)
@@ -6792,6 +6801,13 @@ namespace Xyglo
             {
                 //string[] commandList = m_project.getBuildCommand().Split(' ');
                 string[] commandList = m_project.getConfigurationValue("BUILDCOMMAND").Split(' ');
+
+                // Override the default build command
+                //
+                if (overrideString != "")
+                {
+                    commandList = overrideString.Split();
+                }
 
                 if (commandList.Length == 0)
                 {
@@ -6878,10 +6894,11 @@ namespace Xyglo
                         //info.EnvironmentVariables.Add("PATH", "C:\\Q\\mingw\\bin");
                         //info.EnvironmentVariables.Add("TempPath", "C:\\Temp");
                         info.UseShellExecute = false;
-                        info.FileName = m_project.getCommand();
+                        info.FileName = m_project.getCommand(commandList);
                         info.WindowStyle = ProcessWindowStyle.Hidden;
                         info.CreateNoWindow = true;
-                        info.Arguments = m_project.getArguments() + (options == "" ? "" : " " + options);
+                        //info.Arguments = m_project.getArguments() + (options == "" ? "" : " " + options);
+                        info.Arguments = m_project.getArguments(commandList);
                         info.RedirectStandardOutput = true;
                         info.RedirectStandardError = true;
 

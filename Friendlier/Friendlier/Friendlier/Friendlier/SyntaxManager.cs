@@ -64,15 +64,15 @@ namespace Xyglo
         public abstract void updateHighlighting(FileBuffer fileBuffer , int line);
 
         /// <summary>
-        /// Generate the initial highlighting for a file
+        /// Generate highlighting for a specified file range
         /// </summary>
         /// <param name="fileBuffer"></param>
-        public abstract void generateHighlighting(FileBuffer fileBuffer, int toLine = -1);
+        public abstract void generateHighlighting(FileBuffer fileBuffer, FilePosition fromPos, FilePosition toPos);
 
         /// <summary>
-        /// Generates all highlighting for all FileBuffers
+        /// Generates all highlighting for a given FileBuffer
         /// </summary>
-        public abstract void generateAllHighlighting();
+        public abstract void generateAllHighlighting(FileBuffer fileBuffer);
 
         /// <summary>
         /// Ensure we have a method which initialises a list of keywords

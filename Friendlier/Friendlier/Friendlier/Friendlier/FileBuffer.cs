@@ -105,7 +105,7 @@ namespace Xyglo
         protected TimeSpan m_fetchWindow;
 
         /// <summary>
-        /// Sortedlist of 
+        /// Sortedlist of highlights
         /// </summary>
         [DataMember]
         protected SortedList<FilePosition, Highlight> m_highlightSortedList = new SortedList<FilePosition, Highlight>();
@@ -670,9 +670,62 @@ namespace Xyglo
         /// </summary>
         /// <param name="startLine"></param>
         /// <param name="endLine"></param>
-        public void removeHighlightingRange(int startLine, int endLine)
+        public void removeHighlightingRange(FilePosition startPosition, FilePosition endPosition)
         {
-            m_highlightSortedList.Where(item => item.Key.Y >= startLine && item.Key.Y <= endLine);
+            if (startPosition.Y == endPosition.Y)
+            {
+                // get all highlighting for the line
+                //
+                List<KeyValuePair<FilePosition, Highlight>> lineList = m_highlightSortedList.Where(item => item.Key.Y == startPosition.Y).ToList();
+
+                foreach (KeyValuePair<FilePosition, Highlight> item in lineList)
+                {
+                    m_highlightSortedList.Remove(item.Key);
+                }
+                return;
+            }
+
+            // First fetch all the highlights that start after our startPosition
+            //
+            List<KeyValuePair<FilePosition, Highlight>> removeList = m_highlightSortedList.Where(item => item.Key >= startPosition).ToList();
+
+            // Check for multi-line spanning highlights from before our deletion
+            //
+            List<KeyValuePair<FilePosition, Highlight>> modifyList = m_highlightSortedList.Where(item => item.Key < startPosition && item.Value.m_endHighlight > startPosition).ToList();
+
+            // Modified elements still need removing
+            //
+            removeList.AddRange(modifyList);
+
+            Logger.logMsg("FileBuffer::removeHighlightingRange - removing " + removeList.Count() + " highlights");
+
+            // Remove all of these
+            //
+            foreach (KeyValuePair<FilePosition, Highlight> item in removeList)
+            {
+                m_highlightSortedList.Remove(item.Key);
+            }
+
+            // The list we want to restore is everything not in the selection - do this 
+            // by line and regenerate the first and last lines afterwards.
+            //
+            List<KeyValuePair<FilePosition, Highlight>> restList = removeList.Where(item => item.Key.Y > endPosition.Y).ToList();
+
+            // And re-insert
+            //
+            foreach (KeyValuePair<FilePosition, Highlight> item in restList)
+            {
+                // Adjust FilePosition by number of lines removed
+                //
+                FilePosition fp = item.Key;
+                Highlight hl = item.Value;
+
+                fp.Y -= (endPosition.Y - startPosition.Y + 1);
+                hl.m_startHighlight.Y -= (endPosition.Y - startPosition.Y + 1);
+                hl.m_endHighlight.Y -= (endPosition.Y - startPosition.Y + 1);
+
+                m_highlightSortedList.Add(fp, item.Value);
+            }
         }
 
 
@@ -1034,11 +1087,37 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Clear the highlight dictionary
+        /// End of file position
         /// </summary>
-        public void clearHighlights()
+        /// <returns></returns>
+        public FilePosition getEndPosition()
+        {
+            if (m_lines.Count > 0)
+            {
+                int y = m_lines.Count - 1;
+                int x = m_lines[y].Length;
+
+                return new FilePosition(x, y);
+            }
+
+            return new FilePosition(0, 0);
+        }
+
+        public void clearAllHighlights()
         {
             m_highlightSortedList.Clear();
+        }
+        /// <summary>
+        /// Clear the highlight dictionary
+        /// </summary>
+        public void clearHighlights(FilePosition fromPos, FilePosition toPos)
+        {
+            List<KeyValuePair<FilePosition, Highlight>> removeList = m_highlightSortedList.Where(item => item.Key >= fromPos && item.Key <= toPos).ToList();
+
+            foreach (KeyValuePair<FilePosition, Highlight> item in removeList)
+            {
+                m_highlightSortedList.Remove(item.Key);
+            }
         }
 
         /// <summary>

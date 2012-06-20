@@ -54,11 +54,45 @@ namespace Xyglo
             Y = Convert.ToInt16(vector.Y);
         }
 
+        /// <summary>
+        /// More than equals
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        public static bool operator >=(FilePosition a, FilePosition b)
+        {
+            return ((a.Y > b.Y) || (a.Y == b.Y && a.X >= b.X));
+        }
+
+        /// <summary>
+        /// Less than equals
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        public static bool operator <=(FilePosition a, FilePosition b)
+        {
+            return ((a.Y < b.Y) || (a.Y == b.Y && a.X <= b.X));
+        }
+
+        /// <summary>
+        /// Equality operator
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
         public static bool operator ==(FilePosition a, FilePosition b)
         {
             return ((a.X == b.X) && (a.Y == b.Y));
         }
 
+        /// <summary>
+        /// Inequality operator
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
         public static bool operator !=(FilePosition a, FilePosition b)
         {
             return ((a.X != b.X) || (a.Y != b.Y));

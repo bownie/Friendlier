@@ -10,25 +10,78 @@ namespace Xyglo
     public static class Logger
     {
         /// <summary>
+        /// Are we logging to a file?
+        /// </summary>
+        public static bool m_toFile = true;
+
+        /// <summary>
+        /// Are we logging to the console?
+        /// </summary>
+        public static bool m_toConsole = false;
+
+        /// <summary>
+        /// Are we logging time?
+        /// </summary>
+        public static bool m_showTime = true;
+
+        /// <summary>
+        /// Log file path
+        /// </summary>
+        public static string m_logFile = Project.getUserDataPath() + VersionInformation.getProductName() + VersionInformation.getProductVersion() + ".log";
+
+        /// <summary>
+        /// Log file handle
+        /// </summary>
+        public static System.IO.StreamWriter m_logFileStream = null;
+
+        /// <summary>
+        /// Static string for generating message
+        /// </summary>
+        public static string m_message = "";
+
+        /// <summary>
         /// Sometimes we have performance issues with the time formatting so provide it as optional
         /// </summary>
         /// <param name="message"></param>
         /// <param name="showTime"></param>
         public static void logMsg(string message, bool showTime = false, bool showStack = false)
         {
-            //string prefix = "";
-            if (showTime)
+            // Empty message
+            //
+            m_message = "";
+
+            if (m_showTime)
             {
-                Console.Write(DateTimeNowCache.GetDateTime().ToString() + " - ");
+                //Console.Write(DateTimeNowCache.GetDateTime().ToString() + " - ");
+                m_message += DateTime.Now.ToString() + " - ";
             }
 
             if (showStack)
             {
                 StackTrace stackTrace = new StackTrace();
-                Console.Write(stackTrace.GetFrame(0) + " - ");
+                m_message += stackTrace.GetFrame(0) + " - ";
             }
 
-            Console.Write(message + "\n");
+            m_message += message;
+
+            if (m_toConsole)
+            {
+                Console.WriteLine(m_message);
+            }
+
+            if (m_toFile)
+            {
+                if (m_logFileStream == null)
+                {
+                    // Open log file in append mode
+                    //
+                    m_logFileStream = new System.IO.StreamWriter(m_logFile, true);
+                }
+
+                m_logFileStream.WriteLine(m_message);
+                m_logFileStream.Flush();
+            }
+
         }
 
 #if NOT_USED

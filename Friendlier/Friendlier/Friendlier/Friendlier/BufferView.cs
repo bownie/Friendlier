@@ -819,8 +819,16 @@ namespace Xyglo
             }
             else if (fp.Y >= m_fileBuffer.getLineCount())
             {
-                rp.Y = m_fileBuffer.getLineCount() - 1;
-                rp.X = m_fileBuffer.getLine(rp.Y).Length;
+                rp.Y = Math.Max(m_fileBuffer.getLineCount() - 1, 0);
+
+                if (rp.Y > 0)
+                {
+                    rp.X = m_fileBuffer.getLine(rp.Y).Length;
+                }
+                else
+                {
+                    rp.X = 0;
+                }
             }
 
             // Return RP
@@ -1382,6 +1390,10 @@ namespace Xyglo
             // Cancel our highlight
             //
             noHighlight();
+
+            // Keep cursor visible
+            //
+            keepVisible();
         }
 
         /// <summary>
@@ -1521,22 +1533,6 @@ namespace Xyglo
             //
             if (autoindent == "TRUE")
             {
-                /*
-                string testLine = m_fileBuffer.getLine(m_cursorPosition.Y);
-
-                for (int i = 0; i < testLine.Length; i++)
-                {
-                    if (testLine[i] == ' ')
-                    {
-                        indent += ' ';
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }*/
-
-
                 try
                 {
                     // Use the Syntax Manager to fetch an indent

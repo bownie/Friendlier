@@ -14,9 +14,22 @@ USE CASES
 - The writer - writing a book, researching
 - The journalist - writing a story, researching
 
+BUGS
+----
+
+- highlight going beyond top of file
+- hash comment not at beginning of line doesn't highlight
+- want F1 to send me to the LAST Bufferview I used (i.e. after build)
+- return does not use highlight [FIXED]
+- exit not working [FIXED - it was the temporary message]
+
 
 BUILD and USABILITY FEATURES TODO and BUGS
 ----
+
+C:\Q\Desktop\Qt\4.7.4\mingw\bin\qmake.exe -makefile C:\dev-alpha2\win32-mingw-rtmidi\garderobe.pro
+
+
 
 - 30 day limited trial/registry keys
 - auto update check from web

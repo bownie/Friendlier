@@ -16,7 +16,7 @@ namespace Xyglo
     /// Configuration item
     /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
-    public class Configuration
+    public class Configuration : IComparable
     {
         /// <summary>
         /// The name of this configuration item
@@ -35,6 +35,23 @@ namespace Xyglo
             Name = name;
             Value = value;
         }
+
+        // Implement the generic CompareTo method with the Temperature 
+        // class as the Type parameter. 
+        //
+        int IComparable.CompareTo(object obj)
+        {
+            Configuration config = (Configuration)(obj);
+
+            // If other is not a valid object reference, this instance is greater.
+            if (config == null) return 1;
+
+            // The temperature comparison depends on the comparison of 
+            // the underlying Double values. 
+            return Name.CompareTo(config.Name);
+        }
+
+
     }
 
     /// <summary>
@@ -395,7 +412,6 @@ namespace Xyglo
             if (m_configuration == null)
             {
                 m_configuration = new List<Configuration>();
-
             }
 
             // And for the moment populate from here
@@ -403,6 +419,11 @@ namespace Xyglo
             if (addCheckConfigurationItem("BUILDCOMMAND", @"C:\QtSDK\mingw\bin\mingw32-make.exe -f D:\garderobe-build-desktop\Makefile"))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added BUILDCOMMAND config");
+            }
+
+            if (addCheckConfigurationItem("ALTERNATEBUILDCOMMAND", @"C:\Q\Desktop\Qt\4.7.4\mingw\bin\qmake.exe -makefile C:\newdir\test.pro"))
+            {
+                Logger.logMsg("Project::buildInitialConfiguration - added ALTERNATEBUILDCOMMAND config");
             }
 
             if (addCheckConfigurationItem("BUILDDIRECTORY", @"D:\garderobe-build-desktop"))
@@ -438,6 +459,10 @@ namespace Xyglo
                 Logger.logMsg("Project::buildInitialConfiguration - added DIFFCENTRE config");
             }
 
+            // Sort the config to within an inch of its life
+            //
+            m_configuration.Sort();
+
             // Initialise m_views if we've persisted none (more than likely)
             //
             if (m_views == null)
@@ -465,6 +490,7 @@ namespace Xyglo
             // Add the item and return
             //
             m_configuration.Add(new Configuration(item, value));
+            m_configuration.Sort();
             return true;
         }
 
@@ -484,6 +510,7 @@ namespace Xyglo
             // Add the item and return
             //
             m_configuration.Add(new Configuration(item, value));
+            m_configuration.Sort();
             return true;
         }
 
@@ -513,6 +540,7 @@ namespace Xyglo
             else
             {
                 m_configuration.Remove(foundConfig);
+                m_configuration.Sort();
                 return true;
             }
         }
@@ -526,6 +554,7 @@ namespace Xyglo
         {
             if (number >= 0 && number < m_configuration.Count)
             {
+                m_configuration.Sort();
                 return m_configuration[number];
             }
            
@@ -1092,7 +1121,7 @@ namespace Xyglo
                 if (!bv.isTailing())
                 {
                     Logger.logMsg("Project::loadFiles() - generating highlighting for " + bv.getFileBuffer().getFilepath(), true);
-                    m_syntaxManager.generateHighlighting(bv.getFileBuffer());
+                    m_syntaxManager.generateAllHighlighting(bv.getFileBuffer());
                 }
 
             }
@@ -1364,9 +1393,9 @@ namespace Xyglo
         /// Get just the command string only from the m_buildCommand
         /// </summary>
         /// <returns></returns>
-        public string getCommand()
+        public string getCommand(string []command)
         {
-            string[] command = getConfigurationValue("BUILDCOMMAND").Split(' ');
+            //string[] command = getConfigurationValue("BUILDCOMMAND").Split(' ');
 
             if (command.Length > 0)
             {
@@ -1381,9 +1410,9 @@ namespace Xyglo
         /// Get the argument list only from the m_buildCommand
         /// </summary>
         /// <returns></returns>
-        public string getArguments()
+        public string getArguments(string []command)
         {
-            string[] command = getConfigurationValue("BUILDCOMMAND").Split(' ');
+            //string[] command = getConfigurationValue("BUILDCOMMAND").Split(' ');
 
             string retArgs = "";
             int i = 0;

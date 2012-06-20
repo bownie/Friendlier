@@ -14,6 +14,23 @@ namespace Xyglo
     class InsertTextCommand : Command
     {
         /// <summary>
+        /// We use this only for undo as the original position will only be one line
+        /// </summary>
+        [DataMember]
+        string m_originalText;
+
+        /// <summary>
+        /// Do we need a new line?
+        /// </summary>
+        [DataMember]
+        bool m_newLine;
+
+        /// <summary>
+        /// An indent for a new line
+        /// </summary>
+        protected string m_indent = "";
+
+        /// <summary>
         /// Insert text constructor
         /// </summary>
         /// <param name="name"></param>
@@ -326,33 +343,5 @@ namespace Xyglo
             m_originalText = "";
             m_fileBuffer = null;
         }
-
-        /// <summary>
-        /// We use this only for undo as the original position will only be one line
-        /// </summary>
-        [DataMember]
-        string m_originalText;
-
-        /// <summary>
-        /// Do we need a new line?
-        /// </summary>
-        [DataMember]
-        bool m_newLine;
-
-        /// <summary>
-        /// Snippet for our text - the line can expand into a multi-line snipper
-        /// </summary>
-        [DataMember]
-        TextSnippet m_snippet = SnippetFactory.getSnippet();
-
-        /// <summary>
-        /// The FileBuffer we're working on
-        /// </summary>
-        FileBuffer m_fileBuffer;
-
-        /// <summary>
-        /// An indent for a new line
-        /// </summary>
-        protected string m_indent = "";
     }
 }
