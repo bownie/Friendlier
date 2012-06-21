@@ -300,6 +300,11 @@ namespace Xyglo
         protected TimeSpan m_lastSystemFetch = new TimeSpan(0, 0, 0, 0, 0);
 
         /// <summary>
+        /// Are we allowed to process keyboard events?
+        /// </summary>
+        protected TimeSpan m_processKeyboardAllowed = TimeSpan.Zero;
+
+        /// <summary>
         /// Percentage of system load
         /// </summary>
         protected float m_systemLoad = 0.0f;
@@ -589,6 +594,22 @@ namespace Xyglo
         /// Spalsh screen texture
         /// </summary>
         protected Texture2D m_splashScreen;
+
+        /// <summary>
+        /// Mouse wheel value
+        /// </summary>
+        protected int m_lastMouseWheelValue = 0;
+
+        /// <summary>
+        /// Position of last mouse click
+        /// </summary>
+        protected Vector3 m_lastClickPosition = Vector3.Zero;
+
+        /// <summary>
+        /// Vector resulting from last mouse click
+        /// </summary>
+        protected Vector3 m_lastClickVector = Vector3.Zero;
+
 
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
@@ -1131,7 +1152,13 @@ namespace Xyglo
             //
             IsMouseVisible = true;
 
-            // Allow resizing
+            // Ensure that the maximise box is shown and hook up the callback
+            //
+            System.Windows.Forms.Form f = (System.Windows.Forms.Form)System.Windows.Forms.Form.FromHandle(this.Window.Handle);
+            f.MaximizeBox = true;
+            f.Resize += Window_ResizeEvent;
+
+            // Allow user resizing if we want this
             //
             if (m_isResizable)
             {
@@ -1200,6 +1227,21 @@ namespace Xyglo
             //m_lastWindowSize.Y = m_graphics.GraphicsDevice.Viewport.Height;
             m_lastWindowSize.X = Window.ClientBounds.Width;
             m_lastWindowSize.Y = Window.ClientBounds.Height;
+        }
+
+        /// <summary>
+        /// Windows resize event is captured here so that we can go to full screen mode
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        public void Window_ResizeEvent(object sender, System.EventArgs e)
+        {
+            System.Windows.Forms.Form f = (System.Windows.Forms.Form)System.Windows.Forms.Form.FromHandle(this.Window.Handle);
+            
+            if (f.WindowState == System.Windows.Forms.FormWindowState.Maximized)
+            {
+                fullScreenMode();
+            }
         }
 
         public void Window_ClientSizeChanged(object sender, EventArgs e)
@@ -1427,6 +1469,10 @@ namespace Xyglo
             //
             m_state = FriendlierState.FileSaveAs;
             m_temporaryMessage = "";
+
+            // Clear the filename
+            //
+            m_saveFileName = "";
 
             // Set temporary bird's eye view
             //
@@ -1661,8 +1707,26 @@ namespace Xyglo
             //
             bool unsaved = false;
 
+            // Use this somewhere probably
+            //
+            // m_project.getLicenced() 
+
             // Only check BufferViews status if we're not forcing an exit
             //
+            if (!force && m_saveAsExit == false && m_project.getConfigurationValue("CONFIRMQUIT").ToUpper() == "TRUE")
+            {
+                if (m_confirmState != ConfirmState.ConfirmQuit)
+                {
+                    setTemporaryMessage("Confirm quit? Y/N", 0, gameTime);
+                    m_confirmState = ConfirmState.ConfirmQuit;
+                }
+
+                if (m_confirmQuit == false)
+                {
+                    return;
+                }
+            }
+
             if (!force)
             {
                 foreach (FileBuffer fb in m_project.getFileBuffers())
@@ -1695,20 +1759,6 @@ namespace Xyglo
             }
             else
             {
-                if (m_project.getLicenced() && m_saveAsExit == false && m_project.getConfigurationValue("CONFIRMQUIT").ToUpper() == "TRUE")
-                {
-                    if (m_confirmState != ConfirmState.ConfirmQuit)
-                    {
-                        setTemporaryMessage("Confirm quit? Y/N", 0, gameTime);
-                        m_confirmState = ConfirmState.ConfirmQuit;
-                    }
-
-                    if (m_confirmQuit == false)
-                    {
-                        return;
-                    }
-                }
-
                 // Clear the worker thread and exit
                 //
                 m_counterWorker.requestStop();
@@ -1743,21 +1793,6 @@ namespace Xyglo
                 this.Exit();
             }
         }
-
-        /// <summary>
-        /// Mouse wheel value
-        /// </summary>
-        protected int m_lastMouseWheelValue = 0;
-
-        /// <summary>
-        /// Position of last mouse click
-        /// </summary>
-        protected Vector3 m_lastClickPosition = Vector3.Zero;
-
-        /// <summary>
-        /// Vector resulting from last mouse click
-        /// </summary>
-        protected Vector3 m_lastClickVector = Vector3.Zero;
 
         /// <summary>
         /// Set a current zoom level
@@ -2850,7 +2885,7 @@ namespace Xyglo
                         else if (m_confirmState == ConfirmState.ConfirmQuit)
                         {
                             m_confirmQuit = true;
-                            checkExit(gameTime);
+                            checkExit(gameTime, true);
                         }
                         rC = true; // consume this letter
                     }
@@ -2985,7 +3020,7 @@ namespace Xyglo
                         //
                         if (m_project.getSelectedBufferView().getFileBuffer().getUndoPosition() > 0)
                         {
-                            m_project.getSelectedBufferView().undo(m_project.getSyntaxManager(), 1);
+                            m_project.getSelectedBufferView().undo(m_project, 1);
                         }
                         else
                         {
@@ -3013,7 +3048,7 @@ namespace Xyglo
                         if (m_project.getSelectedBufferView().getFileBuffer().getUndoPosition() <
                             m_project.getSelectedBufferView().getFileBuffer().getCommandStackLength())
                         {
-                            m_project.getSelectedBufferView().redo(m_project.getSyntaxManager(), 1);
+                            m_project.getSelectedBufferView().redo(m_project, 1);
                         }
                         else
                         {
@@ -3234,6 +3269,7 @@ namespace Xyglo
         }
 
 
+
         /// <summary>
         /// Allows the game to run logic such as updating the world,
         /// checking for collisions, gathering input, and playing audio.
@@ -3252,6 +3288,11 @@ namespace Xyglo
                     checkExit(gameTime, true);
                 }
 
+                return;
+            }
+
+            if (m_processKeyboardAllowed != TimeSpan.Zero && gameTime.TotalGameTime < m_processKeyboardAllowed)
+            {
                 return;
             }
 
@@ -3277,6 +3318,10 @@ namespace Xyglo
             // Process Escape keys and MetaCommands in this helper function
             if (processMetaCommands(gameTime))
             {
+                // If we've got a key here then spin without processing keyboard input
+                // for 50 milliseconds
+                //
+                m_processKeyboardAllowed = gameTime.TotalGameTime + new TimeSpan(0, 0, 0, 0, 50);
                 return;
             }
 
@@ -3304,6 +3349,13 @@ namespace Xyglo
                 //
                 processKeys(gameTime);
             }
+            else
+            {
+                // If we've got a key here then spin without processing keyboard input
+                // for 50 milliseconds
+                //
+                m_processKeyboardAllowed = gameTime.TotalGameTime + new TimeSpan(0, 0, 0, 0, 100);
+            }
 
             // Check for this change as necessary
             //
@@ -3314,6 +3366,13 @@ namespace Xyglo
             if (m_lastKeyboardState != Keyboard.GetState())
             {
                 m_lastKeyboardState = Keyboard.GetState();
+            }
+
+            // Save this to ensure we can keep processing
+            //
+            if (m_processKeyboardAllowed < gameTime.TotalGameTime)
+            {
+                m_processKeyboardAllowed = gameTime.TotalGameTime;
             }
 
             base.Update(gameTime);
@@ -3942,7 +4001,10 @@ namespace Xyglo
 
                 // Now generate highlighting
                 //
-                m_project.getSyntaxManager().generateAllHighlighting(newFB);
+                if (m_project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
+                {
+                    m_project.getSyntaxManager().generateAllHighlighting(newFB);
+                }
             }
 
             return newBV;
@@ -4595,6 +4657,8 @@ namespace Xyglo
             }
         }
 
+        System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+
         /// <summary>
         /// Handle mouse click and double clicks and farm out the responsibility to other
         /// helper methods.
@@ -4616,6 +4680,21 @@ namespace Xyglo
             //
             if (mouseState.LeftButton == ButtonState.Pressed)
             {
+#if SAM_MOUSE_TEST
+                if (sw.IsRunning)
+                {
+                    sw.Stop();
+                    //setTemporaryMessage("Time since last mouse click was " + sw.ElapsedMilliseconds + "ms", 2, gameTime);
+                    Logger.logMsg("Time since last mouse click was " + sw.ElapsedMilliseconds + "ms");
+                }
+                else
+                {
+                    sw.Reset();
+                    sw.Start();
+                }
+#endif
+                
+
                 // Get the pick ray
                 //
                 Ray pickRay = getPickRay();
@@ -5299,11 +5378,6 @@ namespace Xyglo
             //
             float yPos = m_graphics.GraphicsDevice.Viewport.Height - (m_project.getFontManager().getLineSpacing() / m_project.getFontManager().getTextScale());
 
-            // Debug eye position
-            //
-            string eyePosition = "[EyePosition] X " + m_eye.X + ",Y " + m_eye.Y + ",Z " + m_eye.Z;
-            float xPos = m_graphics.GraphicsDevice.Viewport.Width - eyePosition.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay);
-
             string modeString = "none";
 
             switch (m_state)
@@ -5347,10 +5421,19 @@ namespace Xyglo
             //m_overlaySpriteBatch.Begin(SpriteSortMode.FrontToBack, BlendState.NonPremultiplied, SamplerState.LinearWrap, DepthStencilState.None,RasterizerState.CullCounterClockwise);
             m_overlaySpriteBatch.Begin();
 
+            // Debug eye position
+            //
+            if (m_project.getViewMode() != Project.ViewMode.Formal)
+            {
+                string eyePosition = "[EyePosition] X " + m_eye.X + ",Y " + m_eye.Y + ",Z " + m_eye.Z;
+                float xPos = m_graphics.GraphicsDevice.Viewport.Width - eyePosition.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay);
+                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), eyePosition, new Vector2(0.0f, 0.0f), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
+            }
+
             // hardcode the font size to 1.0f so it looks nice
             //
             m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), fileName, new Vector2(0.0f, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
-            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), eyePosition, new Vector2(0.0f, 0.0f), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
+            
             m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), modeString, new Vector2((int)modeStringXPos, 0.0f), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
             m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), positionString, new Vector2((int)positionStringXPos, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
             m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), filePercentString, new Vector2((int)filePercentStringXPos, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
@@ -6233,7 +6316,7 @@ namespace Xyglo
 
                 Color seeThroughColour = bufferColour;
                 seeThroughColour.A = 70;
-                //m_spriteBatch.DrawString(m_project.getFontManager().getFont(), bufferId, new Vector2((int)viewSpaceTextPosition.X, (int)viewSpaceTextPosition.Y), seeThroughColour, 0, Vector2.Zero, m_project.getFontManager().getTextScale() * 16.0f, 0, 0);
+                m_spriteBatch.DrawString(m_project.getFontManager().getFont(), bufferId, new Vector2((int)viewSpaceTextPosition.X, (int)viewSpaceTextPosition.Y), seeThroughColour, 0, Vector2.Zero, m_project.getFontManager().getTextScale() * 16.0f, 0, 0);
 
                 // Show a filename
                 //
@@ -6534,7 +6617,16 @@ namespace Xyglo
 
         }
 
-        
+
+        protected override void OnExiting(Object sender, EventArgs args)
+        {
+            base.OnExiting(sender, args);
+
+            // Stop the threads
+            //
+            checkExit(m_gameTime, true);
+        }
+
         /// <summary>
         /// Format a screen of information text - slightly different to a help screen as
         /// the text can be dynamic (i.e. times)

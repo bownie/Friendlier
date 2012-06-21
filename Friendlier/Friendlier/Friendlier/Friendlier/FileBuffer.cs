@@ -19,7 +19,6 @@ namespace Xyglo
         Modified
     }
 
-
     /// <summary>
     /// Open and buffer a file and provide an interface for handling large files efficiently
     /// </summary>
@@ -666,24 +665,65 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Remove a range from the highlighting
+        /// Remove a range from the highlighting.  If we specify a range and no lines deleted then just the highlighting
+        /// is removed.   If linesDeleted is specified then we also remove that number of lines from subsequent
+        /// highlighting entries.  This allows us to deal with inline deletions and well as complete deletions
         /// </summary>
         /// <param name="startLine"></param>
         /// <param name="endLine"></param>
-        public void removeHighlightingRange(FilePosition startPosition, FilePosition endPosition)
+        public void removeHighlightingRange(FilePosition startPosition, FilePosition endPosition, int linesDeleted)
         {
-            if (startPosition.Y == endPosition.Y)
+            if (linesDeleted == 0)
             {
-                // get all highlighting for the line
+                // Have to be deleting on one line.  Get all the highlighting for this line beyond the start point.
                 //
-                List<KeyValuePair<FilePosition, Highlight>> lineList = m_highlightSortedList.Where(item => item.Key.Y == startPosition.Y).ToList();
+                List<KeyValuePair<FilePosition, Highlight>> deleteSelection = m_highlightSortedList.Where(item => item.Key.X >= startPosition.X && item.Key.Y == endPosition.Y).ToList();
+                //List<KeyValuePair<FilePosition, Highlight>> reInsertList = new List<KeyValuePair<FilePosition, Highlight>>();
 
-                foreach (KeyValuePair<FilePosition, Highlight> item in lineList)
+                // Iterate through deleting and re-inserting
+                //
+                foreach (var item in deleteSelection)
                 {
-                    m_highlightSortedList.Remove(item.Key);
+                    if (m_highlightSortedList.Remove(item.Key))
+                    {
+                        Logger.logMsg("FilerBuffer::removeHighlightingRange() - removed highlight item - adding replacement");
+
+                        // Modify these entries
+                        //
+                        FilePosition fp = item.Key;
+                        Highlight h = item.Value;
+
+                        // We will always at least delete one character - perhaps a range
+                        //
+                        int xAdjust = Math.Max(1, endPosition.X - startPosition.X);
+
+                        // Adjust X by removed range
+                        //
+                        if (fp.X > 0)
+                        {
+                            fp.X -= xAdjust;
+                        }
+
+                        if (h.m_startHighlight.X > 0)
+                        {
+                            h.m_startHighlight.X -= xAdjust;
+                            h.m_endHighlight.X -= xAdjust;
+
+                            // Only re-add if this is true otherwise we've broken the token anyway
+                            m_highlightSortedList.Add(fp, h);
+                        }
+                    }
+                    else
+                    {
+                        Logger.logMsg("FilerBuffer::removeHighlightingRange() - failed to remove highlight");
+                    }
                 }
+
+                // Now return
+                //
                 return;
             }
+
 
             // First fetch all the highlights that start after our startPosition
             //

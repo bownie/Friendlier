@@ -153,12 +153,6 @@ namespace Xyglo
         /// </summary>
         protected ScreenPosition m_searchStartPoint;
 
-        /// <summary>
-        /// Update the highlighting in this view or not?
-        /// </summary>
-        [NonSerialized]
-        protected bool m_updateHighlightingInView = true;
-
         /////// CONSTRUCTORS /////////
 
         /// <summary>
@@ -287,7 +281,6 @@ namespace Xyglo
 
             m_backgroundColour = Color.Black;
             */
-            m_updateHighlightingInView = true;
 
 
             if (m_searchText == null)
@@ -1382,7 +1375,7 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            if (m_updateHighlightingInView)
+            if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
             {
                 project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
             }
@@ -1408,7 +1401,7 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            if (m_updateHighlightingInView)
+            if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
             {
                 project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
             }
@@ -1487,7 +1480,7 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            if (m_updateHighlightingInView)
+            if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
             {
                 project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
             }
@@ -1562,7 +1555,7 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            if (m_updateHighlightingInView)
+            if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
             {
                 project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
             }
@@ -1983,7 +1976,7 @@ namespace Xyglo
         /// Provide a nice interface for undoing things
         /// </summary>
         /// <param name="steps"></param>
-        public void undo(SyntaxManager syntaxManager, int steps = 1)
+        public void undo(Project project, int steps = 1)
         {
             Pair<ScreenPosition, Pair<ScreenPosition, ScreenPosition>> rP = m_fileBuffer.undo(steps);
 
@@ -1999,9 +1992,9 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            if (m_updateHighlightingInView)
+            if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
             {
-                syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
             }
 
             // Ensure that the cursor is visible in the BufferView
@@ -2031,7 +2024,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="syntaxManager"></param>
         /// <param name="steps"></param>
-        public void redo(SyntaxManager syntaxManager, int steps = 1)
+        public void redo(Project project, int steps = 1)
         {
             Pair<ScreenPosition, Pair<ScreenPosition, ScreenPosition>> rP = m_fileBuffer.redo(1);
 
@@ -2045,9 +2038,9 @@ namespace Xyglo
 
             // Update the syntax highlighting
             //
-            if (m_updateHighlightingInView)
+            if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
             {
-                syntaxManager.updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
             }
 
             // Ensure that the cursor is visible in the BufferView

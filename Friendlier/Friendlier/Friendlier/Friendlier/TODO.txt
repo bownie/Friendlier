@@ -17,12 +17,15 @@ USE CASES
 BUGS
 ----
 
+- mouse click to navigate in file browser
+- clear save as filename between save as's
 - highlight going beyond top of file
 - hash comment not at beginning of line doesn't highlight
 - want F1 to send me to the LAST Bufferview I used (i.e. after build)
 - return does not use highlight [FIXED]
 - exit not working [FIXED - it was the temporary message]
-
+- maximise button [DONE]
+- clicking on top right cross doens't close down neatly [DONE]
 
 BUILD and USABILITY FEATURES TODO and BUGS
 ----

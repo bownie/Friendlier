@@ -126,7 +126,12 @@ namespace Xyglo
             return -1;
         }
 
-
+        /// <summary>
+        /// Update the highlighting for this FileBuffer - eventually we'll do this correctly, for the
+        /// moment we redo everything for each command which is incredibly wasteful.
+        /// </summary>
+        /// <param name="fileBuffer"></param>
+        /// <param name="line"></param>
         public override void updateHighlighting(FileBuffer fileBuffer, int line)
         {
             // Examine the last command and modify the highlighting accordingly
@@ -148,8 +153,11 @@ namespace Xyglo
 
                 // Fetch the command and remove the highlighting for affected range
                 //
-                //DeleteTextCommand dtc = (DeleteTextCommand)command;
-                //fileBuffer.removeHighlightingRange(dtc.getStartPos(), dtc.getEndPos());
+                DeleteTextCommand dtc = (DeleteTextCommand)command;
+                int linesDeleted = command.getSnippet().getLinesDeleted();
+
+//                fileBuffer.removeHighlightingRange(dtc.getStartPos(), dtc.getEndPos(), linesDeleted);
+  //              generateHighlighting(fileBuffer, dtc.getStartPos(), dtc.getEndPos());
 
                 generateAllHighlighting(fileBuffer);
             }

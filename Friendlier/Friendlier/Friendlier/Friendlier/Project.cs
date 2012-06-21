@@ -414,18 +414,21 @@ namespace Xyglo
                 m_configuration = new List<Configuration>();
             }
 
-            // And for the moment populate from here
+            // Main build command
             //
             if (addCheckConfigurationItem("BUILDCOMMAND", @"C:\QtSDK\mingw\bin\mingw32-make.exe -f D:\garderobe-build-desktop\Makefile"))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added BUILDCOMMAND config");
             }
 
+            // Second build command (qmake, make clean etc)
             if (addCheckConfigurationItem("ALTERNATEBUILDCOMMAND", @"C:\Q\Desktop\Qt\4.7.4\mingw\bin\qmake.exe -makefile C:\newdir\test.pro"))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added ALTERNATEBUILDCOMMAND config");
             }
 
+            // Where the build occurs
+            //
             if (addCheckConfigurationItem("BUILDDIRECTORY", @"D:\garderobe-build-desktop"))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added BUILDIRECTORY config");
@@ -434,29 +437,46 @@ namespace Xyglo
             string stdOutLog = getUserDataPath() + "stdout.log";
             string stdErrLog = getUserDataPath() + "stderr.log";
 
+            // Build Stdout log location
+            //
             if (addCheckConfigurationItem("BUILDSTDOUTLOG", stdOutLog))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added BUILDSTDOUTLOG config");
             }
 
+            // Build Stderr log location
+            //
             if (addCheckConfigurationItem("BUILDSTDERRLOG", stdErrLog))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added BUILDSTDERRLOG config");
             }
 
+            // Autoindent on?
+            //
             if (addCheckConfigurationItem("AUTOINDENT", "TRUE"))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added AUTOINDENT config");
             }
 
+            // Should diffing centre the screen on both BufferViews?
+            //
             if (addCheckConfigurationItem("DIFFCENTRE", "FALSE"))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added DIFFCENTRE config");
             }
 
+            // Confirmation on quit
+            //
             if (addCheckConfigurationItem("CONFIRMQUIT", "TRUE"))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added DIFFCENTRE config");
+            }
+
+            // Confirmation on quit
+            //
+            if (addCheckConfigurationItem("SYNTAXHIGHLIGHT", "TRUE"))
+            {
+                Logger.logMsg("Project::buildInitialConfiguration - added SYNTAXHIGHLIGHT config");
             }
 
             // Sort the config to within an inch of its life

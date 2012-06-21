@@ -17,7 +17,7 @@ namespace Xyglo
         /// <summary>
         /// Are we logging to the console?
         /// </summary>
-        public static bool m_toConsole = false;
+        public static bool m_toConsole = true;
 
         /// <summary>
         /// Are we logging time?
