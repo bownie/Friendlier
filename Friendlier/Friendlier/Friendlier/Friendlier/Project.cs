@@ -286,9 +286,18 @@ namespace Xyglo
         /// <summary>
         /// Default constructor 
         /// </summary>
+        public Project()
+        {
+            m_projectName = "<unnamed>";
+        }
+
+        /// <summary>
+        /// Default constructor 
+        /// </summary>
         public Project(FontManager fontManager)
         {
             m_projectName = "<unnamed>";
+            m_fontManager = fontManager;
             initialise();
         }
 

@@ -7,7 +7,7 @@
 #endregion
 
 
-//#define OUTER_EXCEPTION_HANDLING
+#define OUTER_EXCEPTION_HANDLING
 
 using System;
 using System.IO;
@@ -41,6 +41,22 @@ namespace Xyglo
                 //
                 //ModelBuilder mb = new ModelBuilder(tb);
                 //mb.build();
+            /*
+            Lukility luke = new Lukility();
+
+            int thing = 16;
+
+            bool result = luke.isPowerOfTwo(thing);
+
+            if (result)
+            {
+                Logger.logMsg(thing.ToString() + " is a power of 2");
+            }
+            else
+            {
+                Logger.logMsg(thing.ToString() + " is not a power of 2");
+            }
+*/
 
                 bool checkValidity = Registration.checkRegistry();
 

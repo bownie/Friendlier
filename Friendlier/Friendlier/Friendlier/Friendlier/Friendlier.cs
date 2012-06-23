@@ -2530,19 +2530,33 @@ namespace Xyglo
                         }
                         else // create and activate
                         {
-                            FileBuffer fb = m_project.getFileBuffer(fileToEdit);
-                            bv = new BufferView(m_project.getFontManager(), m_project.getBufferViews()[0], BufferView.ViewPosition.Left);
-                            bv.setFileBuffer(fb);
+                            try
+                            {
+                                FileBuffer fb = m_project.getFileBuffer(fileToEdit);
+                                bv = new BufferView(m_project.getFontManager(), m_project.getBufferViews()[0], BufferView.ViewPosition.Left);
+                                bv.setFileBuffer(fb);
+                                int bvIndex = m_project.addBufferView(bv);
+                                setActiveBuffer(bvIndex);
 
-                            int bvIndex = m_project.addBufferView(bv);
-                            setActiveBuffer(bv);
+                                Vector3 rootPosition = m_project.getBufferViews()[0].getPosition();
+                                Vector3 newPosition2 = bv.getPosition();
 
-                            // Break out of Manage mode and back to editing
-                            //
-                            Vector3 newPosition = m_project.getSelectedBufferView().getLookPosition();
-                            newPosition.Z = 500.0f;
-                            m_state = FriendlierState.TextEditing;
-                            m_editConfigurationItem = false;
+                                Logger.logMsg(rootPosition.ToString() + newPosition2.ToString());
+                                //bv.setFileBufferIndex(
+                                fb.loadFile(m_project.getSyntaxManager());
+                                m_project.getSyntaxManager().generateAllHighlighting(fb);
+
+                                // Break out of Manage mode and back to editing
+                                //
+                                Vector3 newPosition = m_project.getSelectedBufferView().getLookPosition();
+                                newPosition.Z = 500.0f;
+                                m_state = FriendlierState.TextEditing;
+                                m_editConfigurationItem = false;
+                            }
+                            catch (Exception e)
+                            {
+                                setTemporaryMessage("Failed to load file " + e.Message, 2, gameTime);
+                            }
                         }
                     }
                 }
@@ -4583,7 +4597,10 @@ namespace Xyglo
                         //
                         Vector3 newPos = m_project.getBestBufferViewPosition(m_project.getSelectedBufferView());
                         BufferView newBV = new BufferView(m_project.getFontManager(), fb, newPos, 0, 20, m_project.getFileIndex(fb), false);
-                        m_project.addBufferView(newBV);
+                        int index = m_project.addBufferView(newBV);
+
+                        int fileIndex = m_project.getFileIndex(fb);
+                        bv.setFileBufferIndex(fileIndex);
 
                         // Load the file
                         //
@@ -4875,6 +4892,7 @@ namespace Xyglo
         }
 
         private bool m_flipFlop = true;
+        private double m_nextLicenceMessage = 0.0f;
 
         /// <summary>
         /// This is called when the game should draw itself.
@@ -4890,7 +4908,7 @@ namespace Xyglo
             //
             if (!m_project.getLicenced())
             {
-                if (((int)gameTime.TotalGameTime.TotalSeconds) % 5 == 0)
+                if (gameTime.TotalGameTime.TotalSeconds> m_nextLicenceMessage)
                 {
                     if (m_flipFlop)
                     {
@@ -4902,6 +4920,7 @@ namespace Xyglo
                     }
 
                     m_flipFlop = !m_flipFlop;
+                    m_nextLicenceMessage = gameTime.TotalGameTime.TotalSeconds + 5;
                 }
                 //renderTextScroller();
             }
@@ -6847,12 +6866,16 @@ namespace Xyglo
                 m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), text, new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
                 yPos += m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * 2;
 
+                
+
                 // Write all the configuration items out - if we're highlight one of them then change
                 // the colour.
                 //
                 for (int i = 0; i < m_project.getConfigurationListLength(); i++)
                 {
-                    string item = m_project.getConfigurationItem(i).Name + "  =  " + m_project.getConfigurationItem(i).Value;
+                    string configItem = m_project.estimateFileStringTruncation("", m_project.getConfigurationItem(i).Value, 60 - m_project.getConfigurationItem(i).Name.Length);
+                    //string item = m_project.getConfigurationItem(i).Name + "  =  " + m_project.getConfigurationItem(i).Value;
+                    string item = m_project.getConfigurationItem(i).Name + "  =  " + configItem;
 
                     item = m_project.estimateFileStringTruncation("", item, m_project.getSelectedBufferView().getBufferShowWidth());
 

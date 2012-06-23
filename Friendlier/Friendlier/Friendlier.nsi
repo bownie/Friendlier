@@ -21,13 +21,13 @@
 !include Sections.nsh
 
 ; The name of the installer
-Name "Friendlier-win32-alpha-2"
-Caption "Friendlier Windows32 Alpha Build 2"
+Name "Friendlier-win32-beta-1"
+Caption "Friendlier Windows32 Beta Build 1"
 
-!define ICON "Xyglo.ico"
+!define ICON "Friendlier.ico"
 !define COMPANY "Xyglo"
 !define SOFTWARE "Friendlier"
-!define VERSION "1.0.0 Alpha 2"
+!define VERSION "1.0.0 Beta"
 
 !insertmacro MUI_PAGE_LICENSE "Licence.txt"
 !insertmacro MUI_LANGUAGE "English"
@@ -40,7 +40,7 @@ Caption "Friendlier Windows32 Alpha Build 2"
 !define XNAInstaller "xnafx40_redist.msi"
 
 ; The file to write
-OutFile "friendlier-win32-alpha-2.exe"
+OutFile "friendlier-win32-beta-1.exe"
 
 ; The default installation directory
 ;
@@ -164,7 +164,7 @@ Section "Friendlier"
 	; Kinect?
 
 
-    File "Xyglo.ico"
+    File "Friendlier.ico"
 
     ; Write the installation path into the registry
     WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}" "Install_Dir" "$INSTDIR"

@@ -14,10 +14,10 @@
     </TargetFrameworkProfile>
     <XnaFrameworkVersion>v4.0</XnaFrameworkVersion>
     <XnaPlatform>Windows</XnaPlatform>
-    <XnaProfile>Reach</XnaProfile>
+    <XnaProfile>HiDef</XnaProfile>
     <XnaCrossPlatformGroupID>8e10573d-40b5-4360-ab22-5406bdc08ec8</XnaCrossPlatformGroupID>
     <XnaOutputType>Game</XnaOutputType>
-    <ApplicationIcon>xyglo.ico</ApplicationIcon>
+    <ApplicationIcon>Friendlier.ico</ApplicationIcon>
     <Thumbnail>Xyglo.png</Thumbnail>
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <PublishUrl>publish\</PublishUrl>
@@ -151,6 +151,7 @@
     <Compile Include="Highlight.cs" />
     <Compile Include="InsertTextCommand.cs" />
     <Compile Include="KinectWorker.cs" />
+    <Compile Include="Lukility.cs" />
     <Compile Include="Pair.cs" />
     <Compile Include="ReformatTextCommand.cs" />
     <Compile Include="ScreenPosition.cs" />
@@ -180,15 +181,10 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="ACKNOWLEDGEMENTS.txt" />
+    <Content Include="Friendlier.ico" />
+    <Content Include="Rocket Model.txt" />
     <Content Include="TODO.txt" />
-    <Content Include="xyglo.ico" />
     <Content Include="Xyglo.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\FriendlierContent\FriendlierContent.contentproj">
-      <Name>FriendlierContent</Name>
-      <XnaReferenceType>Content</XnaReferenceType>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.0,Profile=Client">
@@ -222,6 +218,13 @@
     <None Include="app.manifest">
       <SubType>Designer</SubType>
     </None>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FriendlierContent\FriendlierContent.contentproj">
+      <Project>{7FC83919-9ECC-4686-B948-73E64D2B9DA9}</Project>
+      <Name>FriendlierContent %28Content%29</Name>
+      <XnaReferenceType>Content</XnaReferenceType>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\Microsoft.Xna.GameStudio.targets" />

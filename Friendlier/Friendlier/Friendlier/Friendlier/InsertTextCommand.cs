@@ -11,7 +11,7 @@ namespace Xyglo
     /// Note that we accept a FilePosition and we return a screen position.
     /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
-    class InsertTextCommand : Command
+    public class InsertTextCommand : Command
     {
         /// <summary>
         /// We use this only for undo as the original position will only be one line

@@ -31,6 +31,10 @@ namespace Xyglo
         public override ScreenPosition doCommand()
         {
             string newLine, bufLine;
+            
+            // Return position
+            //
+            ScreenPosition rp = new ScreenPosition(m_startPos);
 
             // Clear the snippet and then append all the lines we're going to delete
             //
@@ -85,6 +89,11 @@ namespace Xyglo
                     {
                         m_fileBuffer.deleteLines(m_startPos.Y, 1);
                         m_snippet.incrementLinesDeleted(1);
+
+                        if (rp.Y > 0)
+                        {
+                            rp.Y--;
+                        }
                     }
                     else
                     {
@@ -147,7 +156,7 @@ namespace Xyglo
 #if DELETE_COMMAND_DEBUG
             Logger.logMsg("DeleteTextCommand:doCommand() - snippet position is " + m_snippet.getSnippetFactoryPosition());
 #endif
-            return new ScreenPosition(m_startPos);
+            return rp;
         }
 
         /// <summary>

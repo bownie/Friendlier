@@ -17,6 +17,7 @@ USE CASES
 BUGS
 ----
 
+- quit is not showing the Y/N consistently
 - mouse click to navigate in file browser
 - clear save as filename between save as's
 - highlight going beyond top of file

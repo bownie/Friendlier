@@ -1362,15 +1362,22 @@ namespace Xyglo
         /// </summary>
         public void deleteCurrentSelection(Project project)
         {
-            m_fileBuffer.deleteSelection(project, screenToFilePosition(project, m_highlightStart), screenToFilePosition(project, m_highlightEnd), m_highlightStart, m_highlightEnd);
+            ScreenPosition newPosition = m_fileBuffer.deleteSelection(project, screenToFilePosition(project, m_highlightStart), screenToFilePosition(project, m_highlightEnd), m_highlightStart, m_highlightEnd);
 
-            if (m_highlightStart < m_highlightEnd)
+            if (newPosition != m_cursorPosition)
             {
-                m_cursorPosition = m_highlightStart;
+                m_cursorPosition = newPosition;
             }
             else
             {
-                m_cursorPosition = m_highlightEnd;
+                if (m_highlightStart < m_highlightEnd)
+                {
+                    m_cursorPosition = m_highlightStart;
+                }
+                else
+                {
+                    m_cursorPosition = m_highlightEnd;
+                }
             }
 
             // Update the syntax highlighting
@@ -1397,7 +1404,9 @@ namespace Xyglo
             if (m_fileBuffer.getLineCount() == 0)
                 return;
 
-            m_fileBuffer.deleteSelection(project, screenToFilePosition(project, m_cursorPosition), screenToFilePosition(project, m_cursorPosition), m_highlightStart, m_highlightEnd);
+            // Get the cursor position
+            //
+            m_cursorPosition = m_fileBuffer.deleteSelection(project, screenToFilePosition(project, m_cursorPosition), screenToFilePosition(project, m_cursorPosition), m_highlightStart, m_highlightEnd);
 
             // Update the syntax highlighting
             //
