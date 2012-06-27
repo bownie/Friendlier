@@ -5,6 +5,7 @@ using System.Text;
 using System.IO;
 using Microsoft.Xna.Framework;
 using System.Runtime.Serialization;
+using System.Threading;
 
 namespace Xyglo
 {
@@ -114,6 +115,11 @@ namespace Xyglo
         /// </summary>
         protected List<Highlight> m_returnLineList = new List<Highlight>();
 
+        /// <summary>
+        /// Protected our m_lines during read/write
+        /// </summary>
+        protected Mutex m_lineMutex = new Mutex();
+
         //////////// CONSTRUCTORS ////////////
 
         /// <summary>
@@ -192,10 +198,18 @@ namespace Xyglo
             m_shortName = "";
             m_readOnly = false;
 
+            // Wait for a lock
+            //
+            m_lineMutex.WaitOne();
+
             // Clear collections
             //
             m_lines.Clear();
             m_lineMarkers.Clear();
+
+            // Release lock
+            //
+            m_lineMutex.ReleaseMutex();
         }
 
         /// <summary>
@@ -216,9 +230,17 @@ namespace Xyglo
         /// <param name="text"></param>
         public void addLineWithMarker(LineMarker marker, string text)
         {
+            // Get lock;
+            //
+            m_lineMutex.WaitOne();
+
             m_lines.Add(text);
             int line = m_lines.Count() - 1;
             m_lineMarkers[line] = marker;
+
+            // Release lock
+            //
+            m_lineMutex.ReleaseMutex();
         }
 
         /// <summary>
@@ -234,11 +256,19 @@ namespace Xyglo
                 //throw new Exception("Attempting to repurpose an existing LineMarker");
             //}
 
+            // Get lock;
+            //
+            m_lineMutex.WaitOne();
+
             if (m_lines.Count() == 0)
             {
                 m_lines.Add(text);
 
             }
+
+            // Release
+            //
+            m_lineMutex.ReleaseMutex();
             // Set line to append the new text
             //
             //m_lines[line] = m_lines[line] + text;
@@ -351,6 +381,10 @@ namespace Xyglo
                 Logger.logMsg("FileBuffer::FileBuffer() - can't get the file creation time");
             }
 
+            // Get lock
+            //
+            m_lineMutex.WaitOne();
+
             // If we have recovered this FileBuffer from a persisted state then m_lines could
             // very well be null at this point - initialise it if it is.  Otherwise we clear
             // before we load.
@@ -375,6 +409,10 @@ namespace Xyglo
                     m_lines.Add(line);
                 }
             }
+
+            // Release lock
+            //
+            m_lineMutex.ReleaseMutex();
 
             m_lastFetchSystemTime = DateTime.Now;
         }
@@ -409,12 +447,21 @@ namespace Xyglo
                 
                 //if (fileModTime != m_lastFetchSystemTime)
                 //{
+                
+                    // Get lock;
+                    //
+                    m_lineMutex.WaitOne();
+
                     m_lines.Clear();
 
                     // Calling this also updates the m_lastFetchSystemTime
                     //
                     loadFile(syntaxManager);
                     m_lastFetchTime = gametime.TotalGameTime;
+
+                    // Release lock
+                    //
+                    m_lineMutex.ReleaseMutex();
 
                     //Logger.logMsg("FileBuffer::fetchFile() - refetching file " + m_filename);
                     return true;
@@ -429,8 +476,16 @@ namespace Xyglo
         /// </summary>
         public void forceRefetchFile(SyntaxManager syntaxManager)
         {
+            // Get lock
+            //
+            m_lineMutex.WaitOne();
+
             m_lines.Clear();
             loadFile(syntaxManager);
+
+            // Release
+            //
+            m_lineMutex.ReleaseMutex();
         }
 
         /// <summary>
@@ -463,6 +518,10 @@ namespace Xyglo
                 return;
             }
 
+            // Get lock
+            //
+            m_lineMutex.WaitOne();
+
             if (line >= m_lines.Count)
             {
                 Logger.logMsg("FileBuffer::setLine() - line " + line + " is not available in the FileBuffer");
@@ -471,6 +530,10 @@ namespace Xyglo
             {
                 m_lines[line] = value;
             }
+
+            // Release
+            //
+            m_lineMutex.ReleaseMutex();
         }
 
 
@@ -487,6 +550,10 @@ namespace Xyglo
                 return;
             }
 
+            // Get lock
+            //
+            m_lineMutex.WaitOne();
+
             if (line >= m_lines.Count)
             {
                 // Add enough lines to ensure we can reference it
@@ -500,6 +567,10 @@ namespace Xyglo
             // Now set the line
             //
             m_lines[line] += value;
+
+            // Release
+            //
+            m_lineMutex.ReleaseMutex();
         }
 
         /// <summary>
@@ -515,6 +586,10 @@ namespace Xyglo
                 return;
             }
 
+            // Get lock
+            //
+            m_lineMutex.WaitOne();
+
             if (line > m_lines.Count)
             {
                 Logger.logMsg("FileBuffer::appendLine() - line " + line + " is not available in the FileBuffer");
@@ -527,6 +602,10 @@ namespace Xyglo
             {
                 m_lines[line] += value;
             }
+
+            // Release
+            //
+            m_lineMutex.ReleaseMutex();
         }
 
         /// <summary>
@@ -535,7 +614,15 @@ namespace Xyglo
         /// <param name="value"></param>
         public void appendLine(string value)
         {
+            // Get lock
+            //
+            m_lineMutex.WaitOne();
+
             m_lines.Add(value);
+
+            // Release
+            //
+            m_lineMutex.ReleaseMutex();
         }
 
         /// <summary>
@@ -552,7 +639,15 @@ namespace Xyglo
 
             try
             {
+                // Get lock
+                //
+                m_lineMutex.WaitOne();
+
                 m_lines.Insert(line, value);
+
+                // Release
+                //
+                m_lineMutex.ReleaseMutex();
             }
             catch (Exception e)
             {
@@ -574,6 +669,10 @@ namespace Xyglo
                 return false;
             }
 
+            // Get lock
+            //
+            m_lineMutex.WaitOne();
+
             if (number > 0)
             {
                 m_lines.RemoveRange(startLine, number);
@@ -582,6 +681,10 @@ namespace Xyglo
             {
                 m_lines.RemoveAt(startLine);
             }
+
+            // Release
+            //
+            m_lineMutex.ReleaseMutex();
 
             return true;
         }
@@ -1027,6 +1130,10 @@ namespace Xyglo
                 return;
             }
 
+            // Get lock
+            //
+            m_lineMutex.WaitOne();
+
             Logger.logMsg("FileBuffer::save() - starting file write " + m_filename);
             using (StreamWriter sw = new StreamWriter(m_filename))
             {
@@ -1035,6 +1142,10 @@ namespace Xyglo
                     sw.WriteLine(line);
                 }
             }
+
+            // Release
+            //
+            m_lineMutex.ReleaseMutex();
 
             Logger.logMsg("FileBuffer::save() - completed file write");
 

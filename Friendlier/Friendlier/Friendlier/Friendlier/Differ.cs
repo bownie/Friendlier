@@ -116,6 +116,16 @@ namespace Xyglo
         /// </summary>
         public Color m_insertedColour = Color.Green;
 
+        /// <summary>
+        /// Y margin for the diff preview 
+        /// </summary>
+        protected float m_yMargin = 10.0f;
+
+        /// <summary>
+        /// X margin for the diff preview
+        /// </summary>
+        protected float m_xMargin = 5.0f;
+
         // -------------------------------- CONSTRUCTORS --------------------------------------
         //
         public Differ()
@@ -158,6 +168,24 @@ namespace Xyglo
         {
             m_sourceBufferView1 = bv1;
             m_sourceBufferView2 = bv2;
+        }
+
+        /// <summary>
+        /// X margin for text preview
+        /// </summary>
+        /// <returns></returns>
+        public float getXMargin()
+        {
+            return m_xMargin;
+        }
+
+        /// <summary>
+        /// Y margin for text preview
+        /// </summary>
+        /// <returns></returns>
+        public float getYMargin()
+        {
+            return m_yMargin;
         }
 
         /// <summary>
@@ -404,13 +432,10 @@ namespace Xyglo
             m_rightBox = rightBox;
             m_rightBoxEnd = rightBoxEnd;
 
-            float yMargin = 10.0f;
-            float xMargin = 5.0f;
-
             // Set our working width and height
             //
-            float workingHeight = Math.Min(leftBoxEnd.Y - leftBox.Y, rightBoxEnd.Y - rightBox.Y) - (2 * yMargin);
-            float workingWidth = Math.Min(leftBoxEnd.X - leftBox.X, rightBoxEnd.X - rightBox.X) - (2 * xMargin);
+            float workingHeight = Math.Min(leftBoxEnd.Y - leftBox.Y, rightBoxEnd.Y - rightBox.Y) - (2 * m_yMargin);
+            float workingWidth = Math.Min(leftBoxEnd.X - leftBox.X, rightBoxEnd.X - rightBox.X) - (2 * m_xMargin);
 
             float lineHeight = workingHeight / (float)getMaxDiffLength();
 
@@ -447,8 +472,8 @@ namespace Xyglo
                         break;
                 }
 
-                Vector2 start = new Vector2(leftBox.X + xMargin, leftBox.Y + yMargin + (i * lineHeight));
-                Vector2 end = new Vector2(leftBox.X + xMargin + (m_lhsDiff[i].Second * charWidth), leftBox.Y + yMargin + (i * lineHeight));
+                Vector2 start = new Vector2(leftBox.X + m_xMargin, leftBox.Y + m_yMargin + (i * lineHeight));
+                Vector2 end = new Vector2(leftBox.X + m_xMargin + (m_lhsDiff[i].Second * charWidth), leftBox.Y + m_yMargin + (i * lineHeight));
 
                 // Generate preview object and push onto list
                 //
@@ -481,8 +506,8 @@ namespace Xyglo
                         break;
                 }
 
-                Vector2 start = new Vector2(rightBox.X + xMargin, rightBox.Y + yMargin + (i * lineHeight));
-                Vector2 end = new Vector2(rightBox.X + xMargin + (m_rhsDiff[i].Second * charWidth), rightBox.Y + yMargin + (i * lineHeight));
+                Vector2 start = new Vector2(rightBox.X + m_xMargin, rightBox.Y + m_yMargin + (i * lineHeight));
+                Vector2 end = new Vector2(rightBox.X + m_xMargin + (m_rhsDiff[i].Second * charWidth), rightBox.Y + m_yMargin + (i * lineHeight));
 
                 // Generate preview object and push onto list
                 //

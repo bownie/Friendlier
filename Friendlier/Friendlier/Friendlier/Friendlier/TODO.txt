@@ -17,7 +17,20 @@ USE CASES
 BUGS
 ----
 
+- highlighting with long lines on editor
+- word jumping with long lines on editor
+- drag and drop to exact position
+- paste doesn't do last line
+- search in tailing views needs to match up
+- case on searches is annoying
+- copy search between bufferviews
 - quit is not showing the Y/N consistently
+- replacetextcommand not working - putting first char at end of line
+- control word jump is too aggressive - must take slashes etc into account
+- alternate build command doesn't produce stdout
+- project manage - file opening works but on exit/restart project is incorrect
+- log file contention still with long build/multiple build threads perhaps? [CHANGED THREADING]
+
 - mouse click to navigate in file browser
 - clear save as filename between save as's
 - highlight going beyond top of file

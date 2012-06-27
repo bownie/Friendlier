@@ -460,7 +460,7 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// No highlight position i
+        /// Cancel any highlight
         /// </summary>
         public void noHighlight()
         {
@@ -1612,7 +1612,7 @@ namespace Xyglo
             {
                 string newLine;
 
-                for (int i = shiftStart.Y; i < shiftEnd.Y; i++)
+                for (int i = shiftStart.Y; i < shiftEnd.Y + 1; i++)
                 {
                     line = m_fileBuffer.getLine(i);
 
@@ -1630,6 +1630,9 @@ namespace Xyglo
                     }
                     rS.m_lines.Add(line);
                 }
+
+                
+                //if (shiftEnd.X > 0)
             }
 
             return rS;

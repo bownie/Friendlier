@@ -454,12 +454,12 @@ namespace Xyglo
         /// <summary>
         /// Lock the Standard out log file for writing
         /// </summary>
-        protected Mutex m_stdOutLogFileMutex = new Mutex();
+        //protected Mutex m_stdOutLogFileMutex = new Mutex();
 
         /// <summary>
         /// Lock the Started error log file for writing
         /// </summary>
-        protected Mutex m_stdErrLogFileMutex = new Mutex();
+        //protected Mutex m_stdErrLogFileMutex = new Mutex();
 
         /// <summary>
         /// Store GameTime somewhere central
@@ -4299,7 +4299,7 @@ namespace Xyglo
 
             // Check for validity of bv and position here
             //
-            if (bv == null || fp.Y < 0 || fp.Y > bv.getFileBuffer().getLineCount()) // do nothing
+            if (bv == null || fp.Y < 0 || fp.Y > bv.getFileBuffer().getLineCount() || fp.X < 0 || fp.X >= bv.getFileBuffer().getLine(fp.Y).Length) // do nothing
                 return;
 
             if (bv.isTailing())
@@ -4577,6 +4577,13 @@ namespace Xyglo
                     //
                     bv = m_project.getBufferView(fb.getFilepath());
 
+                    // Adjust line by 1 - hardcode this for QtCreator for the moment
+                    //
+                    if (sp.Y > 0)
+                    {
+                        sp.Y--;
+                    }
+
                     // If we have one then zap to it
                     //
                     if (bv != null)
@@ -4600,7 +4607,7 @@ namespace Xyglo
                         int index = m_project.addBufferView(newBV);
 
                         int fileIndex = m_project.getFileIndex(fb);
-                        bv.setFileBufferIndex(fileIndex);
+                        newBV.setFileBufferIndex(fileIndex);
 
                         // Load the file
                         //
@@ -4615,11 +4622,11 @@ namespace Xyglo
                 }
                 else // not found anything - look on the filesystem
                 {
-                    // Can 
                     Logger.logMsg("Friendlier::handleTailingDoubleClick() - inspecting filesystem");
 
-                    string baseDir = @"C:\dev-alpha2\win32-mingw-rtmidi";
-                    //string baseDir = @"D:\win32-mingw-rtmidi";
+                    // By default get the build directory - we'll probably want to change ths
+                    //
+                    string baseDir = m_project.getConfigurationValue("BUILDDIRECTORY");
 
                     // If we have retrieved a line to test
                     //
@@ -5196,7 +5203,8 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Split at string along a given length along word boundaries
+        /// Split at string along a given length along word boundaries.   We try to split on space first,
+        /// then forwardslash, then backslash.
         /// </summary>
         /// <param name="line"></param>
         /// <param name="width"></param>
@@ -5214,8 +5222,39 @@ namespace Xyglo
             int splitPos = 0;
             while (splitPos < line.Length)
             {
-                string splitString = line.Substring(splitPos, line.Substring(splitPos, Math.Min(width, line.Length - splitPos)).LastIndexOf(" "));
+                // Split to max width
+                //
+                string splitString = line.Substring(splitPos, Math.Min(width, line.Length - splitPos));
 
+                int findPos = splitString.LastIndexOf(" ");
+
+                if (findPos == -1)
+                {
+                    findPos = splitString.LastIndexOf("/");
+
+                    if (findPos == -1)
+                    {
+                        findPos = splitString.LastIndexOf("\\");
+
+                        if (findPos == -1)
+                        {
+                            findPos = splitString.LastIndexOf("/");
+                        }
+                    }
+                }
+
+                if (findPos != -1)
+                {
+                    // Step past this match character for next match
+                    //
+                    if (findPos + splitPos < line.Length)
+                    {
+                        findPos++;
+                    }
+                    splitString = line.Substring(splitPos, findPos);
+                }
+
+                /*
                 // If there's no space in our substring then we cheat
                 //
                 if (splitString == "")
@@ -5232,10 +5271,16 @@ namespace Xyglo
                     }
                 }
                 else
-                {
+                {*/
                     splitPos += splitString.Length;
+
+//                    if (splitPos < line.Length)
+                    //{
+                      //  splitPos++;
+                    //}
+
                     rS.Add(splitString);
-                }
+                //}
             }
 
             return rS;
@@ -5572,7 +5617,8 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Draw a cursor and make it blink in position
+        /// Draw the differ - it's two mini document overviews and we provide an overlay so that
+        /// we know what position in the diff we're currently looking at.
         /// </summary>
         /// <param name="v"></param>
         protected void drawDiffer(GameTime gameTime)
@@ -5597,16 +5643,59 @@ namespace Xyglo
             drawBox(m_differ.getLeftBox(), m_differ.getLeftBoxEnd(), myColour, 0.5f);
             drawBox(m_differ.getRightBox(), m_differ.getRightBoxEnd(), myColour, 0.5f);
 
+            // Modify alpha according to the type of the line
+            //
+            float alpha = 1.0f;
+
+            // Draw LHS preview
+            //
             foreach(DiffPreview dp in m_differ.getLhsDiffPreview())
             {
-                drawLine(dp.m_startPos, dp.m_endPos, dp.m_colour, 0.75f);
+                if (dp.m_colour == m_differ.m_unchangedColour)
+                {
+                    alpha = 0.5f;
+                }
+                else
+                {
+                    alpha = 0.8f;
+                }
+
+                drawLine(dp.m_startPos, dp.m_endPos, dp.m_colour, alpha);
             }
 
+            // Draw RHS preview
+            //
             foreach(DiffPreview dp in m_differ.getRhsDiffPreview())
             {
-                drawLine(dp.m_startPos, dp.m_endPos, dp.m_colour, 0.75f);
+                if (dp.m_colour == m_differ.m_unchangedColour)
+                {
+                    alpha = 0.5f;
+                }
+                else
+                {
+                    alpha = 0.8f;
+                }
+
+                drawLine(dp.m_startPos, dp.m_endPos, dp.m_colour, alpha);
             }
 
+            // Now we want to render a position viewer box overlay
+            //
+            float startY = Math.Min(m_differ.getLeftBox().Y + m_differ.getYMargin(), m_differ.getRightBox().Y + m_differ.getYMargin());
+            float endY = Math.Min(m_differ.getLeftBoxEnd().Y - m_differ.getYMargin(), m_differ.getRightBoxEnd().Y - m_differ.getYMargin());
+
+            double diffPercent = ((double)m_diffPosition) / ((double)m_differ.getMaxDiffLength());
+            double height = ((double)m_project.getSelectedBufferView().getBufferShowLength())/((double)m_differ.getMaxDiffLength());
+
+            Vector2 topLeft = new Vector2(m_differ.getLeftBox().X - 10.0f, startY + ((endY - startY) * ((float)diffPercent)));
+            Vector2 topRight = new Vector2(m_differ.getRightBoxEnd().X + 10.0f, startY + ((endY - startY) * ((float)diffPercent)));
+            Vector2 bottomRight = topRight;
+            bottomRight.Y += Math.Max(((float)height * (endY - startY)), 3.0f);
+
+            // Now render the quad
+            //
+            drawQuad(topLeft, bottomRight, Color.LightYellow, 0.3f);
+            
             m_pannerSpriteBatch.End();
         }
 
@@ -5650,6 +5739,20 @@ namespace Xyglo
             drawLine(bottomRight, topLeft + yDiff, colour, alpha, width);
             drawLine(topLeft + yDiff, topLeft, colour, alpha, width);
         }
+
+        /// <summary>
+        /// Just a wrapper for a draw quad
+        /// </summary>
+        /// <param name="topLeft"></param>
+        /// <param name="bottomRight"></param>
+        /// <param name="colour"></param>
+        /// <param name="alpha"></param>
+        /// <param name="width"></param>
+        protected void drawQuad(Vector2 topLeft, Vector2 bottomRight, Color colour, float alpha = 1.0f)
+        {
+            m_pannerSpriteBatch.Draw(m_flatTexture, new Rectangle((int)topLeft.X, (int)topLeft.Y, (int)(bottomRight.X - topLeft.X), (int)(bottomRight.Y - topLeft.Y)), colour * alpha);
+        }
+
 
         /// <summary>
         /// Draw a cursor and make it blink in position
@@ -6954,10 +7057,10 @@ namespace Xyglo
                         //
                         if (!File.Exists(buildStdErrLog))
                         {
-                            m_stdErrLogFileMutex.WaitOne();
+                            //m_stdErrLogFileMutex.WaitOne();
                             StreamWriter newStdErr = File.CreateText(buildStdErrLog);
                             newStdErr.Close();
-                            m_stdErrLogFileMutex.ReleaseMutex();
+                            //m_stdErrLogFileMutex.ReleaseMutex();
                         }
 
                         m_buildStdErrView = m_project.findBufferView(buildStdErrLog);
@@ -6967,6 +7070,8 @@ namespace Xyglo
                             m_buildStdErrView = addNewFileBuffer(buildStdErrLog, true, true);
                         }
                         m_buildStdErrView.setTailColour(Color.Orange);
+                        m_buildStdErrView.noHighlight();
+
                         //m_buildStdErrView.setReadOnlyColour(Color.DarkRed);
 
                         // Store the line length of the existing file
@@ -6977,10 +7082,10 @@ namespace Xyglo
                         //
                         if (!File.Exists(buildStdOutLog))
                         {
-                            m_stdOutLogFileMutex.WaitOne();
+                            //m_stdOutLogFileMutex.WaitOne();
                             StreamWriter newStdOut = File.CreateText(buildStdOutLog);
                             newStdOut.Close();
-                            m_stdOutLogFileMutex.ReleaseMutex();
+                            //m_stdOutLogFileMutex.ReleaseMutex();
                         }
 
                         // Now ensure that the build log is visible on the screen somewhere
@@ -6991,6 +7096,7 @@ namespace Xyglo
                         {
                             m_buildStdOutView = addNewFileBuffer(buildStdOutLog, true, true);
                         }
+                        m_buildStdOutView.noHighlight();
 
                         // Store the line length of the existing file
                         //
@@ -7078,7 +7184,7 @@ namespace Xyglo
 
             // Lock log file for writing
             //
-            m_stdOutLogFileMutex.WaitOne();
+            //m_stdOutLogFileMutex.WaitOne();
 
             m_buildStdOutView.getFileBuffer().appendLine(logBody);
 
@@ -7097,7 +7203,7 @@ namespace Xyglo
 #endif
             // Unlock
             //
-            m_stdOutLogFileMutex.ReleaseMutex();
+            //m_stdOutLogFileMutex.ReleaseMutex();
 
             // Ensure we're looking at the end of the file
             //
@@ -7122,7 +7228,7 @@ namespace Xyglo
 
             // Lock log file for writing
             //
-            m_stdErrLogFileMutex.WaitOne();
+            //m_stdErrLogFileMutex.WaitOne();
             m_buildStdErrView.getFileBuffer().appendLine(logBody);
 
             // Save the log file
@@ -7141,7 +7247,7 @@ namespace Xyglo
 
             // Unlock
             //
-            m_stdErrLogFileMutex.ReleaseMutex();
+            //m_stdErrLogFileMutex.ReleaseMutex();
 
             // Ensure we're looking at the end of the file
             //

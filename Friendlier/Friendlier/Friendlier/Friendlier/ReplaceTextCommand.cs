@@ -164,7 +164,7 @@ namespace Xyglo
             //
             ScreenPosition fp = new ScreenPosition(m_startPos);
 
-            if (m_writeSnippet.m_lines.Count == 0)
+            if (m_startPos.Y == m_endPos.Y)
             {
                 // Do something for a single line
 
