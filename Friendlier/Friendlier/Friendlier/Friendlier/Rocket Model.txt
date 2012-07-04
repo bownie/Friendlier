@@ -1,0 +1,181 @@
+#!BPY
+
+"""
+Name&#58; 'Missile script'
+Blender&#58; 237
+Group&#58; 'Mesh'
+Tooltip&#58; 'Creates missiles and rockets'
+"""
+
+import Blender
+from Blender import NMesh
+from Blender.BGL import *
+from Blender.Draw import *
+import math
+from math import *
+T_bs = Create&#40;2.0&#41; 
+T_bh = Create&#40;1.0&#41;
+T_ms = Create&#40;1.0&#41;
+T_mus = Create&#40;1.0&#41;
+T_mh = Create&#40;5.0&#41;
+T_th = Create&#40;1.0&#41;
+EVENT_NOEVENT = 1
+EVENT_DRAW = 2
+EVENT_EXIT = 3
+
+def draw&#40;&#41;&#58;
+global T_bs
+global T_ms
+global T_bh
+global T_mus
+global T_mh
+global T_th
+global EVENT_NOEVENT, EVENT_DRAW, EVENT_EXIT
+
+glClear&#40;GL_COLOR_BUFFER_BIT&#41;
+glRasterPos2d&#40;8, 150&#41;
+Text&#40;"Jake's Missile Script"&#41;
+
+glRasterPos2d&#40;8, 120&#41;
+Text&#40;"Parameters&#58;"&#41;
+
+T_bs = Slider&#40;"Bottom size&#58; ", EVENT_NOEVENT, 8, 90, 200, 18, T_bs.val, 0.1, 20.0, 1, "The size of bottom"&#41;;
+T_ms = Slider&#40;"Middle size&#58; ", EVENT_NOEVENT, 8, 70, 200, 18, T_ms.val, 0.1, 20.0, 1, "Middle size"&#41;; 
+T_mus = Slider&#40;"Upper middle size&#58; ", EVENT_NOEVENT, 220, 70, 250, 18, T_mus.val, 0.1, 20.0, 1, "Upper middle size"&#41;;
+T_bh = Slider&#40;"Bottom height&#58; ", EVENT_NOEVENT, 8, 50, 200, 18, T_bh.val, 0.1, 20.0, 1, "Bottom height"&#41;;
+T_mh = Slider&#40;"Middle height&#58; ", EVENT_NOEVENT, 220, 50, 220, 18, T_mh.val, 0.1, 20.0, 1, "Middle height"&#41;;
+T_th = Slider&#40;"Top height&#58; ", EVENT_NOEVENT, 220, 90, 220, 18, T_th.val, 0.1, 20.0, 1, "Top height"&#41;;
+
+Button&#40;"Draw", EVENT_DRAW, 8, 30, 80, 18&#41;
+Button&#40;"Exit", EVENT_EXIT, 100, 30, 80, 18&#41;
+
+def event&#40;evt, val&#41;&#58;
+if &#40;evt == QKEY and not val&#41;&#58;
+Exit&#40;&#41;
+
+def bevent&#40;evt&#41;&#58;
+global T_bs
+global T_ms
+global T_bh
+global T_mus
+global T_mh
+global T_th
+global EVENT_NOEVENT, EVENT_DRAW, EVENT_EXIT
+
+if &#40;evt == EVENT_EXIT&#41;&#58;
+Exit&#40;&#41;
+elif&#40;evt == EVENT_DRAW&#41;&#58;
+Missile&#40;T_bs.val, T_ms.val, T_bh.val, T_mus.val, T_mh.val, T_th.val&#41;
+Blender.Redraw&#40;&#41;
+
+Register &#40;draw, event, bevent&#41;
+
+def Missile&#40;bs, ms, bh, mus, mh, th&#41;&#58;
+
+me = NMesh.GetRaw&#40;&#41;
+v = NMesh.Vert&#40;-&#40;bs/2&#41;,-&#40;bs/2&#41;,0.0&#41;
+me.verts.append&#40;v&#41;
+v = NMesh.Vert&#40;bs/2,-&#40;bs/2&#41;,0.0&#41;
+me.verts.append&#40;v&#41;
+v = NMesh.Vert&#40;bs/2,bs/2,0.0&#41;
+me.verts.append&#40;v&#41;
+v = NMesh.Vert&#40;-&#40;bs/2&#41;,bs/2,0.0&#41;
+me.verts.append&#40;v&#41;
+
+v = NMesh.Vert&#40;-&#40;ms/2&#41;,-&#40;ms/2&#41;,bh&#41;
+me.verts.append&#40;v&#41;
+v = NMesh.Vert&#40;ms/2,-&#40;ms/2&#41;,bh&#41;
+me.verts.append&#40;v&#41;
+v = NMesh.Vert&#40;ms/2,ms/2,bh&#41;
+me.verts.append&#40;v&#41;
+v = NMesh.Vert&#40;-&#40;ms/2&#41;,ms/2,bh&#41;
+me.verts.append&#40;v&#41;
+
+v = NMesh.Vert&#40;-&#40;mus/2&#41;,-&#40;mus/2&#41;,bh + mh&#41;
+me.verts.append&#40;v&#41;
+v = NMesh.Vert&#40;mus/2,-&#40;mus/2&#41;,bh + mh&#41;
+me.verts.append&#40;v&#41;
+v = NMesh.Vert&#40;mus/2, mus/2,bh + mh&#41;
+me.verts.append&#40;v&#41;
+v = NMesh.Vert&#40;-&#40;mus/2&#41;,mus/2,bh + mh&#41;
+me.verts.append&#40;v&#41;
+
+v = NMesh.Vert&#40;0, 0, bh + mh + th&#41;
+me.verts.append&#40;v&#41;
+
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;0&#93;&#41;
+f.v.append&#40;me.verts&#91;1&#93;&#41;
+f.v.append&#40;me.verts&#91;2&#93;&#41;
+f.v.append&#40;me.verts&#91;3&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;0&#93;&#41;
+f.v.append&#40;me.verts&#91;1&#93;&#41;
+f.v.append&#40;me.verts&#91;5&#93;&#41;
+f.v.append&#40;me.verts&#91;4&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;1&#93;&#41;
+f.v.append&#40;me.verts&#91;2&#93;&#41;
+f.v.append&#40;me.verts&#91;6&#93;&#41;
+f.v.append&#40;me.verts&#91;5&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;2&#93;&#41;
+f.v.append&#40;me.verts&#91;3&#93;&#41;
+f.v.append&#40;me.verts&#91;7&#93;&#41;
+f.v.append&#40;me.verts&#91;6&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;3&#93;&#41;
+f.v.append&#40;me.verts&#91;0&#93;&#41;
+f.v.append&#40;me.verts&#91;4&#93;&#41;
+f.v.append&#40;me.verts&#91;7&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;4&#93;&#41;
+f.v.append&#40;me.verts&#91;5&#93;&#41;
+f.v.append&#40;me.verts&#91;9&#93;&#41;
+f.v.append&#40;me.verts&#91;8&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;5&#93;&#41;
+f.v.append&#40;me.verts&#91;6&#93;&#41;
+f.v.append&#40;me.verts&#91;10&#93;&#41;
+f.v.append&#40;me.verts&#91;9&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;6&#93;&#41;
+f.v.append&#40;me.verts&#91;7&#93;&#41;
+f.v.append&#40;me.verts&#91;11&#93;&#41;
+f.v.append&#40;me.verts&#91;10&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;7&#93;&#41;
+f.v.append&#40;me.verts&#91;4&#93;&#41;
+f.v.append&#40;me.verts&#91;8&#93;&#41;
+f.v.append&#40;me.verts&#91;11&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;8&#93;&#41;
+f.v.append&#40;me.verts&#91;9&#93;&#41;
+f.v.append&#40;me.verts&#91;12&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;9&#93;&#41;
+f.v.append&#40;me.verts&#91;10&#93;&#41;
+f.v.append&#40;me.verts&#91;12&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;10&#93;&#41;
+f.v.append&#40;me.verts&#91;11&#93;&#41;
+f.v.append&#40;me.verts&#91;12&#93;&#41;
+me.faces.append&#40;f&#41;
+f = NMesh.Face&#40;&#41;
+f.v.append&#40;me.verts&#91;11&#93;&#41;
+f.v.append&#40;me.verts&#91;8&#93;&#41;
+f.v.append&#40;me.verts&#91;12&#93;&#41;
+me.faces.append&#40;f&#41;
+Obj = NMesh.PutRaw&#40;me&#41;
+Blender.Redraw&#40;&#41;
