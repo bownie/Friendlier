@@ -1,27 +1,75 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// TextSnippet.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
 namespace Xyglo
 {
+    /// <summary>
+    /// A class that holds information about some text that we are adding or deleting
+    /// from an existing item.
+    /// </summary>
     public class TextSnippet
     {
-        // Make this public to avoid 
+        /// <summary>
+        /// Lines in snippet
+        /// </summary>
         public List<string> m_lines = new List<string>();
 
-        //protected FilePosition m_startPoint;
-
+        /// <summary>
+        /// Number of lines deleted
+        /// </summary>
         protected int m_linesDeleted = 0;
 
+        /// <summary>
+        /// Store any highlights that have been removed as part of this TextSnippet operation
+        /// </summary>
+        public List<Highlight> m_highlights = new List<Highlight>();
+
+        /// <summary>
+        /// Single character delete
+        /// </summary>
+        protected bool m_isSingle = false;
+
+        /// <summary>
+        /// Position in the SnippetFactory - do we use this?
+        /// </summary>
+        protected int m_snippetFactoryPosition = 0;
+
+        /// <summary>
+        /// Number of lines deleted as part of this snippet
+        /// </summary>
+        /// <returns></returns>
         public int getLinesDeleted()
         {
             return m_linesDeleted;
         }
 
+        /// <summary>
+        /// Set the number of lines deleted as part of this snippet
+        /// </summary>
+        /// <param name="lines"></param>
         public void setLinesDeleted(int lines)
         {
             m_linesDeleted = lines;
+        }
+
+        /// <summary>
+        /// Is a single character delete
+        /// </summary>
+        /// <returns></returns>
+        public bool isSingleCharacter()
+        {
+            return m_isSingle;
         }
 
         public void incrementLinesDeleted(int increment)
@@ -29,23 +77,36 @@ namespace Xyglo
             m_linesDeleted += increment;
         }
 
-        protected int m_snippetFactoryPosition = 0;
-
+        /// <summary>
+        /// Default constructor
+        /// </summary>
         public TextSnippet()
         {
             m_snippetFactoryPosition = -1;
         }
 
+        /// <summary>
+        /// Position constructor
+        /// </summary>
+        /// <param name="position"></param>
         public TextSnippet(int position)
         {
             m_snippetFactoryPosition = position;
         }
 
+        /// <summary>
+        /// Get position in the factory
+        /// </summary>
+        /// <returns></returns>
         public int getSnippetFactoryPosition()
         {
             return m_snippetFactoryPosition;
         }
 
+        /// <summary>
+        /// Set position in the factory
+        /// </summary>
+        /// <param name="position"></param>
         public void setSnippetFactoryPosition(int position)
         {
             m_snippetFactoryPosition = position;
@@ -57,8 +118,9 @@ namespace Xyglo
         public void clear()
         {
             m_lines.Clear();
-            //m_snippetFactoryPosition = -1;
+            m_highlights.Clear();
             m_linesDeleted = 0;
+            //m_snippetFactoryPosition = -1;
             //m_startPoint.X = 0;
             //m_startPoint.Y = 0;
         }
@@ -84,6 +146,8 @@ namespace Xyglo
                     m_lines.RemoveRange(1, m_lines.Count - 1);
                     break;
             }
+
+            m_isSingle = true;
         }
 
         /// <summary>

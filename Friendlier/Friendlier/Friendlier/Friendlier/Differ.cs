@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// Differ.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Linq;
 using System.Text;
 using System.Xml;

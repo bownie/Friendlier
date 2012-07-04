@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// User.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
@@ -12,8 +20,9 @@ using Microsoft.Kinect;
 
 namespace Xyglo
 {
-       
-
+    /// <summary>
+    /// A class that we use to describe our User from a Kinect perspective
+    /// </summary>
     public class User
     {
 #if GOT_KINECT

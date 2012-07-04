@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// DateTimeNowCache.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 
 namespace Xyglo
 {
@@ -6,6 +14,8 @@ namespace Xyglo
     /// Utility class to return new DateTimes every few requests.
     /// Thanks to:
     /// http://www.dotnetperls.com/datetime-performance
+    /// 
+    /// We don't use this as the accuracy is poor.
     /// </summary>
     public static class DateTimeNowCache
     {

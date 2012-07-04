@@ -20,7 +20,8 @@ namespace Xyglo
     static class Program
     {
         /// <summary>
-        /// The main entry point for the application.
+        /// The main entry point for Friendlier.  This is where we set up all the top level objects
+        /// and decide what we're going to do.
         /// </summary>
         [STAThread]// Setting this as single threaded for cut and paste of all things to work
         static void Main(string[] args)

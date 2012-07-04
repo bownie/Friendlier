@@ -1,6 +1,6 @@
 #region File Description
 //-----------------------------------------------------------------------------
-// DevRenderEngine.cs
+// Friendlier.cs
 //
 // Copyright (C) Xyglo. All rights reserved.
 //-----------------------------------------------------------------------------
@@ -19,7 +19,8 @@ using BloomPostprocess;
 namespace Xyglo
 {
     /// <summary>
-    /// The state of our Friendlier application
+    /// FriendlierState stores the state of our Friendlier application.  We also use some other
+    /// sub-switches to keep a finer grain of state but these are the main modes.
     /// </summary>
     public enum FriendlierState
     {
@@ -43,7 +44,9 @@ namespace Xyglo
 
 
     /// <summary>
-    /// This is the main type for your game
+    /// Main program is defined here based on an XNA Game class.   Friendlier works around a 
+    /// Project concept and expects the files and facilities around files to be handled through
+    /// that mechanism.
     /// </summary>
     public class Friendlier : Game
     {
@@ -250,6 +253,11 @@ namespace Xyglo
         Matrix m_viewMatrix = new Matrix();
 
         /// <summary>
+        /// A bounding frustrum to allow us to cull objects not visible
+        /// </summary>
+        protected BoundingFrustum m_frustrum;
+
+        /// <summary>
         /// We can use this to communicate something to the user about the last command
         /// </summary>
         string m_temporaryMessage = "";
@@ -267,7 +275,7 @@ namespace Xyglo
         /// <summary>
         /// Texture for a Directory Node
         /// </summary>
-        Texture2D m_dirNodeTexture;
+        //Texture2D m_dirNodeTexture;
 
         /// <summary>
         /// File system watcher
@@ -452,16 +460,6 @@ namespace Xyglo
         protected Thread m_kinectWorkerThread;
 
         /// <summary>
-        /// Lock the Standard out log file for writing
-        /// </summary>
-        //protected Mutex m_stdOutLogFileMutex = new Mutex();
-
-        /// <summary>
-        /// Lock the Started error log file for writing
-        /// </summary>
-        //protected Mutex m_stdErrLogFileMutex = new Mutex();
-
-        /// <summary>
         /// Store GameTime somewhere central
         /// </summary>
         protected GameTime m_gameTime;
@@ -610,6 +608,16 @@ namespace Xyglo
         /// </summary>
         protected Vector3 m_lastClickVector = Vector3.Zero;
 
+        /// <summary>
+        /// How dark should our non-highlighted BufferViews be?
+        /// </summary>
+        protected float m_greyDivisor = 2.0f;
+
+        /// <summary>
+        /// List of highlights we're going to draw.  We don't want to fetch this everytime we
+        /// draw the BufferView.
+        /// </summary>
+        protected List<Highlight> m_highlights;
 
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
@@ -642,6 +650,8 @@ namespace Xyglo
         /// </summary>
         protected void initialise()
         {
+            Logger.logMsg("Friendlier::initialise() - loading components");
+
             m_graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
 
@@ -777,6 +787,8 @@ namespace Xyglo
         /// <param name="project"></param>
         public void initialiseProject()
         {
+            Logger.logMsg("Friendlier::initialiseProject() - initialising fonts");
+
             // Initialise and load fonts into our Content context by family.
             //
             //FontManager.initialise(Content, "Lucida Sans Typewriter");
@@ -1080,6 +1092,8 @@ namespace Xyglo
             }
              * */
 
+            Logger.logMsg("Friendlier:setSpriteFont() - recalculating relative positions");
+
             // Now recalculate positions
             //
             foreach (BufferView bv in m_project.getBufferViews())
@@ -1099,6 +1113,8 @@ namespace Xyglo
         /// </summary>
         protected override void LoadContent()
         {
+            Logger.logMsg("Friendlier::LoadContent() - loading resources");
+
             m_splashScreen = Content.Load<Texture2D>("splash");
 
             //bloomSettingsIndex = (bloomSettingsIndex + 1) %
@@ -1145,10 +1161,9 @@ namespace Xyglo
 
             // Create some textures
             //
-            //
-            m_dirNodeTexture = Shapes.CreateCircle(m_graphics.GraphicsDevice, 100);
+            //m_dirNodeTexture = Shapes.CreateCircle(m_graphics.GraphicsDevice, 100);
 
-            // Make mouse [in[visible
+            // Make mouse invisible
             //
             IsMouseVisible = true;
 
@@ -1167,8 +1182,6 @@ namespace Xyglo
             }
 
             this.Window.Title = "Friendlier v" + VersionInformation.getProductVersion();
-            
-            /* NEW METHOD for font projection */
             m_basicEffect = new BasicEffect(m_graphics.GraphicsDevice)
             {
                 TextureEnabled = true,
@@ -1179,20 +1192,8 @@ namespace Xyglo
                 //DiffuseColor = Vector3.One
             };
 
-            /*
-            m_pannerEffect = new BasicEffect(m_graphics.GraphicsDevice)
-            {
-                TextureEnabled = true,
-                VertexColorEnabled = true
-            };
-
-            m_pannerEffect.View = Matrix.Identity;
-            m_pannerEffect.Projection = Matrix.Identity;
-            m_pannerEffect.World = Matrix.Identity;
-             * */
-
-
             // Create and initialize our effect
+            //
             m_lineEffect = new BasicEffect(m_graphics.GraphicsDevice);
             m_lineEffect.VertexColorEnabled = true;
             m_lineEffect.TextureEnabled = false;
@@ -1223,8 +1224,6 @@ namespace Xyglo
 
             // Store the last window size
             //
-            //m_lastWindowSize.X = m_graphics.GraphicsDevice.Viewport.Width;
-            //m_lastWindowSize.Y = m_graphics.GraphicsDevice.Viewport.Height;
             m_lastWindowSize.X = Window.ClientBounds.Width;
             m_lastWindowSize.Y = Window.ClientBounds.Height;
         }
@@ -1418,6 +1417,10 @@ namespace Xyglo
             Vector3 eyePos = m_project.getSelectedBufferView().getEyePosition(m_zoomLevel);
 
             flyToPosition(eyePos);
+
+            // Set title to include current filename
+            // (this is not thread safe - we need to synchronise)
+            //this.Window.Title = "Friendlier v" + VersionInformation.getProductVersion() + " - " + m_project.getSelectedBufferView().getFileBuffer().getShortFileName();
 
 #if ACTIVE_BUFFER_DEBUG
             Logger.logMsg("Friendlier:setActiveBuffer() - buffer position = " + m_activeBufferView.getPosition());
@@ -1703,6 +1706,8 @@ namespace Xyglo
         /// </summary>
         protected void checkExit(GameTime gameTime, bool force = false)
         {
+            Logger.logMsg("Friendlier::checkExit() - checking exit with force = " + force.ToString());
+
             // Firstly check for any unsaved buffers and warn
             //
             bool unsaved = false;
@@ -1759,16 +1764,25 @@ namespace Xyglo
             }
             else
             {
-                // Clear the worker thread and exit
-                //
-                m_counterWorker.requestStop();
-                m_counterWorkerThread.Join();
+                // If these are not null then we're completed
+                if (m_kinectWorker != null)
+                {
+                    // Close the kinect thread
+                    //
+                    m_kinectWorker.requestStop();
+                    m_kinectWorkerThread.Join();
+                    m_kinectWorker = null;
+                }
 
-                // Close the kinect thread
-                //
-                m_kinectWorker.requestStop();
-                m_kinectWorkerThread.Join();
-
+                if (m_counterWorker != null)
+                {
+                    // Clear the worker thread and exit
+                    //
+                    m_counterWorker.requestStop();
+                    m_counterWorkerThread.Join();
+                    m_counterWorker = null;
+                }
+                    
                 // Modify Z if we're in the file selector height of 600.0f
                 //
                 if (m_eye.Z == 600.0f)
@@ -1835,9 +1849,18 @@ namespace Xyglo
                     return true;
                 }
 
-                // Depends where we are in the process here - check state
+                if (m_confirmState == ConfirmState.ConfirmQuit)
+                {
+                    m_confirmState = ConfirmState.None;
+                    setTemporaryMessage("Cancelled quit.", 1.0, gameTime);
+                    m_state = FriendlierState.TextEditing;
+                    return true;
+                }
 
+                // Depends where we are in the process here - check state
+                //
                 Vector3 newPosition = m_eye;
+
                 //newPosition.Z = 500.0f;
 
                 switch (m_state)
@@ -2544,7 +2567,11 @@ namespace Xyglo
                                 Logger.logMsg(rootPosition.ToString() + newPosition2.ToString());
                                 //bv.setFileBufferIndex(
                                 fb.loadFile(m_project.getSyntaxManager());
-                                m_project.getSyntaxManager().generateAllHighlighting(fb);
+
+                                if (m_project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
+                                {
+                                    m_project.getSyntaxManager().generateAllHighlighting(fb);
+                                }
 
                                 // Break out of Manage mode and back to editing
                                 //
@@ -3291,6 +3318,18 @@ namespace Xyglo
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
         protected override void Update(GameTime gameTime)
         {
+            // Update the frustrum matrix
+            //
+            if (m_frustrum != null)
+            {
+                m_frustrum.Matrix = m_viewMatrix * m_projection;
+            }
+
+            if (m_processKeyboardAllowed != TimeSpan.Zero && gameTime.TotalGameTime < m_processKeyboardAllowed)
+            {
+                return;
+            }
+
             // Return after these commands have been processed for the demo version
             //
             if (!m_project.getLicenced())
@@ -3305,10 +3344,6 @@ namespace Xyglo
                 return;
             }
 
-            if (m_processKeyboardAllowed != TimeSpan.Zero && gameTime.TotalGameTime < m_processKeyboardAllowed)
-            {
-                return;
-            }
 
             // Set the cursor to something useful
             //
@@ -3857,7 +3892,7 @@ namespace Xyglo
 
             // If we find something from cursor we're finished here
             //
-            if (m_project.getSelectedBufferView().findFromCursor())
+            if (m_project.getSelectedBufferView().findFromCursor(false))
             {
                 return;
             }
@@ -3869,7 +3904,7 @@ namespace Xyglo
                 // Try find from the top - if it finds something then let user know we've
                 // wrapped around.
                 //
-                if (m_project.getSelectedBufferView().find(new ScreenPosition(0, 0)))
+                if (m_project.getSelectedBufferView().find(new ScreenPosition(0, 0), false))
                 {
                     setTemporaryMessage("Search wrapped around end of file", 1.5f, gameTime);
                     return;
@@ -4972,7 +5007,20 @@ namespace Xyglo
             m_viewMatrix = Matrix.CreateLookAt(m_eye, m_target, Vector3.Up);
             m_projection = Matrix.CreateTranslation(-0.5f, -0.5f, 0) * Matrix.CreatePerspectiveFieldOfView(MathHelper.PiOver4, GraphicsDevice.Viewport.AspectRatio, 0.1f, 10000f);
 
-            m_basicEffect.World = Matrix.CreateScale(1, -1, 1); // *Matrix.CreateTranslation(textPosition);
+            // Generate frustrum
+            //
+            if (m_frustrum == null)
+            {
+                m_frustrum = new BoundingFrustum(m_viewMatrix * m_projection);
+            }
+            else
+            {
+                // You can also update frustrum matrix like this
+                //
+                m_frustrum.Matrix = m_viewMatrix * m_projection;
+            }
+
+            m_basicEffect.World = Matrix.CreateScale(1, -1, 1);
             m_basicEffect.View = m_viewMatrix;
             m_basicEffect.Projection = m_projection;
 
@@ -5028,7 +5076,19 @@ namespace Xyglo
                     }
                     else
                     {
-                        drawFileBuffer(m_project.getBufferViews()[i], gameTime);
+                        // We have to invert the BoundingBox along the Y axis to ensure that
+                        // it matches with the frustrum we're culling against.
+                        //
+                        BoundingBox bb = m_project.getBufferViews()[i].getBoundingBox();
+                        bb.Min.Y = -bb.Min.Y;
+                        bb.Max.Y = -bb.Max.Y;
+
+                        // We only do frustrum culling for BufferViews for the moment
+                        //
+                        if (m_frustrum.Contains(bb) != ContainmentType.Disjoint)
+                        {
+                            drawFileBuffer(m_project.getBufferViews()[i], gameTime);
+                        }
                     }
                 }
 
@@ -5123,7 +5183,6 @@ namespace Xyglo
             // Any Kinect information to share
             //
             drawKinectInformation();
-
 
             base.Draw(gameTime);
         }
@@ -5794,7 +5853,7 @@ namespace Xyglo
             }
             // Draw any temporary highlight
             //
-            if (m_clickHighlight.First != null && m_clickHighlight.Second != null &&
+            if (m_clickHighlight.First != null  &&
                 ((BufferView)m_clickHighlight.First) == m_project.getSelectedBufferView())
             {
                 Highlight h = (Highlight)m_clickHighlight.Second;
@@ -6169,18 +6228,14 @@ namespace Xyglo
                 bufferColour = m_greyedColour;
             }
 
-            // How dark should our non-highlighted BufferViews be?
-            //
-            float greyDivisor = 2.0f;
-
             // Take down the colours and alpha of the non selected buffer views to draw a visual distinction
             //
             if (view != m_project.getSelectedBufferView())
             {
-                bufferColour.R = (byte)(bufferColour.R / greyDivisor);
-                bufferColour.G = (byte)(bufferColour.G / greyDivisor);
-                bufferColour.B = (byte)(bufferColour.B / greyDivisor);
-                bufferColour.A = (byte)(bufferColour.A / greyDivisor);
+                bufferColour.R = (byte)(bufferColour.R / m_greyDivisor);
+                bufferColour.G = (byte)(bufferColour.G / m_greyDivisor);
+                bufferColour.B = (byte)(bufferColour.B / m_greyDivisor);
+                bufferColour.A = (byte)(bufferColour.A / m_greyDivisor);
             }
 
             float yPosition = 0.0f;
@@ -6288,52 +6343,53 @@ namespace Xyglo
 
                     // Get the highlighting for the line
                     //
-                    List<Highlight> highlights = view.getFileBuffer().getHighlighting(i + bufPos);
+                    m_highlights = view.getFileBuffer().getHighlighting(i + bufPos, view.getBufferShowStartX(), view.getBufferShowWidth());
 
                     // Only do syntax highlighting when we're not greyed out
                     //
                     // !!! Could be performance problem here with highlights
                     //
-                    if (highlights.Count > 0 && bufferColour != m_greyedColour)
+                    if (m_highlights.Count > 0 && bufferColour != m_greyedColour)
                     {
-                        highlights.Sort();
-
                         // Need to print the line by section with some unhighlighted
                         //
                         int nextHighlight = 0;
-                        int xPos = 0;
+
+                        // Start from wherever we're showing from
+                        //
+                        int xPos = 0; // view.getBufferShowStartX();
 
                         // Step through with xPos all the highlights in our collection
                         //
-                        while (nextHighlight < highlights.Count && xPos < line.Length)
+                        while (nextHighlight < m_highlights.Count && xPos < line.Length)
                         {
                             // Sort out the colour
                             //
-                            highlightColour = highlights[nextHighlight].m_colour;
+                            highlightColour = m_highlights[nextHighlight].m_colour;
 
                             // If not active view then temper colour
                             //
                             if (view != m_project.getSelectedBufferView())
                             {
-                                highlightColour.R = (byte)(highlightColour.R / greyDivisor);
-                                highlightColour.G = (byte)(highlightColour.G / greyDivisor);
-                                highlightColour.B = (byte)(highlightColour.B / greyDivisor);
-                                highlightColour.A = (byte)(highlightColour.A / greyDivisor);
+                                highlightColour.R = (byte)(highlightColour.R / m_greyDivisor);
+                                highlightColour.G = (byte)(highlightColour.G / m_greyDivisor);
+                                highlightColour.B = (byte)(highlightColour.B / m_greyDivisor);
+                                highlightColour.A = (byte)(highlightColour.A / m_greyDivisor);
                             }
 
                             // If the highlight starts beyond the string end then skip it -
                             // and we quit out of the highlighting process as highlights are
                             // sorted (hopefully correctly).
                             //
-                            if (highlights[nextHighlight].m_startHighlight.X >= line.Length)
+                            if (m_highlights[nextHighlight].m_startHighlight.X >= line.Length)
                             {
                                 xPos = line.Length;
                                 continue;
                             }
 
-                            if (xPos < highlights[nextHighlight].m_startHighlight.X || nextHighlight >= highlights.Count)
+                            if (xPos < m_highlights[nextHighlight].m_startHighlight.X || nextHighlight >= m_highlights.Count)
                             {
-                                string subLineToHighlight = line.Substring(xPos, highlights[nextHighlight].m_startHighlight.X - xPos);
+                                string subLineToHighlight = line.Substring(xPos, m_highlights[nextHighlight].m_startHighlight.X - xPos);
 
                                 // Not sure we need this for the moment
                                 //
@@ -6355,16 +6411,16 @@ namespace Xyglo
                                     0,
                                     0);
 
-                                xPos = highlights[nextHighlight].m_startHighlight.X;
+                                xPos = m_highlights[nextHighlight].m_startHighlight.X;
                             }
 
-                            if (xPos == highlights[nextHighlight].m_startHighlight.X)
+                            if (xPos == m_highlights[nextHighlight].m_startHighlight.X)
                             {
                                 // Capture substring, increment xPos and draw the highlighted area - watch for
                                 // highlights that span lines longer than our presented line (line).
                                 //
-                                string subLineInHighlight = line.Substring(highlights[nextHighlight].m_startHighlight.X,
-                                                                           Math.Min(highlights[nextHighlight].m_endHighlight.X - highlights[nextHighlight].m_startHighlight.X, line.Length - highlights[nextHighlight].m_startHighlight.X));
+                                string subLineInHighlight = line.Substring(m_highlights[nextHighlight].m_startHighlight.X,
+                                                                           Math.Min(m_highlights[nextHighlight].m_endHighlight.X - m_highlights[nextHighlight].m_startHighlight.X, line.Length - m_highlights[nextHighlight].m_startHighlight.X));
 
                                 m_spriteBatch.DrawString(
                                     m_project.getFontManager().getFont(),
@@ -6379,7 +6435,7 @@ namespace Xyglo
 
                                 // Step past this highlight
                                 //
-                                xPos = highlights[nextHighlight].m_endHighlight.X;
+                                xPos = m_highlights[nextHighlight].m_endHighlight.X;
                                 nextHighlight++;
                             }
                         }
@@ -6739,14 +6795,22 @@ namespace Xyglo
 
         }
 
-
+        /// <summary>
+        /// This can be called from anywhere so let's ensure that we have a bit of locking
+        /// around the checkExit code.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="args"></param>
         protected override void OnExiting(Object sender, EventArgs args)
         {
             base.OnExiting(sender, args);
 
             // Stop the threads
             //
-            checkExit(m_gameTime, true);
+            if (m_kinectWorker != null || m_counterWorker != null)
+            {
+                checkExit(m_gameTime, true);
+            }
         }
 
         /// <summary>
@@ -7057,10 +7121,8 @@ namespace Xyglo
                         //
                         if (!File.Exists(buildStdErrLog))
                         {
-                            //m_stdErrLogFileMutex.WaitOne();
                             StreamWriter newStdErr = File.CreateText(buildStdErrLog);
                             newStdErr.Close();
-                            //m_stdErrLogFileMutex.ReleaseMutex();
                         }
 
                         m_buildStdErrView = m_project.findBufferView(buildStdErrLog);
@@ -7082,10 +7144,8 @@ namespace Xyglo
                         //
                         if (!File.Exists(buildStdOutLog))
                         {
-                            //m_stdOutLogFileMutex.WaitOne();
                             StreamWriter newStdOut = File.CreateText(buildStdOutLog);
                             newStdOut.Close();
-                            //m_stdOutLogFileMutex.ReleaseMutex();
                         }
 
                         // Now ensure that the build log is visible on the screen somewhere
@@ -7182,10 +7242,6 @@ namespace Xyglo
             string time = string.Format("{0:yyyyMMdd HH:mm:ss}", DateTime.Now);
             string logBody = "INF:" + time + ":" + e.Data;
 
-            // Lock log file for writing
-            //
-            //m_stdOutLogFileMutex.WaitOne();
-
             m_buildStdOutView.getFileBuffer().appendLine(logBody);
 
             // Save the log file
@@ -7201,9 +7257,6 @@ namespace Xyglo
             logFile.Close();
             logFile = null;
 #endif
-            // Unlock
-            //
-            //m_stdOutLogFileMutex.ReleaseMutex();
 
             // Ensure we're looking at the end of the file
             //
@@ -7226,9 +7279,6 @@ namespace Xyglo
             string time = string.Format("{0:yyyyMMdd HH:mm:ss}", DateTime.Now);
             string logBody = "ERR:" + time + ":" + (string)e.Data;
 
-            // Lock log file for writing
-            //
-            //m_stdErrLogFileMutex.WaitOne();
             m_buildStdErrView.getFileBuffer().appendLine(logBody);
 
             // Save the log file
@@ -7244,10 +7294,6 @@ namespace Xyglo
             logFile.Close();
             logFile = null;
 #endif
-
-            // Unlock
-            //
-            //m_stdErrLogFileMutex.ReleaseMutex();
 
             // Ensure we're looking at the end of the file
             //

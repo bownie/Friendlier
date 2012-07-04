@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// AnnotatedBufferView.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;

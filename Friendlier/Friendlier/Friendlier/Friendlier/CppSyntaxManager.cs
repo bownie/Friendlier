@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// CppSyntaxManager.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,14 +15,22 @@ using System.Text.RegularExpressions;
 namespace Xyglo
 {
     /// <summary>
-    /// Extends SyntaxManager for C++
+    /// Specialisation of the SyntaxManager base class specifically for C++
     /// </summary>
     /// 
     public class CppSyntaxManager : SyntaxManager
     {
-
         // ------------------------------------ MEMBER VARIABLES ------------------------------------------
         //
+        public static Regex m_openComment = new Regex(@"/\*");
+
+        public static Regex m_closeComment = new Regex(@"\*\/");
+
+        public static Regex m_lineComment = new Regex(@"//");
+
+        public static Regex m_hashLineComment = new Regex(@"#");
+
+        public static Regex m_token = new Regex(@"\b([A-Za-z_][A-Za-z0-9_]+)\b");
 
         // -------------------------------------- CONSTRUCTORS --------------------------------------------
         //
@@ -98,16 +114,6 @@ namespace Xyglo
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - completed.");
         }
 
-        public static Regex m_openComment = new Regex(@"/\*");
-
-        public static Regex m_closeComment = new Regex(@"\*\/");
-
-        public static Regex m_lineComment = new Regex(@"//");
-
-        public static Regex m_hashLineComment = new Regex(@"#");
-
-        public static Regex m_token = new Regex(@"\b([A-Za-z_][A-Za-z0-9_]+)\b");
-
         /// <summary>
         /// A faster indexOf implementation using regexs
         /// </summary>
@@ -154,22 +160,21 @@ namespace Xyglo
                 // Fetch the command and remove the highlighting for affected range
                 //
                 DeleteTextCommand dtc = (DeleteTextCommand)command;
-                int linesDeleted = command.getSnippet().getLinesDeleted();
+                //command.getSnippet().getLinesDeleted();
 
-//                fileBuffer.removeHighlightingRange(dtc.getStartPos(), dtc.getEndPos(), linesDeleted);
-  //              generateHighlighting(fileBuffer, dtc.getStartPos(), dtc.getEndPos());
-
-                generateAllHighlighting(fileBuffer);
+                fileBuffer.removeHighlightingRange(dtc.getStartPos(), dtc.getEndPos(), command.getSnippet());
+                generateHighlighting(fileBuffer, dtc.getStartPos(), dtc.getEndPos());
+                //generateAllHighlighting(fileBuffer);
             }
             else if (command.GetType() == typeof(Xyglo.InsertTextCommand))
             {
                 Logger.logMsg("CppSyntaxManager::updateHighlighting - update following InsertTextCommand");
-                generateAllHighlighting(fileBuffer);
+                //generateAllHighlighting(fileBuffer);
             }
             else if (command.GetType() == typeof(Xyglo.ReplaceTextCommand))
             {
                 Logger.logMsg("CppSyntaxManager::updateHighlighting - update following ReplaceTextCommand");
-                generateAllHighlighting(fileBuffer);
+                //generateAllHighlighting(fileBuffer);
             }
 
             sw.Stop();
@@ -194,6 +199,7 @@ namespace Xyglo
             // Remove the range we're going to update
             //
             fileBuffer.clearHighlights(fromPos, toPos);
+            //fileBuffer.clearAllHighlights();
 
             int xPosition = 0;
             int lastXPosition = 0;
@@ -214,7 +220,8 @@ namespace Xyglo
                 // here.  We might want to change this back if we have any issues with wanting
                 // to work back from Highlights to meaningful words.
                 //
-                string line = fileBuffer.getLine(i).Replace("\t", m_project.getTab());
+                string preLine = fileBuffer.getLine(i);
+                string line = preLine.Replace("\t", m_project.getTab());
 
                 // Reset xPosition
                 //
@@ -244,7 +251,6 @@ namespace Xyglo
                         if (endOfComment != -1) // end comment and continue
                         {
                             Highlight newHighlight = new Highlight(i, xPosition, xPosition + endOfComment + 2, line.Substring(xPosition, endOfComment + 2), SyntaxManager.m_commentColour);
-                            //fileBuffer.m_highlightList.Add(newHighlight);
                             fileBuffer.setHighlight(newHighlight);
                             xPosition += endOfComment + 2;
                             inMLComment = false;
@@ -254,7 +260,6 @@ namespace Xyglo
                             // Insert comment to end of line and don't unset inMLComment as we're still in it
                             //
                             Highlight newHighlight = new Highlight(i, xPosition, line.Length, line.Substring(xPosition, line.Length - xPosition), SyntaxManager.m_commentColour);
-                            //fileBuffer.m_highlightList.Add(newHighlight);
                             fileBuffer.setHighlight(newHighlight);
                             xPosition = line.Length;
                         }
@@ -271,13 +276,12 @@ namespace Xyglo
                         //}
                         //else
                         //{
+
                             // #defines etc
-                            if (line.IndexOf("#") == 0)
-                            //if (indexOf(CppSyntaxManager.m_hashLineComment, line) == 0)
+                            if ((foundPosition = line.IndexOf("#")) == 0)
                             {
                                 // Create a highlight for a #define
-                                Highlight newHighlight = new Highlight(i, 0, line.Length, line, SyntaxManager.m_defineColour);
-                                //fileBuffer.m_highlightList.Add(newHighlight);
+                                Highlight newHighlight = new Highlight(i, foundPosition, line.Length, line, SyntaxManager.m_defineColour);
                                 fileBuffer.setHighlight(newHighlight);
 
                                 // And exit this loop
@@ -287,9 +291,9 @@ namespace Xyglo
                             //else if ((foundPosition = indexOf(CppSyntaxManager.m_lineComment, line)) != -1)
                             {
                                 Highlight newHighlight = new Highlight(i, foundPosition, line.Length, line.Substring(foundPosition, line.Length - foundPosition), SyntaxManager.m_commentColour);
-                                //fileBuffer.m_highlightList.Add(newHighlight);
                                 fileBuffer.setHighlight(newHighlight);
                                 lineCommentPosition = foundPosition;
+                                xPosition = line.Length;
                             }
 
                             // Now process any other characters ensuring that we're still within the string
@@ -333,7 +337,6 @@ namespace Xyglo
                                     // Insert highlight if this is only thing on line
                                     //
                                     Highlight newHighlight = new Highlight(i, xPosition, xPosition + 2, line.Substring(xPosition, 2), SyntaxManager.m_commentColour);
-                                    //fileBuffer.m_highlightList.Add(newHighlight);
                                     fileBuffer.setHighlight(newHighlight);
 
                                     // Move past comment start
@@ -379,7 +382,7 @@ namespace Xyglo
                                             {
                                                 Highlight newHighlight = new Highlight(i, xPosition + m.Index, xPosition + m.Index + m.Value.Length, m.Value, SyntaxManager.m_keywordColour);
                                                 fileBuffer.setHighlight(newHighlight);
-                                                xPosition += m.Value.Length;
+                                                xPosition = newHighlight.m_endHighlight.X;
                                             }
                                         }
                                     }
@@ -408,6 +411,9 @@ namespace Xyglo
                     }
                 }
             }
+
+            Logger.logMsg("CppSyntaxManager::generateHighlighting() - removing dupes and sorting");
+            fileBuffer.checkAndSort();
 
             sw.Stop();
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - completed " + fileBuffer.getFilepath() + " in " + sw.Elapsed.TotalMilliseconds + " ms", true);

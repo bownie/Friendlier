@@ -1,4 +1,13 @@
-﻿using System.IO;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// XygloKinectHelper.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+
+using System.IO;
 using System.Windows;
 //using System.Windows.Controls;
 #if GOT_KINECT
@@ -9,20 +18,18 @@ using Microsoft.Kinect;
 
 namespace Xyglo
 {
-
-
     //------------------------------------------------------------------------------
     // <copyright file="MainWindow.xaml.cs" company="Microsoft">
     //     Copyright (c) Microsoft Corporation.  All rights reserved.
     // </copyright>
     //------------------------------------------------------------------------------
 
-    // This module contains code to do Kinect NUI initialization,
-    // processing, displaying players on screen, and sending updated player
-    // positions to the game portion for hit testing.
-
     
-
+    /// <summary>
+    /// This class contains code to do Kinect NUI initialization,
+    /// processing, displaying players on screen, and sending updated player
+    /// positions to the game portion for hit testing.
+    /// </summary>
     public class XygloKinectHelper
     {
 #if GOT_KINECT

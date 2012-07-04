@@ -1,4 +1,13 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// VersionInformation.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,7 +18,7 @@ using System.Text;
 namespace Xyglo
 {
     /// <summary>
-    /// Convenience class for storing some global information
+    /// Convenience class for storing some version information.
     /// </summary>
     public class VersionInformation // : AssemblyInfo
     {

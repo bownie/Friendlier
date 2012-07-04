@@ -1,4 +1,13 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// FileSystemObject.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+
+
+#endregion
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +15,9 @@ using Microsoft.Xna.Framework;
 
 namespace Xyglo
 {
+    /// <summary>
+    /// Not used as far as I can tell.
+    /// </summary>
     public class FileSystemObject
     {
         public enum FileSystemObjectType

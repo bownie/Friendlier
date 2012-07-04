@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// DeleteTextCommand.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +14,9 @@ using System.Runtime.Serialization;
 
 namespace Xyglo
 {
+    /// <summary>
+    /// Command that allows us to delete undo/redo text from a FileBuffer
+    /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class DeleteTextCommand : Command
     {
@@ -38,9 +49,7 @@ namespace Xyglo
 
             // Clear the snippet and then append all the lines we're going to delete
             //
-            //
-            m_snippet.m_lines.Clear();
-            m_snippet.setLinesDeleted(0);
+            m_snippet.clear();
 
             // Are we deleting on the same line?
             //

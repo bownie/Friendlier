@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// BufferView.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,7 +20,10 @@ using System.Xml.Serialization;
 namespace Xyglo
 {
     /// <summary>
-    /// A view on a buffer - can be independent from a FileBuffer but carries a reference if needed (undecided on this)
+    /// A view/a buffer.  This can be independent from a FileBuffer but carries a reference to it
+    /// if needed.  Multiple BufferViews can exist upon a single FileBuffer.  BufferView holds all
+    /// the information it needs in order to operate and also defines an interface for operations
+    /// upon the FileBuffer.
     /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class BufferView : XygloView
@@ -1352,6 +1363,12 @@ namespace Xyglo
                 {
                     m_cursorPosition.X = m_fileBuffer.getLine(m_cursorPosition.Y).Length;
                 }
+
+                // Sort out position of buffer width
+                if (m_cursorPosition.X < m_bufferShowStartX)
+                {
+                    m_bufferShowStartX = m_cursorPosition.X;
+                }
             }
             //Logger.logMsg("BufferView::moveCursorDown() - m_cursorPosition.Y = " + m_cursorPosition.Y);
             //Logger.logMsg("BufferView::moveCursorDown() - m_bufferShowStart.Y = " + m_bufferShowStartY);
@@ -1474,7 +1491,6 @@ namespace Xyglo
             {
                 m_bufferShowStartY = m_fileBuffer.getLineCount() - m_bufferShowLength;
             }
-
         }
 
         /// <summary>
@@ -1744,6 +1760,8 @@ namespace Xyglo
 
                 m_cursorPosition.X = breakPos;
             }
+
+            keepVisible();
         }
 
         /// <summary>
@@ -1787,6 +1805,8 @@ namespace Xyglo
                 fp.X++;
             }
             m_cursorPosition = fp;
+
+            keepVisible();
         }
 
         /// <summary>
@@ -1870,18 +1890,26 @@ namespace Xyglo
         /// Find from the current cursor position
         /// </summary>
         /// <returns></returns>
-        public bool findFromCursor()
+        public bool findFromCursor(bool caseSensitive)
         {
-            return find(m_cursorPosition);
+            return find(m_cursorPosition, caseSensitive);
         }
 
         /// <summary>
         /// Find the m_searchText and move the cursor and highlight it
         /// </summary>
         /// <param name="text"></param>
-        public bool find(ScreenPosition searchPos)
+        public bool find(ScreenPosition searchPos, bool caseSensitive)
         {
             bool searching = true;
+            string searchText = m_searchText;
+
+            // Case insensitive search
+            //
+            if (!caseSensitive)
+            {
+                searchText = m_searchText.ToLower();
+            }
 
             if (m_searchTextModified)
             {
@@ -1898,13 +1926,20 @@ namespace Xyglo
             {
                 string line = m_fileBuffer.getLine(searchPos.Y);
 
+                // Case insensitive search
+                //
+                if (!caseSensitive)
+                {
+                    line = line.ToLower();
+                }
+
                 if (searchPos.X > 0)
                 {
                     line = line.Substring(searchPos.X, line.Length - searchPos.X);
                 }
 
                 // Ensure that 
-                int findPos = line.IndexOf(m_searchText);
+                int findPos = line.IndexOf(searchText);
 
                 if (findPos != -1) // found something
                 {
@@ -1948,6 +1983,8 @@ namespace Xyglo
                     searching = false;
                 }
             }
+
+
 
             return false;
         }
@@ -2001,13 +2038,6 @@ namespace Xyglo
             m_highlightStart.X = 0;
             m_highlightStart.Y = 0;
             m_highlightEnd = m_highlightStart;
-
-            // Update the syntax highlighting
-            //
-            if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
-            {
-                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
-            }
 
             // Ensure that the cursor is visible in the BufferView
             //
@@ -2184,6 +2214,8 @@ namespace Xyglo
             {
                 moveCursorDown(true); // use the built-in method for this
             }
+
+            keepVisible();
         }
 
         /// <summary>
@@ -2236,6 +2268,8 @@ namespace Xyglo
                     }
                 }
             }
+
+            keepVisible();
         }
 
         /// <summary>

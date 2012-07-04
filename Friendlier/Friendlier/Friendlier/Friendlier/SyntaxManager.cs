@@ -1,4 +1,13 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// SyntaxManager.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;

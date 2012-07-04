@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// Command.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +14,9 @@ using System.Runtime.Serialization;
 
 namespace Xyglo
 {
+    /// <summary>
+    /// Abstract base class for all Xyglo commands.
+    /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public abstract class Command : IDisposable
     {

@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// Project.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Xml;
 using System.Xml.Serialization;
@@ -13,7 +21,7 @@ namespace Xyglo
 {
 
     /// <summary>
-    /// Configuration item
+    /// A Configuration item
     /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class Configuration : IComparable
@@ -55,7 +63,9 @@ namespace Xyglo
     }
 
     /// <summary>
-    /// A Friendlier project file
+    /// A Friendlier project file - contains a list of BufferViews and FileBuffers and these
+    /// two could be (but don't have to be) related.   We also expose some interfaces for doing
+    /// things to FileBuffers and BufferViews.
     /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class Project
@@ -281,6 +291,12 @@ namespace Xyglo
         [DataMember]
         protected string m_externalProjectBaseDirectory = "";
 
+        /// <summary>
+        /// History of all searches for this project
+        /// </summary>
+        [DataMember]
+        protected List<string> m_searchHistory = new List<string>();
+
         ////////// CONSTRUCTORS ///////////
 
         /// <summary>
@@ -425,20 +441,23 @@ namespace Xyglo
 
             // Main build command
             //
-            if (addCheckConfigurationItem("BUILDCOMMAND", @"C:\QtSDK\mingw\bin\mingw32-make.exe -f D:\garderobe-build-desktop\Makefile"))
+            //if (addCheckConfigurationItem("BUILDCOMMAND", @"C:\QtSDK\mingw\bin\mingw32-make.exe -f D:\garderobe-build-desktop\Makefile"))
+            if (addCheckConfigurationItem("BUILDCOMMAND", ""))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added BUILDCOMMAND config");
             }
 
             // Second build command (qmake, make clean etc)
-            if (addCheckConfigurationItem("ALTERNATEBUILDCOMMAND", @"C:\Q\Desktop\Qt\4.7.4\mingw\bin\qmake.exe -makefile C:\newdir\test.pro"))
+            //if (addCheckConfigurationItem("ALTERNATEBUILDCOMMAND", @"C:\Q\Desktop\Qt\4.7.4\mingw\bin\qmake.exe -makefile C:\newdir\test.pro"))
+            if (addCheckConfigurationItem("ALTERNATEBUILDCOMMAND", ""))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added ALTERNATEBUILDCOMMAND config");
             }
 
             // Where the build occurs
             //
-            if (addCheckConfigurationItem("BUILDDIRECTORY", @"D:\garderobe-build-desktop"))
+            //if (addCheckConfigurationItem("BUILDDIRECTORY", @"D:\garderobe-build-desktop"))
+            if (addCheckConfigurationItem("BUILDDIRECTORY", ""))
             {
                 Logger.logMsg("Project::buildInitialConfiguration - added BUILDIRECTORY config");
             }
@@ -1069,43 +1088,59 @@ namespace Xyglo
             int versionsToMaintain = 5;
             List<string> filesExist = new List<string>();
 
-            // Test for which versions exist
-            //
-            for (int i = 1; i <= versionsToMaintain; i++)
+            if (!File.Exists(m_projectFile))
             {
-                // Pad out a file name
-                //
-                string testFilePath = m_projectFile + "." + i.ToString().PadLeft(4, '0');
-
-                // If the file exists then 
-                if (File.Exists(testFilePath))
-                {
-                    filesExist.Add(testFilePath);
-                }
+                Logger.logMsg("Project::manageSerialisations() - nothing to do for first pass");
+                return;
             }
+            
+            Logger.logMsg("Project::manageSerialisations() - maintaining file versions");
 
-            // Shift versions if any exist up one number and remove the oldest
-            //
-            if (filesExist.Count > 0)
+            try
             {
-                // Remove/Move in reverse order
+
+                // Test for which versions exist
                 //
-                for(int i = filesExist.Count; i > 0; i--)
+                for (int i = 1; i <= versionsToMaintain; i++)
                 {
-                    if (i == versionsToMaintain)
+                    // Pad out a file name
+                    //
+                    string testFilePath = m_projectFile + "." + i.ToString().PadLeft(4, '0');
+
+                    // If the file exists then 
+                    if (File.Exists(testFilePath))
                     {
-                        File.Delete(filesExist[i - 1]);
-                    }
-                    else
-                    {
-                        File.Move(filesExist[i - 1], m_projectFile + "." + (i + 1).ToString().PadLeft(4, '0'));
+                        filesExist.Add(testFilePath);
                     }
                 }
-            }
 
-            // Copy file to the first position
-            //
-            File.Copy(m_projectFile, m_projectFile + ".0001");
+                // Shift versions if any exist up one number and remove the oldest
+                //
+                if (filesExist.Count > 0)
+                {
+                    // Remove/Move in reverse order
+                    //
+                    for (int i = filesExist.Count; i > 0; i--)
+                    {
+                        if (i == versionsToMaintain)
+                        {
+                            File.Delete(filesExist[i - 1]);
+                        }
+                        else
+                        {
+                            File.Move(filesExist[i - 1], m_projectFile + "." + (i + 1).ToString().PadLeft(4, '0'));
+                        }
+                    }
+                }
+
+                // Copy file to the first position
+                //
+                File.Copy(m_projectFile, m_projectFile + ".0001");
+            }
+            catch (Exception e)
+            {
+                Logger.logMsg("Project::manageSerialisations() - failed to manage versions with error " + e.Message);
+            }
         }
 
         /// <summary>
@@ -1150,7 +1185,10 @@ namespace Xyglo
                 if (!bv.isTailing())
                 {
                     Logger.logMsg("Project::loadFiles() - generating highlighting for " + bv.getFileBuffer().getFilepath(), true);
-                    m_syntaxManager.generateAllHighlighting(bv.getFileBuffer());
+                    if (getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
+                    {
+                        m_syntaxManager.generateAllHighlighting(bv.getFileBuffer());
+                    }
                 }
 
             }
@@ -1805,6 +1843,7 @@ namespace Xyglo
             return rs;
         }
 
+        /*
         /// <summary>
         /// Build a sensible length file string from the passed arguments - to ensure that 
         /// the string fits on a page
@@ -1863,6 +1902,7 @@ namespace Xyglo
             }
 
         }
+        */
 
         /// <summary>
         /// Truncate the trailing directory from a path

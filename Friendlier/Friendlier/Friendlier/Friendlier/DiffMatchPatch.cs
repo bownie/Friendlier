@@ -1,4 +1,5 @@
-﻿/*
+﻿#region File Description
+/*
  * Copyright 2008 Google Inc. All Rights Reserved.
  * Author: fraser@google.com (Neil Fraser)
  * Author: anteru@developer.shelter13.net (Matthaeus G. Chajdas)
@@ -18,6 +19,12 @@
  * Diff Match and Patch
  * http://code.google.com/p/google-diff-match-patch/
  */
+//
+// Only modification made by Xyglo Ltd is to include the line level diff
+// code from the above wiki.
+//
+#endregion
+
 
 using System;
 using System.Collections.Generic;

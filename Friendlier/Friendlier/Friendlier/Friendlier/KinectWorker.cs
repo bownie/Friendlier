@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// KinectWorker.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Threading;
@@ -9,15 +17,14 @@ using System.Management;
 namespace Xyglo
 {
     /// <summary>
-    /// We have a KinecteWorker thread for initialising the (slow to start) PerformanceCounters.
-    /// This means that our main thread can start up nice and quickly.
+    /// We have a KinecteWorker thread for initialising the (slow to start) Kinect interface.
     /// </summary>
     public class KinectWorker
     {
         XygloKinectManager m_kinectManager = null;
 
         /// <summary>
-        /// Initialise the performance counters
+        /// Initialise out Kinect
         /// </summary>
         public void initialise()
         {

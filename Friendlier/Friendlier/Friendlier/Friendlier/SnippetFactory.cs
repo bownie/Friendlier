@@ -1,4 +1,13 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// SnippetFactory.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,7 +15,7 @@ using System.Text;
 namespace Xyglo
 {
     /// <summary>
-    /// Generate and maintain a heap of Snippets which we use to store text for our undo stack
+    /// Generate and maintain a heap of Snippets which we use to store text for our undo stack.
     /// </summary>
     public static class SnippetFactory
     {

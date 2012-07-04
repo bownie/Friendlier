@@ -1,4 +1,13 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// Registration.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Security.Cryptography;
@@ -7,7 +16,7 @@ using Microsoft.Win32;
 namespace Xyglo
 {
     /// <summary>
-    /// Deal with registration and licencing for this piece of software
+    /// Deal with registration and licencing for this piece of software.
     /// </summary>
     public class Registration
     {

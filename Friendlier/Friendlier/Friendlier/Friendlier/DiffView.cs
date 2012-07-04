@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// DiffView.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Linq;
 using System.Text;
 using System.Xml;
@@ -21,6 +29,7 @@ namespace Xyglo
     /// - generate a new Window with Read Only view of these views linked together
     /// - allows cutting and pasting from this view to the editable BufferViews
     /// 
+    /// Not used currently.
     /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class DiffView : XygloView

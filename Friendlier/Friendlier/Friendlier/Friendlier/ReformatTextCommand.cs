@@ -1,4 +1,13 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// ReformatTextCommand.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -34,6 +43,10 @@ namespace Xyglo
         public override ScreenPosition doCommand()
         {
             ScreenPosition fp = new ScreenPosition(m_startPos);
+
+            // Clear the snippet
+            //
+            m_snippet.clear();
 
             string fetchLine = m_fileBuffer.getLine(m_startPos.Y);
 

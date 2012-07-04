@@ -120,7 +120,6 @@ namespace BloomPostprocess
             renderTarget2.Dispose();
         }
 
-
         #endregion
 
         #region Draw

@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// FileBuffer.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,7 +29,10 @@ namespace Xyglo
     }
 
     /// <summary>
-    /// Open and buffer a file and provide an interface for handling large files efficiently
+    /// Open and buffer a file and provide an interface for handling large files efficiently.
+    /// At the moment this isn't efficient and it's not pretty.  Needs some work.
+    /// 
+    /// Does implement mutex locking for file access to ensure that this is thread safe.
     /// </summary>
     //[DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public class FileBuffer
@@ -107,8 +118,15 @@ namespace Xyglo
         /// <summary>
         /// Sortedlist of highlights
         /// </summary>
-        [DataMember]
-        protected SortedList<FilePosition, Highlight> m_highlightSortedList = new SortedList<FilePosition, Highlight>();
+        //[NonSerialized]
+        //protected SortedList<FilePosition, Highlight> m_highlightSortedList = new SortedList<FilePosition, Highlight>();
+
+        /// <summary>
+        /// A normal List for holding Highlights.  These are markers overlaying text elements which
+        /// hold colouration information for text highlighting purposes.
+        /// </summary>
+        [NonSerialized]
+        protected List<Highlight> m_highlightList = new List<Highlight>();
 
         /// <summary>
         /// List of highlights we're going to return to the drawFileBuffer in the main loop
@@ -626,6 +644,24 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Get the mutex on this FileBuffer
+        /// </summary>
+        /// <returns></returns>
+        public bool getLock()
+        {
+            return m_lineMutex.WaitOne();
+        }
+
+        /// <summary>
+        /// Release the mutex on this FileBuffer
+        /// </summary>
+        public void releaseLock()
+        {
+            m_lineMutex.ReleaseMutex();
+            return;
+        }
+
+        /// <summary>
         /// Inserts a line at a given position in the list
         /// </summary>
         /// <param name="line"></param>
@@ -774,27 +810,85 @@ namespace Xyglo
         /// </summary>
         /// <param name="startLine"></param>
         /// <param name="endLine"></param>
-        public void removeHighlightingRange(FilePosition startPosition, FilePosition endPosition, int linesDeleted)
+        public void removeHighlightingRange(FilePosition startPosition, FilePosition endPosition, TextSnippet snippet)
         {
+            List<Highlight> modifySelection;
+
+            // Ensure the list is sorted
+            //
+            m_highlightList.Sort();
+
+            // Now fetch highlights to modify - if on one line only that line
+            //
+            if (snippet.isSingleCharacter() && startPosition == endPosition)
+            {
+                modifySelection = m_highlightList.Where(item => item.m_startHighlight.Y == startPosition.Y).ToList();
+
+                // Store a deep copy of this list in snippet
+                //
+                foreach (Highlight hl in modifySelection)
+                {
+                    snippet.m_highlights.Add(new Highlight(hl));
+                }
+
+                foreach (Highlight hl in modifySelection)
+                {
+                    if (hl.m_startHighlight.Y == startPosition.Y && hl.m_startHighlight.X >= startPosition.X)
+                    {
+                        // Deal with single line, single character case
+                        if (snippet.isSingleCharacter())
+                        {
+                            hl.m_startHighlight.X--;
+                            hl.m_endHighlight.X--;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                //  Get all highlights from this line onwards if lines are deleted
+                //
+                modifySelection = m_highlightList.Where(item => item.m_startHighlight.X >= startPosition.X).ToList();
+
+                // 
+                foreach (Highlight hl in modifySelection)
+                {
+                    if (hl.m_startHighlight.Y == startPosition.Y && hl.m_startHighlight.X >= startPosition.X)
+                    {
+                        // Deal with single line, single character case
+                        if (snippet.isSingleCharacter())
+                        {
+                            hl.m_startHighlight.X--;
+                            hl.m_endHighlight.X--;
+                        }
+
+                        if (snippet.getLinesDeleted() > 0)
+                        {
+
+                        }
+                    }
+                }
+            }
+
+            /*
             if (linesDeleted == 0)
             {
                 // Have to be deleting on one line.  Get all the highlighting for this line beyond the start point.
                 //
-                List<KeyValuePair<FilePosition, Highlight>> deleteSelection = m_highlightSortedList.Where(item => item.Key.X >= startPosition.X && item.Key.Y == endPosition.Y).ToList();
-                //List<KeyValuePair<FilePosition, Highlight>> reInsertList = new List<KeyValuePair<FilePosition, Highlight>>();
+                List<Highlight> deleteSelection = m_highlightList.Where(item => item.m_startHighlight.X >= startPosition.X && item.m_startHighlight.Y == endPosition.Y).ToList();
 
                 // Iterate through deleting and re-inserting
                 //
                 foreach (var item in deleteSelection)
                 {
-                    if (m_highlightSortedList.Remove(item.Key))
-                    {
-                        Logger.logMsg("FilerBuffer::removeHighlightingRange() - removed highlight item - adding replacement");
+                    if (item.m_endHighlight.X < endPosition.X)
+                    //if (m_highlightList.Remove(item))
+                    //{
+                        Logger.logMsg("FileBuffer::removeHighlightingRange() - removed highlight item");
 
                         // Modify these entries
                         //
-                        FilePosition fp = item.Key;
-                        Highlight h = item.Value;
+                        Highlight h = item;
 
                         // We will always at least delete one character - perhaps a range
                         //
@@ -802,7 +896,7 @@ namespace Xyglo
 
                         // Adjust X by removed range
                         //
-                        if (fp.X > 0)
+                        if (item.m_startHighlight.X > 0)
                         {
                             fp.X -= xAdjust;
                         }
@@ -869,6 +963,7 @@ namespace Xyglo
 
                 m_highlightSortedList.Add(fp, item.Value);
             }
+    */
         }
 
 
@@ -1053,6 +1148,24 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Undo any highlighting changes using the highlights stored in the snippet
+        /// </summary>
+        protected void undoHighlighting(FilePosition startPos, TextSnippet snippet)
+        {
+            // Remove all highlights on this line
+            //
+            List<Highlight> removeList = m_highlightList.Where(item => item.m_startHighlight.Y == startPos.Y).ToList();
+            foreach (Highlight hl in removeList)
+            {
+                m_highlightList.Remove(hl);
+            }
+
+            m_highlightList.AddRange(snippet.m_highlights);
+            m_highlightList.Sort();
+        }
+
+
+        /// <summary>
         /// Undo a given number of steps in the life of a FileBuffer - returns a complicated package
         /// of position cursor and highlighting (if any was saved)
         /// </summary>
@@ -1078,6 +1191,10 @@ namespace Xyglo
 
                     startHighlight = m_commands[i].getHighlightStart();
                     endHighlight = m_commands[i].getHighlightEnd();
+
+                    // Fix the highlighting
+                    //
+                    undoHighlighting(m_commands[i].getStartPos(), m_commands[i].getSnippet());
                 }
 
                 // Reduce the m_undoPosition accordingly
@@ -1192,19 +1309,42 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Get some highlighting suggestions from the indicated line
+        /// Get some highlighting suggestions from the indicated line.   Compensate for xOffset and the 
+        /// length of the line so we only return a subset that is already adjusted for our view.
         /// </summary>
         /// <param name="line"></param>
         /// <returns></returns>
-        public List<Highlight> getHighlighting(int line)
+        public List<Highlight> getHighlighting(int line, int xOffset, int lineLength)
         {
-
             m_returnLineList.Clear();
+            Highlight convertHL;
 
-            List<KeyValuePair<FilePosition, Highlight>> subList = m_highlightSortedList.Where(item => item.Key.Y == line).ToList();
-            foreach (KeyValuePair<FilePosition, Highlight> item in subList)
+            foreach (Highlight item in m_highlightList.Where(item => item.m_startHighlight.Y == line).ToList())
             {
-                    m_returnLineList.Add(item.Value);
+                convertHL = new Highlight(item);
+
+                if (xOffset > 0)
+                {
+                    if (item.m_startHighlight.X >= xOffset && item.m_startHighlight.X <= xOffset + lineLength)
+                    {
+                        convertHL.m_startHighlight.X -= xOffset;
+                        convertHL.m_endHighlight.X -= xOffset;
+
+                        if (convertHL.m_startHighlight.X < 0)
+                        {
+                            throw new Exception("Got inconsistency in keys offset = " + xOffset);
+                        }
+                    }
+                }
+
+                if (m_returnLineList.Contains(convertHL))
+                {
+                    throw new Exception("Already have this highlight in return list");
+                }
+                else
+                {
+                    m_returnLineList.Add(convertHL);
+                }
             }
 
             return m_returnLineList;
@@ -1254,22 +1394,42 @@ namespace Xyglo
             return new FilePosition(0, 0);
         }
 
+        /// <summary>
+        /// Clear the list of all highlights
+        /// </summary>
         public void clearAllHighlights()
         {
-            m_highlightSortedList.Clear();
+            m_highlightList.Clear();
         }
+
+
         /// <summary>
         /// Clear the highlight dictionary
         /// </summary>
         public void clearHighlights(FilePosition fromPos, FilePosition toPos)
         {
-            List<KeyValuePair<FilePosition, Highlight>> removeList = m_highlightSortedList.Where(item => item.Key >= fromPos && item.Key <= toPos).ToList();
-
-            foreach (KeyValuePair<FilePosition, Highlight> item in removeList)
+            List<Highlight> removeList = m_highlightList.Where(item => item.m_startHighlight >= fromPos && item.m_endHighlight <= toPos).ToList();
+            foreach (Highlight item in removeList)
             {
-                m_highlightSortedList.Remove(item.Key);
+                m_highlightList.Remove(item);
             }
         }
+
+        /*
+        /// <summary>
+        /// Check the consistency of the highlight sorted list as it seems to drift...
+        /// </summary>
+        protected void checkConsistency()
+        {
+            foreach (KeyValuePair<FilePosition, Highlight> pair in m_highlightSortedList)
+            {
+                if (pair.Key != pair.Value.m_startHighlight)
+                {
+                    throw new Exception("Inconsistency in m_highlightSortedList");
+                }
+            }
+        }
+         * */
 
         /// <summary>
         /// Set a highlight at a line
@@ -1278,16 +1438,46 @@ namespace Xyglo
         /// <param name="highlight"></param>
         public void setHighlight(Highlight highlight)
         {
-            if (m_highlightSortedList.ContainsKey(highlight.m_startHighlight))
+            //Logger.logMsg("FileBuffer::setHighlight() - inserted highlight for \"" + highlight.m_text + "\" at X = " + highlight.m_startHighlight.X + ", Y = " + highlight.m_startHighlight.Y);
+
+            /*
+            try
             {
-                m_highlightSortedList[highlight.m_startHighlight] = highlight;
+                if (m_highlightSortedList.ContainsKey(highlight.m_startHighlight))
+                {
+                    m_highlightSortedList[highlight.m_startHighlight] = highlight;
+                }
+                else
+                {
+                    m_highlightSortedList.Add(highlight.m_startHighlight, highlight);
+                }
             }
-            else
+            catch (Exception e)
             {
-                m_highlightSortedList.Add(highlight.m_startHighlight, highlight);
+                Logger.logMsg("Couldn't add a duplicate highlight key - " + e.Message);
             }
+            */
+
+            if (m_highlightList.Contains(highlight))
+            {
+                throw new Exception("FileBuffer::setHighlight() - attempting to set duplicate");
+            }
+
+            m_highlightList.Add(highlight);
+        }
+
+        /// <summary>
+        /// Ensure that the highlight list is sorted, ordered and consistent
+        /// </summary>
+        public void checkAndSort()
+        {
+            // Remove duplicates
+            //
+            m_highlightList = m_highlightList.Distinct().ToList();
+
+            // Sort
+            //
+            m_highlightList.Sort();
         }
     }
 }
-
-

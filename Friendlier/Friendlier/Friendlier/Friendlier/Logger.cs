@@ -1,11 +1,20 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// Logger.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Diagnostics;
 using System.Reflection;
 
 namespace Xyglo
 {
     /// <summary>
-    /// Logging class for Xyglo applications
+    /// Logging class for Xyglo applications - we can specify if we want to see a log timestamp
+    /// and a stack trace for example.
     /// </summary>
     public static class Logger
     {

@@ -1,4 +1,12 @@
-﻿using System;
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// FilePosition.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,7 +15,8 @@ using Microsoft.Xna.Framework;
 namespace Xyglo
 {
     /// <summary>
-    /// Define a line and character position in a file
+    /// Define a line and character position in a file.  This has some useful comparison
+    /// operators defined in it which is used by location code.  Also see ScreenPosition.
     /// </summary>
     public struct FilePosition : ICloneable, IComparable
     {

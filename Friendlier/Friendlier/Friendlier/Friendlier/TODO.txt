@@ -17,10 +17,16 @@ USE CASES
 BUGS
 ----
 
+- Do file buffering to improve performance
+- Check out highlighting and other performance sinks
+- Frustrum culling to improve performance [DONE]
+- fix defaults in project file etc
+- fix tabs and write tests for them
+- complete tests for textcommands [INPROGRESS]
 - highlighting with long lines on editor
 - word jumping with long lines on editor
-- drag and drop to exact position
-- paste doesn't do last line
+- drag and drop file to exact position
+- paste doesn't do last line [FIXED?]
 - search in tailing views needs to match up
 - case on searches is annoying
 - copy search between bufferviews
@@ -45,7 +51,6 @@ BUILD and USABILITY FEATURES TODO and BUGS
 ----
 
 C:\Q\Desktop\Qt\4.7.4\mingw\bin\qmake.exe -makefile C:\dev-alpha2\win32-mingw-rtmidi\garderobe.pro
-
 
 
 - 30 day limited trial/registry keys

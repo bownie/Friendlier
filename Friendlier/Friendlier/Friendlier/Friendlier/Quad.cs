@@ -1,10 +1,21 @@
-﻿using System;  
+﻿#region File Description
+//-----------------------------------------------------------------------------
+// Quad.cs
+//
+// Copyright (C) Xyglo Ltd. All rights reserved.
+//-----------------------------------------------------------------------------
+#endregion
+
+
+using System;  
 using Microsoft.Xna.Framework;  
 using Microsoft.Xna.Framework.Graphics;  
  
 namespace Xyglo  
 {
     /// <summary>
+    /// Remder a four sided thing in XNA.
+    /// 
     /// For this class thanks to:
     /// 
     /// http://forums.create.msdn.com/forums/p/12089/98958.aspx
