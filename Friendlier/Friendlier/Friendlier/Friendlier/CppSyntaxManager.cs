@@ -185,7 +185,7 @@ namespace Xyglo
         /// Generate the highlightList by parsing the entire file and throwing away all previous highlighting
         /// information.  This is done once per file load in an ideal world as it takes a while.
         /// </summary>
-        public override void generateHighlighting(FileBuffer fileBuffer, FilePosition fromPos, FilePosition toPos)
+        public override void generateHighlighting(FileBuffer fileBuffer, FilePosition fromPos, FilePosition toPos, int characters = 0)
         {
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - updating " + fileBuffer.getFilepath(), true);
 
@@ -250,7 +250,7 @@ namespace Xyglo
 
                         if (endOfComment != -1) // end comment and continue
                         {
-                            Highlight newHighlight = new Highlight(i, xPosition, xPosition + endOfComment + 2, line.Substring(xPosition, endOfComment + 2), SyntaxManager.m_commentColour);
+                            Highlight newHighlight = new Highlight(i, xPosition, xPosition + endOfComment + 2, line.Substring(xPosition, endOfComment + 2), HighlightType.Comment);
                             fileBuffer.setHighlight(newHighlight);
                             xPosition += endOfComment + 2;
                             inMLComment = false;
@@ -259,7 +259,7 @@ namespace Xyglo
                         {
                             // Insert comment to end of line and don't unset inMLComment as we're still in it
                             //
-                            Highlight newHighlight = new Highlight(i, xPosition, line.Length, line.Substring(xPosition, line.Length - xPosition), SyntaxManager.m_commentColour);
+                            Highlight newHighlight = new Highlight(i, xPosition, line.Length, line.Substring(xPosition, line.Length - xPosition), HighlightType.Comment);
                             fileBuffer.setHighlight(newHighlight);
                             xPosition = line.Length;
                         }
@@ -281,7 +281,7 @@ namespace Xyglo
                             if ((foundPosition = line.IndexOf("#")) == 0)
                             {
                                 // Create a highlight for a #define
-                                Highlight newHighlight = new Highlight(i, foundPosition, line.Length, line, SyntaxManager.m_defineColour);
+                                Highlight newHighlight = new Highlight(i, foundPosition, line.Length, line, HighlightType.Define);
                                 fileBuffer.setHighlight(newHighlight);
 
                                 // And exit this loop
@@ -290,7 +290,7 @@ namespace Xyglo
                             else if ((foundPosition = line.IndexOf("//")) != -1)
                             //else if ((foundPosition = indexOf(CppSyntaxManager.m_lineComment, line)) != -1)
                             {
-                                Highlight newHighlight = new Highlight(i, foundPosition, line.Length, line.Substring(foundPosition, line.Length - foundPosition), SyntaxManager.m_commentColour);
+                                Highlight newHighlight = new Highlight(i, foundPosition, line.Length, line.Substring(foundPosition, line.Length - foundPosition), HighlightType.Comment);
                                 fileBuffer.setHighlight(newHighlight);
                                 lineCommentPosition = foundPosition;
                                 xPosition = line.Length;
@@ -336,7 +336,7 @@ namespace Xyglo
                                 {
                                     // Insert highlight if this is only thing on line
                                     //
-                                    Highlight newHighlight = new Highlight(i, xPosition, xPosition + 2, line.Substring(xPosition, 2), SyntaxManager.m_commentColour);
+                                    Highlight newHighlight = new Highlight(i, xPosition, xPosition + 2, line.Substring(xPosition, 2), HighlightType.Comment);
                                     fileBuffer.setHighlight(newHighlight);
 
                                     // Move past comment start
@@ -380,7 +380,7 @@ namespace Xyglo
 
                                             if (m_keywords.Contains(m.Value))
                                             {
-                                                Highlight newHighlight = new Highlight(i, xPosition + m.Index, xPosition + m.Index + m.Value.Length, m.Value, SyntaxManager.m_keywordColour);
+                                                Highlight newHighlight = new Highlight(i, xPosition + m.Index, xPosition + m.Index + m.Value.Length, m.Value, HighlightType.Keyword);
                                                 fileBuffer.setHighlight(newHighlight);
                                                 xPosition = newHighlight.m_endHighlight.X;
                                             }

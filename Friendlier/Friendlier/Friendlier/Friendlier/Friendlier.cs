@@ -619,6 +619,11 @@ namespace Xyglo
         /// </summary>
         protected List<Highlight> m_highlights;
 
+        /// <summary>
+        /// A helper class for drawing things
+        /// </summary>
+        protected DrawingHelper m_drawingHelper;
+
         /////////////////////////////// CONSTRUCTORS ////////////////////////////
 
         /// <summary>
@@ -687,7 +692,6 @@ namespace Xyglo
             {
                 m_state = FriendlierState.DemoExpired;
             }
-
         }
 
         /// <summary>
@@ -1226,6 +1230,22 @@ namespace Xyglo
             //
             m_lastWindowSize.X = Window.ClientBounds.Width;
             m_lastWindowSize.Y = Window.ClientBounds.Height;
+
+            // Set up the bounding box for the BufferView preview 
+            //
+            Vector3 topLeft = Vector3.Zero;
+            topLeft.X = m_graphics.GraphicsDevice.Viewport.Width - m_project.getFontManager().getOverlayFont().MeasureString("X").X * 10;
+            topLeft.Y = m_graphics.GraphicsDevice.Viewport.Height - m_project.getFontManager().getOverlayFont().LineSpacing * 6;
+
+            Vector3 bottomRight = Vector3.Zero;
+            bottomRight.X = m_graphics.GraphicsDevice.Viewport.Width - m_project.getFontManager().getOverlayFont().MeasureString("X").X * 3;
+            bottomRight.Y = m_graphics.GraphicsDevice.Viewport.Height - m_project.getFontManager().getOverlayFont().LineSpacing * 2;
+
+            BoundingBox previewBoundingBox = new BoundingBox(topLeft, bottomRight);
+
+            // Initialise the DrawingHelper with this bounding box and some other stuff
+            //
+            m_drawingHelper = new DrawingHelper(m_project, m_flatTexture, previewBoundingBox);
         }
 
         /// <summary>
@@ -4697,7 +4717,7 @@ namespace Xyglo
                                 // Set up the m_clickHighlight
                                 //
                                 m_clickHighlight.First = m_project.getSelectedBufferView();
-                                m_clickHighlight.Second = new Highlight(screenRelativePosition.Y, xPosition, xPosition + fpEntry.First.Length, fpEntry.First, new Color(230, 230, 0, 180));
+                                m_clickHighlight.Second = new Highlight(screenRelativePosition.Y, xPosition, xPosition + fpEntry.First.Length, fpEntry.First, HighlightType.UserHighlight);
 
                                 // Open file and zap to it
                                 //
@@ -5028,150 +5048,142 @@ namespace Xyglo
             m_lineEffect.Projection = m_projection;
             m_lineEffect.World = Matrix.CreateScale(1, -1, 1);
 
-            // Here we need to vary the parameters to the SpriteBatch - to the BasicEffect and also the font size.
-            // For large fonts we need to be able to downscale them effectively so that they will still look good
-            // at higher reoslutions.
-            //
-            //m_basicEffect.TextureEnabled = true;
-            //m_basicEffect.SpecularPower = 100.0f;
-            //m_basicEffect.SpecularColor = new Vector3(100, 100, 100);
-
-            //m_spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-            //m_spriteBatch.Begin(0, null, null, null, null, m_basicEffect);
-            //m_spriteBatch.Begin(0, BlendState.Additive, SamplerState.LinearClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-
-
-            // These modes make quality differences so watch the options
-            //
-            //if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
-            //{
-            //m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicWrap, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-            m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-            //m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.LinearClamp, DepthStencilState.None, RasterizerState.CullCounterClockwise, m_basicEffect);
-
-            //}
-            //else
-            //{
-            //m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Additive, SamplerState.LinearClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-            //}
-
             // In the manage project mode we zoom off into the distance
             //
             if (m_state == FriendlierState.ManageProject)
             {
-                m_spriteBatch.End();
                 drawManageProject(gameTime);
+                base.Draw(gameTime);
+                return;
             }
-            else
+
+
+            // Here we need to vary the parameters to the SpriteBatch - to the BasicEffect and also the font size.
+            // For large fonts we need to be able to downscale them effectively so that they will still look good
+            // at higher reoslutions.
+            //
+            m_spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+
+            // Draw all the BufferViews for all remaining modes
+            //
+            for (int i = 0; i < m_project.getBufferViews().Count; i++)
             {
-                // Draw all the BufferViews for most modes
-                //
-                for (int i = 0; i < m_project.getBufferViews().Count; i++)
+                if (m_differ != null && m_differ.hasDiffs() &&
+                    (m_differ.getSourceBufferViewLhs() == m_project.getBufferViews()[i] ||
+                        m_differ.getSourceBufferViewRhs() == m_project.getBufferViews()[i]))
                 {
-                    if (m_differ != null && m_differ.hasDiffs() &&
-                        (m_differ.getSourceBufferViewLhs() == m_project.getBufferViews()[i] ||
-                         m_differ.getSourceBufferViewRhs() == m_project.getBufferViews()[i]))
-                    {
-                        drawDiffBuffer(m_project.getBufferViews()[i], gameTime);
-                    }
-                    else
-                    {
-                        // We have to invert the BoundingBox along the Y axis to ensure that
-                        // it matches with the frustrum we're culling against.
-                        //
-                        BoundingBox bb = m_project.getBufferViews()[i].getBoundingBox();
-                        bb.Min.Y = -bb.Min.Y;
-                        bb.Max.Y = -bb.Max.Y;
-
-                        // We only do frustrum culling for BufferViews for the moment
-                        //
-                        if (m_frustrum.Contains(bb) != ContainmentType.Disjoint)
-                        {
-                            drawFileBuffer(m_project.getBufferViews()[i], gameTime);
-                        }
-                    }
-                }
-
-                // Draw our generic views
-                //
-                foreach (XygloView view in m_project.getGenericViews())
-                {
-                    view.draw(m_project, m_state, gameTime, m_spriteBatch, m_basicEffect);
-                }
-
-                // If we're choosing a file then
-                //
-                if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen || m_state == FriendlierState.PositionScreenOpen || m_state == FriendlierState.PositionScreenNew || m_state == FriendlierState.PositionScreenCopy)
-                {
-                    m_spriteBatch.End();
-
-                    drawDirectoryChooser(gameTime);
-
-                }
-                else if (m_state == FriendlierState.Help)
-                {
-                    m_spriteBatch.End();
-
-                    drawTextScreen(gameTime, m_userHelp);
-                }
-                else if (m_state == FriendlierState.Information)
-                {
-                    m_spriteBatch.End();
-
-                    drawInformationScreen(gameTime);
-                }
-                else if (m_state == FriendlierState.Configuration)
-                {
-                    m_spriteBatch.End();
-
-                    drawConfigurationScreen(gameTime);
+                    drawDiffBuffer(m_project.getBufferViews()[i], gameTime);
                 }
                 else
                 {
-                    // We only draw the scrollbar on the active view
+                    // We have to invert the BoundingBox along the Y axis to ensure that
+                    // it matches with the frustrum we're culling against.
                     //
-                    drawScrollbar(m_project.getSelectedBufferView());
+                    BoundingBox bb = m_project.getBufferViews()[i].getBoundingBox();
+                    bb.Min.Y = -bb.Min.Y;
+                    bb.Max.Y = -bb.Max.Y;
 
-                    m_spriteBatch.End();
-
-                    // Draw the Overlay HUD
+                    // We only do frustrum culling for BufferViews for the moment
                     //
-                    drawOverlay(gameTime);
-
-                    // Cursor and cursor highlight
-                    //
-                    if (m_state != FriendlierState.DiffPicker)
+                    if (m_frustrum.Contains(bb) != ContainmentType.Disjoint)
                     {
-                        drawCursor(gameTime);
-                        drawHighlight(gameTime);
+                        drawFileBuffer(m_project.getBufferViews()[i], gameTime);
                     }
 
-                    // Draw any differ overlay
+                    // Draw a background square for all buffer views if they are coloured
                     //
-                    drawDiffer(gameTime);
-
-                    // Draw system load
-                    //
-                    drawSystemLoad(gameTime);
-                }
-
-                // Draw the textures for generic views
-                //
-                foreach (XygloView view in m_project.getGenericViews())
-                {
-                    view.drawTextures(m_basicEffect);
-                }
-
-                // Draw a background square for all buffer views if they are coloured
-                //
-                if (m_project.getViewMode() == Project.ViewMode.Coloured)
-                {
-                    for (int i = 0; i < m_project.getBufferViews().Count; i++)
+                    if (m_project.getViewMode() == Project.ViewMode.Coloured)
                     {
-                        renderQuad(m_project.getBufferViews()[i].getTopLeft(), m_project.getBufferViews()[i].getBottomRight(), m_project.getBufferViews()[i].getBackgroundColour());
+                        m_drawingHelper.renderQuad(m_project.getBufferViews()[i].getTopLeft(), m_project.getBufferViews()[i].getBottomRight(), m_project.getBufferViews()[i].getBackgroundColour(), m_spriteBatch);
                     }
                 }
             }
+
+            // We only draw the scrollbar on the active view in the right mode
+            //
+            if (m_state == FriendlierState.TextEditing)
+            {
+                drawScrollbar(m_project.getSelectedBufferView());
+            }
+
+            // Cursor and cursor highlight
+            //
+            if (m_state == FriendlierState.TextEditing)
+            {
+                // Stop and use a different spritebatch for the highlighting and cursor
+                //
+                m_spriteBatch.End();
+                m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.PointClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
+
+                drawCursor(gameTime, m_spriteBatch);
+                m_drawingHelper.drawHighlight(gameTime, m_spriteBatch);
+            }
+
+            m_spriteBatch.End();
+
+            // Draw our generic views
+            //
+            foreach (XygloView view in m_project.getGenericViews())
+            {
+                view.draw(m_project, m_state, gameTime, m_spriteBatch, m_basicEffect);
+            }
+
+            // If we're choosing a file then
+            //
+            if (m_state == FriendlierState.FileSaveAs || m_state == FriendlierState.FileOpen || m_state == FriendlierState.PositionScreenOpen || m_state == FriendlierState.PositionScreenNew || m_state == FriendlierState.PositionScreenCopy)
+            {
+                drawDirectoryChooser(gameTime);
+
+            }
+            else if (m_state == FriendlierState.Help)
+            {
+                drawTextScreen(gameTime, m_userHelp);
+            }
+            else if (m_state == FriendlierState.Information)
+            {
+                drawInformationScreen(gameTime);
+            }
+            else if (m_state == FriendlierState.Configuration)
+            {
+                drawConfigurationScreen(gameTime);
+            }
+            else
+            {
+                // http://forums.create.msdn.com/forums/p/61995/381650.aspx
+                //
+                m_overlaySpriteBatch.Begin();
+
+                // Draw the Overlay HUD
+                //
+                drawOverlay(gameTime, m_overlaySpriteBatch);
+
+                // Draw map of BufferViews
+                //
+                m_drawingHelper.drawBufferViewMap(gameTime, m_overlaySpriteBatch);
+
+                m_overlaySpriteBatch.End();
+
+                // Draw any differ overlay
+                //
+                m_pannerSpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone /*, m_pannerEffect */ );
+
+                // Draw the differ
+                //
+                drawDiffer(gameTime, m_pannerSpriteBatch);
+
+                // Draw system load
+                //
+                drawSystemLoad(gameTime, m_pannerSpriteBatch);
+
+                m_pannerSpriteBatch.End();
+            }
+
+            // Draw the textures for generic views
+            //
+            //foreach (XygloView view in m_project.getGenericViews())
+            //{
+                //view.drawTextures(m_basicEffect);
+            //}
 
             // Draw a welcome banner
             //
@@ -5393,14 +5405,14 @@ namespace Xyglo
             //
             float yPos = m_graphics.GraphicsDevice.Viewport.Height - ((splitString.Count + 3) * m_project.getFontManager().getOverlayFont().LineSpacing);
 
-            m_overlaySpriteBatch.Begin();
+            //m_overlaySpriteBatch.Begin();
             for (int i = 0; i < splitString.Count; i++)
             {
                 float xPos = m_graphics.GraphicsDevice.Viewport.Width / 2 - m_project.getFontManager().getOverlayFont().MeasureString("X").X * splitString[i].Length / 2;
                 m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), splitString[i], new Vector2(xPos, yPos), fadeColour, 0, Vector2.Zero, 1.0f, 0, 0);
                 yPos += m_project.getFontManager().getOverlayFont().LineSpacing;
             }
-            m_overlaySpriteBatch.End();
+            //m_overlaySpriteBatch.End();
         }
 
 
@@ -5408,11 +5420,13 @@ namespace Xyglo
         /// Draw the HUD Overlay for the editor with information about the current file we're viewing
         /// and position in that file.
         /// </summary>
-        protected void drawOverlay(GameTime gameTime)
+        protected void drawOverlay(GameTime gameTime, SpriteBatch spriteBatch)
         {
+#if SCROLLING_TEXT
             // Flag that we set during this method
             //
             bool drawScrollingText = false;
+#endif
 
             // Set our colour according to the state of Friendlier
             //
@@ -5537,36 +5551,27 @@ namespace Xyglo
             string filePercentString = ((int)(filePercent * 100.0f)) + "%";
             float filePercentStringXPos = m_graphics.GraphicsDevice.Viewport.Width - filePercentString.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) - (m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 3);
 
-
-            // http://forums.create.msdn.com/forums/p/61995/381650.aspx
-            //
-            //m_overlaySpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend);
-            //m_overlaySpriteBatch.Begin(SpriteSortMode.FrontToBack, BlendState.NonPremultiplied, SamplerState.LinearWrap, DepthStencilState.None,RasterizerState.CullCounterClockwise);
-            m_overlaySpriteBatch.Begin();
-
             // Debug eye position
             //
             if (m_project.getViewMode() != Project.ViewMode.Formal)
             {
                 string eyePosition = "[EyePosition] X " + m_eye.X + ",Y " + m_eye.Y + ",Z " + m_eye.Z;
                 float xPos = m_graphics.GraphicsDevice.Viewport.Width - eyePosition.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay);
-                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), eyePosition, new Vector2(0.0f, 0.0f), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
+                spriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), eyePosition, new Vector2(0.0f, 0.0f), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
             }
 
             // hardcode the font size to 1.0f so it looks nice
             //
-            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), fileName, new Vector2(0.0f, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
-            
-            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), modeString, new Vector2((int)modeStringXPos, 0.0f), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
-            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), positionString, new Vector2((int)positionStringXPos, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
-            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), filePercentString, new Vector2((int)filePercentStringXPos, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
-            m_overlaySpriteBatch.End();
-
+            spriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), fileName, new Vector2(0.0f, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
+            spriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), modeString, new Vector2((int)modeStringXPos, 0.0f), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
+            spriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), positionString, new Vector2((int)positionStringXPos, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
+            spriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), filePercentString, new Vector2((int)filePercentStringXPos, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
 
             // Draw any temporary message
             //
             drawTemporaryMessage(gameTime, Color.HotPink);
 
+#if SCROLLING_TEXT
             // Draw the scrolling text
             //
             if (m_textScrollTexture != null && drawScrollingText)
@@ -5575,13 +5580,15 @@ namespace Xyglo
                 m_spriteBatch.Draw(m_textScrollTexture, new Rectangle((int)((fileName.Length + 1) * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay)), (int)yPos, m_textScrollTexture.Width, m_textScrollTexture.Height), Color.White);
                 m_spriteBatch.End();
             }
+#endif
+
         }
 
         /// <summary>
         /// Draw the system CPU load and memory usage next to the FileBuffer
         /// </summary>
         /// <param name="gameTime"></param>
-        protected void drawSystemLoad(GameTime gameTime)
+        protected void drawSystemLoad(GameTime gameTime, SpriteBatch spriteBatch)
         {
             Vector2 startPosition = Vector2.Zero;
             int linesHigh = 6;
@@ -5623,7 +5630,7 @@ namespace Xyglo
 #endif
             }
 
-            m_pannerSpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone /*, m_pannerEffect */ );
+            //m_pannerSpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone /*, m_pannerEffect */ );
 
             // Draw background for CPU counter
             //
@@ -5632,9 +5639,7 @@ namespace Xyglo
 
             p1.Y += height;
             p1.X += 1;
-
-            //renderQuad(p1, p2, Color.DarkGray, m_pannerSpriteBatch);
-            drawBox(p1, p2, Color.DarkGray, 0.8f);
+            m_drawingHelper.drawBox(spriteBatch, p1, p2, Color.DarkGray, 0.8f);
 
             // Draw CPU load over the top
             //
@@ -5645,8 +5650,7 @@ namespace Xyglo
             p2.Y += height - (m_systemLoad * height / 100.0f);
             p1.X += 1;
 
-            drawBox(p1, p2, Color.DarkGreen, 0.8f);
-            //renderQuad(p1, p2, Color.DarkGreen, m_pannerSpriteBatch);
+            m_drawingHelper.drawBox(spriteBatch, p1, p2, Color.DarkGreen, 0.8f);
 
             // Draw background for Memory counter
             //
@@ -5657,8 +5661,7 @@ namespace Xyglo
             p1.Y += height;
             p1.X += 1;
 
-            drawBox(p1, p2, Color.DarkGray, 0.8f);
-            //renderQuad(p1, p2, Color.DarkGray, m_pannerSpriteBatch);
+            m_drawingHelper.drawBox(spriteBatch, p1, p2, Color.DarkGray, 0.8f);
 
             // Draw Memory over the top
             //
@@ -5669,10 +5672,8 @@ namespace Xyglo
             p2.Y += height - (height * m_memoryAvailable / m_physicalMemory);
             p1.X += 1;
 
-            drawBox(p1, p2, Color.DarkOrange, 0.8f);
-            //renderQuad(p1, p2, Color.DarkOrange, m_pannerSpriteBatch);
-
-            m_pannerSpriteBatch.End();
+            m_drawingHelper.drawBox(spriteBatch, p1, p2, Color.DarkOrange, 0.8f);
+            //m_pannerSpriteBatch.End();
         }
 
         /// <summary>
@@ -5680,7 +5681,7 @@ namespace Xyglo
         /// we know what position in the diff we're currently looking at.
         /// </summary>
         /// <param name="v"></param>
-        protected void drawDiffer(GameTime gameTime)
+        protected void drawDiffer(GameTime gameTime, SpriteBatch spriteBatch)
         {
             // Don't draw the cursor if we're not the active window or if we're confirming 
             // something on the screen.
@@ -5692,15 +5693,13 @@ namespace Xyglo
 
             // Start spritebatch
             //
-            m_pannerSpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone /*, m_pannerEffect */ );
-
-            //renderQuad(v1, v2, Color.White, m_pannerSpriteBatch);
+            //m_pannerSpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone /*, m_pannerEffect */ );
             //m_pannerSpriteBatch.Draw(m_flatTexture, new Rectangle((int)v1.X, (int)v1.Y, 1, 100), Color.White);
 
             Color myColour = Color.White;
 
-            drawBox(m_differ.getLeftBox(), m_differ.getLeftBoxEnd(), myColour, 0.5f);
-            drawBox(m_differ.getRightBox(), m_differ.getRightBoxEnd(), myColour, 0.5f);
+            m_drawingHelper.drawBox(spriteBatch, m_differ.getLeftBox(), m_differ.getLeftBoxEnd(), myColour, 0.5f);
+            m_drawingHelper.drawBox(spriteBatch, m_differ.getRightBox(), m_differ.getRightBoxEnd(), myColour, 0.5f);
 
             // Modify alpha according to the type of the line
             //
@@ -5719,7 +5718,7 @@ namespace Xyglo
                     alpha = 0.8f;
                 }
 
-                drawLine(dp.m_startPos, dp.m_endPos, dp.m_colour, alpha);
+                m_drawingHelper.drawLine(spriteBatch, dp.m_startPos, dp.m_endPos, dp.m_colour, alpha);
             }
 
             // Draw RHS preview
@@ -5735,7 +5734,7 @@ namespace Xyglo
                     alpha = 0.8f;
                 }
 
-                drawLine(dp.m_startPos, dp.m_endPos, dp.m_colour, alpha);
+                m_drawingHelper.drawLine(spriteBatch, dp.m_startPos, dp.m_endPos, dp.m_colour, alpha);
             }
 
             // Now we want to render a position viewer box overlay
@@ -5753,71 +5752,16 @@ namespace Xyglo
 
             // Now render the quad
             //
-            drawQuad(topLeft, bottomRight, Color.LightYellow, 0.3f);
+            m_drawingHelper.drawQuad(spriteBatch, topLeft, bottomRight, Color.LightYellow, 0.3f);
             
-            m_pannerSpriteBatch.End();
+            //m_pannerSpriteBatch.End();
         }
 
         /// <summary>
-        /// Draw line wrapper - accepts floats and we don't force these to int so watch
-        /// your inputs please.
-        /// </summary>
-        /// <param name="topLeft"></param>
-        /// <param name="bottomRight"></param>
-        /// <param name="colour"></param>
-        /// <param name="width"></param>
-        protected void drawLine(Vector2 topLeft, Vector2 bottomRight, Color colour, float alpha = 1.0f, int width = 1)
-        {
-            float angle = (float)Math.Atan2(bottomRight.Y - topLeft.Y, bottomRight.X - topLeft.X);
-            float length = Vector2.Distance(topLeft, bottomRight);
-
-            //m_pannerSpriteBatch.Draw(m_flatTexture, new Rectangle((int)topLeft.X, (int)topLeft.Y, (int)(bottomRight.X - topLeft.X), (int)(bottomRight.Y - topLeft.Y)), colour);
-            
-            m_pannerSpriteBatch.Draw(m_flatTexture, topLeft, null, colour * alpha,
-              angle, Vector2.Zero, new Vector2(length, width),
-              SpriteEffects.None, 0);
-        }
-
-        /// <summary>
-        /// Draw a box for us - accepts floats and we don't force these to int so watch
-        /// your inputs please.
-        /// </summary>
-        /// <param name="topLeft"></param>
-        /// <param name="bottomRight"></param>
-        /// <param name="colour"></param>
-        /// <param name="width"></param>
-        protected void drawBox(Vector2 topLeft, Vector2 bottomRight, Color colour, float alpha = 1.0f, int width = 1)
-        {
-            Vector2 xDiff = bottomRight - topLeft;
-            Vector2 yDiff = xDiff;
-            xDiff.Y = 0;
-            yDiff.X = 0;
-
-            drawLine(topLeft, topLeft + xDiff, colour, alpha, width);
-            drawLine(topLeft + xDiff, bottomRight, colour, alpha, width);
-            drawLine(bottomRight, topLeft + yDiff, colour, alpha, width);
-            drawLine(topLeft + yDiff, topLeft, colour, alpha, width);
-        }
-
-        /// <summary>
-        /// Just a wrapper for a draw quad
-        /// </summary>
-        /// <param name="topLeft"></param>
-        /// <param name="bottomRight"></param>
-        /// <param name="colour"></param>
-        /// <param name="alpha"></param>
-        /// <param name="width"></param>
-        protected void drawQuad(Vector2 topLeft, Vector2 bottomRight, Color colour, float alpha = 1.0f)
-        {
-            m_pannerSpriteBatch.Draw(m_flatTexture, new Rectangle((int)topLeft.X, (int)topLeft.Y, (int)(bottomRight.X - topLeft.X), (int)(bottomRight.Y - topLeft.Y)), colour * alpha);
-        }
-
-
-        /// <summary>
-        /// Draw a cursor and make it blink in position
+        /// Draw a cursor and make it blink in position on a FileBuffer
         /// </summary>
         /// <param name="v"></param>
-        protected void drawCursor(GameTime gameTime)
+        protected void drawCursor(GameTime gameTime, SpriteBatch spriteBatch)
         {
             // Don't draw the cursor if we're not the active window or if we're confirming 
             // something on the screen.
@@ -5849,7 +5793,7 @@ namespace Xyglo
                 Vector3 v2 = m_project.getSelectedBufferView().getCursorCoordinates();
                 v2.X += 1;
 
-                renderQuad(v1, v2, m_project.getSelectedBufferView().getHighlightColor());
+                m_drawingHelper.renderQuad(v1, v2, m_project.getSelectedBufferView().getHighlightColor(), spriteBatch);
             }
             // Draw any temporary highlight
             //
@@ -5864,7 +5808,7 @@ namespace Xyglo
                 //
                 h2.Y += m_project.getFontManager().getLineSpacing();
 
-                renderQuad(h1, h2, h.m_colour);
+                m_drawingHelper.renderQuad(h1, h2, h.getColour(), spriteBatch);
             }
         }
 
@@ -5998,7 +5942,7 @@ namespace Xyglo
 #endif
 
                 line = m_fileSystemView.getPath() + m_saveFileName;
-                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), line, new Vector2((int)startPosition.X, (int)startPosition.Y), (m_fileSystemView.getHighlightIndex() == 0 ? m_highlightColour : dirColour), 0, lineOrigin, m_project.getFontManager().getTextScale() * 2.0f, 0, 0);
+                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), line, new Vector2((int)startPosition.X, (int)startPosition.Y), (m_fileSystemView.getHighlightIndex() == 0 ? m_highlightColour : dirColour), 0, lineOrigin, 1.0f, 0, 0);
 
                 yPosition += m_project.getFontManager().getOverlayFont().LineSpacing * 3.0f;
 
@@ -6365,7 +6309,7 @@ namespace Xyglo
                         {
                             // Sort out the colour
                             //
-                            highlightColour = m_highlights[nextHighlight].m_colour;
+                            highlightColour = m_highlights[nextHighlight].getColour();
 
                             // If not active view then temper colour
                             //
@@ -6667,51 +6611,7 @@ namespace Xyglo
             }
         }
 
-        /// <summary>
-        /// This draws a highlight area on the screen when we hold shift down
-        /// </summary>
-        void drawHighlight(GameTime gameTime)
-        {
-            List<BoundingBox> bb = m_project.getSelectedBufferView().computeHighlight(m_project);
-
-            // Draw the bounding boxes
-            //
-            foreach (BoundingBox highlight in bb)
-            {
-                renderQuad(highlight.Min, highlight.Max, m_project.getSelectedBufferView().getHighlightColor());
-            }
-        }
-
-        /// <summary>
-        /// Render a quad to a supplied SpriteBatch
-        /// </summary>
-        /// <param name="topLeft"></param>
-        /// <param name="bottomRight"></param>
-        /// <param name="quadColour"></param>
-        /// <param name="spriteBatch"></param>
-        protected void renderQuad(Vector3 topLeft, Vector3 bottomRight, Color quadColour, SpriteBatch spriteBatch)
-        {
-            Vector3 bottomLeft = new Vector3(topLeft.X, bottomRight.Y, topLeft.Z);
-            Vector3 topRight = new Vector3(bottomRight.X, topLeft.Y, bottomRight.Z);
-
-            // We should be caching this rather than newing it all the time
-            //
-            /*
-            VertexPositionTexture[] vpt = new VertexPositionTexture[4];
-            Vector2 tp = new Vector2(0, 1);
-            vpt[0] = new VertexPositionTexture(topLeft, tp);
-            vpt[1] = new VertexPositionTexture(topRight, tp);
-            vpt[2] = new VertexPositionTexture(bottomRight, tp);
-            vpt[3] = new VertexPositionTexture(bottomLeft, tp);
-            */
-
-            spriteBatch.Draw(m_flatTexture, new Rectangle(Convert.ToInt16(topLeft.X),
-                                                 Convert.ToInt16(topLeft.Y),
-                                                 Convert.ToInt16(bottomRight.X) - Convert.ToInt16(topLeft.X),
-                                                 Convert.ToInt16(bottomRight.Y) - Convert.ToInt16(topLeft.Y)),
-                                                 quadColour);
-        }
-
+        /*
         /// <summary>
         /// Renders a quad at a given position - we can wrap this within another spritebatch call
         /// </summary>
@@ -6724,16 +6624,6 @@ namespace Xyglo
 
             // We should be caching this rather than newing it all the time
             //
-            /*
-            VertexPositionTexture[] vpt = new VertexPositionTexture[4];
-            Vector2 tp = new Vector2(0, 1);
-            vpt[0] = new VertexPositionTexture(topLeft, tp);
-            vpt[1] = new VertexPositionTexture(topRight, tp);
-            vpt[2] = new VertexPositionTexture(bottomRight, tp);
-            vpt[3] = new VertexPositionTexture(bottomLeft, tp);
-            */
-
-            //m_spriteBatch.Begin(0, null, null, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
             if (!ownSpriteBatch)
             {
                 m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.PointClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
@@ -6750,6 +6640,7 @@ namespace Xyglo
                 m_spriteBatch.End();
             }
         }
+        */
 
         /// <summary>
         /// Populate the user help string - could do this from a resource file really

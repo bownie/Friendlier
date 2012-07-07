@@ -142,6 +142,7 @@
     <Compile Include="Differ.cs" />
     <Compile Include="DiffMatchPatch.cs" />
     <Compile Include="DiffView.cs" />
+    <Compile Include="DrawingHelper.cs" />
     <Compile Include="FileBuffer.cs" />
     <Compile Include="FilePosition.cs" />
     <Compile Include="FileSystemFile.cs" />

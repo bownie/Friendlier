@@ -831,6 +831,8 @@ namespace Xyglo
                     snippet.m_highlights.Add(new Highlight(hl));
                 }
 
+                // Now modify the highlights
+                //
                 foreach (Highlight hl in modifySelection)
                 {
                     if (hl.m_startHighlight.Y == startPosition.Y && hl.m_startHighlight.X >= startPosition.X)
@@ -1080,7 +1082,6 @@ namespace Xyglo
                 fp = reformatCommand.doCommand();
                 tidyUndoStack(reformatCommand);
             }
-
 
             return fp;
         }
@@ -1415,22 +1416,6 @@ namespace Xyglo
             }
         }
 
-        /*
-        /// <summary>
-        /// Check the consistency of the highlight sorted list as it seems to drift...
-        /// </summary>
-        protected void checkConsistency()
-        {
-            foreach (KeyValuePair<FilePosition, Highlight> pair in m_highlightSortedList)
-            {
-                if (pair.Key != pair.Value.m_startHighlight)
-                {
-                    throw new Exception("Inconsistency in m_highlightSortedList");
-                }
-            }
-        }
-         * */
-
         /// <summary>
         /// Set a highlight at a line
         /// </summary>
@@ -1438,26 +1423,6 @@ namespace Xyglo
         /// <param name="highlight"></param>
         public void setHighlight(Highlight highlight)
         {
-            //Logger.logMsg("FileBuffer::setHighlight() - inserted highlight for \"" + highlight.m_text + "\" at X = " + highlight.m_startHighlight.X + ", Y = " + highlight.m_startHighlight.Y);
-
-            /*
-            try
-            {
-                if (m_highlightSortedList.ContainsKey(highlight.m_startHighlight))
-                {
-                    m_highlightSortedList[highlight.m_startHighlight] = highlight;
-                }
-                else
-                {
-                    m_highlightSortedList.Add(highlight.m_startHighlight, highlight);
-                }
-            }
-            catch (Exception e)
-            {
-                Logger.logMsg("Couldn't add a duplicate highlight key - " + e.Message);
-            }
-            */
-
             if (m_highlightList.Contains(highlight))
             {
                 throw new Exception("FileBuffer::setHighlight() - attempting to set duplicate");

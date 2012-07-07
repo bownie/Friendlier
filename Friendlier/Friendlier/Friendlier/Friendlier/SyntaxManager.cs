@@ -73,10 +73,10 @@ namespace Xyglo
         public abstract void updateHighlighting(FileBuffer fileBuffer , int line);
 
         /// <summary>
-        /// Generate highlighting for a specified file range
+        /// Generate highlighting for a specified file range and specify characters add or removed if fromPos = toPos
         /// </summary>
         /// <param name="fileBuffer"></param>
-        public abstract void generateHighlighting(FileBuffer fileBuffer, FilePosition fromPos, FilePosition toPos);
+        public abstract void generateHighlighting(FileBuffer fileBuffer, FilePosition fromPos, FilePosition toPos, int characters = 0);
 
         /// <summary>
         /// Generates all highlighting for a given FileBuffer

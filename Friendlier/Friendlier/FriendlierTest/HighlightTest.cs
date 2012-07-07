@@ -111,8 +111,8 @@ namespace TestProject1
             //
             List<Highlight> hlList = new List<Highlight>();
 
-            Highlight hl1 = new Highlight(0, 0, 4, "test", Color.White);
-            Highlight hl2 = new Highlight(0, 0, 4, "test", Color.White);
+            Highlight hl1 = new Highlight(0, 0, 4, "test", HighlightType.Keyword);
+            Highlight hl2 = new Highlight(0, 0, 4, "test", HighlightType.Keyword);
 
             hlList.Add(hl1);
 
@@ -138,10 +138,10 @@ namespace TestProject1
 
             // Add a couple more
             //
-            distinctList.Add(new Highlight(0, 10, 50, "ABCEDEFGHI", Color.Blue));
-            distinctList.Add(new Highlight(10, 0, 5, "Hello", Color.Black));
-            distinctList.Add(new Highlight(1, 50, 55, "Trust", Color.Pink));
-            distinctList.Add(new Highlight(5, 10, 15, "Small", Color.Red));
+            distinctList.Add(new Highlight(0, 10, 50, "ABCEDEFGHI", HighlightType.Define));
+            distinctList.Add(new Highlight(10, 0, 5, "Hello", HighlightType.Comment));
+            distinctList.Add(new Highlight(1, 50, 55, "Trust", HighlightType.Keyword));
+            distinctList.Add(new Highlight(5, 10, 15, "Small", HighlightType.UserHighlight));
 
             // Sort them
             //
