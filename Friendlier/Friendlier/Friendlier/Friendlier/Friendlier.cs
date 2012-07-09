@@ -759,6 +759,13 @@ namespace Xyglo
 
             // Set the graphics modes
             initGraphicsMode(windowWidth, windowHeight, false);
+
+            // Update this to ensure scanner appears in the right place
+            //
+            if (m_drawingHelper != null)
+            {
+                m_drawingHelper.setPreviewBoundingBox(m_graphics.GraphicsDevice.Viewport.Width, m_graphics.GraphicsDevice.Viewport.Height);
+            }
         }
 
         /// <summary>
@@ -783,6 +790,13 @@ namespace Xyglo
 
             // Set the graphics modes
             initGraphicsMode(maxWidth, maxHeight, true);
+
+            // Update this to ensure scanner appears in the right place
+            //
+            if (m_drawingHelper != null)
+            {
+                m_drawingHelper.setPreviewBoundingBox(m_graphics.GraphicsDevice.Viewport.Width, m_graphics.GraphicsDevice.Viewport.Height);
+            }
         }
 
         /// <summary>
@@ -1231,21 +1245,9 @@ namespace Xyglo
             m_lastWindowSize.X = Window.ClientBounds.Width;
             m_lastWindowSize.Y = Window.ClientBounds.Height;
 
-            // Set up the bounding box for the BufferView preview 
-            //
-            Vector3 topLeft = Vector3.Zero;
-            topLeft.X = m_graphics.GraphicsDevice.Viewport.Width - m_project.getFontManager().getOverlayFont().MeasureString("X").X * 10;
-            topLeft.Y = m_graphics.GraphicsDevice.Viewport.Height - m_project.getFontManager().getOverlayFont().LineSpacing * 6;
-
-            Vector3 bottomRight = Vector3.Zero;
-            bottomRight.X = m_graphics.GraphicsDevice.Viewport.Width - m_project.getFontManager().getOverlayFont().MeasureString("X").X * 3;
-            bottomRight.Y = m_graphics.GraphicsDevice.Viewport.Height - m_project.getFontManager().getOverlayFont().LineSpacing * 2;
-
-            BoundingBox previewBoundingBox = new BoundingBox(topLeft, bottomRight);
-
             // Initialise the DrawingHelper with this bounding box and some other stuff
             //
-            m_drawingHelper = new DrawingHelper(m_project, m_flatTexture, previewBoundingBox);
+            m_drawingHelper = new DrawingHelper(m_project, m_flatTexture, m_graphics.GraphicsDevice.Viewport.Width, m_graphics.GraphicsDevice.Viewport.Height);
         }
 
         /// <summary>

@@ -31,16 +31,28 @@ namespace Xyglo
         /// </summary>
         protected Texture2D m_flatTexture;
 
-
         /// <summary>
         /// BoundingBox for the BufferView preview
         /// </summary>
         protected BoundingBox m_previewBoundingBox;
 
         /// <summary>
-        /// Some local points
+        /// Set preview bounding box
+        /// </summary>
+        /// <param name="bb"></param>
+        public void setPreviewBoundingBox(BoundingBox bb)
+        {
+            m_previewBoundingBox = bb;
+        }
+
+        /// <summary>
+        /// Local top left vector
         /// </summary>
         protected Vector3 m_bottomLeft = new Vector3();
+
+        /// <summary>
+        /// Local top right vector
+        /// </summary>
         protected Vector3 m_topRight = new Vector3();
 
         // ---------------------------------- CONSTRUCTORS -------------------------------
@@ -51,11 +63,11 @@ namespace Xyglo
         /// </summary>
         /// <param name="project"></param>
         /// <param name="flatTexture"></param>
-        public DrawingHelper(Project project, Texture2D flatTexture, BoundingBox previewBoundingBox)
+        public DrawingHelper(Project project, Texture2D flatTexture, float windowWidth, float windowHeight)
         {
             m_project = project;
             m_flatTexture = flatTexture;
-            m_previewBoundingBox = previewBoundingBox;
+            setPreviewBoundingBox(windowWidth, windowHeight);
         }
 
         // ---------------------------------- METHODS -----------------------------------
@@ -123,6 +135,26 @@ namespace Xyglo
             drawLine(spriteBatch, topLeft + xDiff, bottomRight, colour, alpha, width);
             drawLine(spriteBatch, bottomRight, topLeft + yDiff, colour, alpha, width);
             drawLine(spriteBatch, topLeft + yDiff, topLeft, colour, alpha, width);
+        }
+
+
+        /// <summary>
+        /// Update the preview bounding box with new coordinates if the screen size changes for example
+        /// </summary>
+        /// <param name="windowWidth"></param>
+        /// <param name="windowHeight"></param>
+        public void setPreviewBoundingBox(float windowWidth, float windowHeight)
+        {
+            Vector3 topLeft = Vector3.Zero;
+            topLeft.X = windowWidth - m_project.getFontManager().getOverlayFont().MeasureString("X").X * 10;
+            topLeft.Y = windowHeight - m_project.getFontManager().getOverlayFont().LineSpacing * 6;
+
+            Vector3 bottomRight = Vector3.Zero;
+            bottomRight.X = windowWidth - m_project.getFontManager().getOverlayFont().MeasureString("X").X * 3;
+            bottomRight.Y = windowHeight - m_project.getFontManager().getOverlayFont().LineSpacing * 2;
+
+            m_previewBoundingBox.Min = topLeft;
+            m_previewBoundingBox.Max = bottomRight;
         }
 
 
