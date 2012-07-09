@@ -5084,8 +5084,11 @@ namespace Xyglo
                     bb.Max.Y = -bb.Max.Y;
 
                     // We only do frustrum culling for BufferViews for the moment
+                    // - intersects might be too grabby but Disjoint didn't appear 
+                    // to be grabby enough.
                     //
-                    if (m_frustrum.Contains(bb) != ContainmentType.Disjoint)
+                    //if (m_frustrum.Contains(bb) != ContainmentType.Disjoint)
+                    if (m_frustrum.Intersects(bb))
                     {
                         drawFileBuffer(m_project.getBufferViews()[i], gameTime);
                     }

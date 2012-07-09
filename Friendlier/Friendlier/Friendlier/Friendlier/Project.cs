@@ -2009,19 +2009,49 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Get the maximum extent of the project in terms of screen coverage
+        /// Get the maximum extent of the project described by its BufferViews
         /// </summary>
         /// <returns></returns>
         public BoundingBox getBoundingBox()
         {
             BoundingBox rB = new BoundingBox();
-
+            
             if (m_bufferViews.Count > 0)
             {
                 rB = m_bufferViews.First().getBoundingBox();
 
                 foreach (BufferView bv in m_bufferViews)
                 {
+                    if (bv.getBoundingBox().Min.X < rB.Min.X)
+                    {
+                        rB.Min.X = bv.getBoundingBox().Min.X;
+                    }
+
+                    if (bv.getBoundingBox().Min.Y < rB.Min.Y)
+                    {
+                        rB.Min.Y = bv.getBoundingBox().Min.Y;
+                    }
+
+                    if (bv.getBoundingBox().Min.Z < rB.Min.Z)
+                    {
+                        rB.Min.Z = bv.getBoundingBox().Min.Z;
+                    }
+
+                    if (bv.getBoundingBox().Max.X > rB.Max.X)
+                    {
+                        rB.Max.X = bv.getBoundingBox().Max.X;
+                    }
+
+                    if (bv.getBoundingBox().Max.Y > rB.Max.Y)
+                    {
+                        rB.Max.Y = bv.getBoundingBox().Max.Y;
+                    }
+
+                    if (bv.getBoundingBox().Max.Z > rB.Max.Z)
+                    {
+                        rB.Max.Z = bv.getBoundingBox().Max.Z;
+                    }
+                    /*
                     if (bv.getBoundingBox().Min.X <= rB.Min.X &&
                         bv.getBoundingBox().Min.Y <= rB.Min.Y &&
                         bv.getBoundingBox().Min.Z <= rB.Min.Z)
@@ -2034,7 +2064,7 @@ namespace Xyglo
                         bv.getBoundingBox().Max.Z >= rB.Max.Z)
                     {
                         rB.Max = bv.getBoundingBox().Max;
-                    }
+                    }*/
                 }
             }
 
