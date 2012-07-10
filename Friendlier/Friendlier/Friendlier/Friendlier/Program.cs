@@ -7,7 +7,7 @@
 #endregion
 
 
-//#define OUTER_EXCEPTION_HANDLING
+#define OUTER_EXCEPTION_HANDLING
 
 using System;
 using System.IO;

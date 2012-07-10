@@ -223,6 +223,7 @@
     <None Include="app.manifest">
       <SubType>Designer</SubType>
     </None>
+    <None Include="TraceAndTestImpact.testsettings" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\FriendlierContent\FriendlierContent.contentproj">
