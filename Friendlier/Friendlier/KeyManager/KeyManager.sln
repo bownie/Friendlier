@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KeyManager", "KeyManager.csproj", "{829B9F3A-A701-421C-8005-E72997222CBF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x86 = Debug|x86
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{829B9F3A-A701-421C-8005-E72997222CBF}.Debug|x86.ActiveCfg = Debug|x86
+		{829B9F3A-A701-421C-8005-E72997222CBF}.Debug|x86.Build.0 = Debug|x86
+		{829B9F3A-A701-421C-8005-E72997222CBF}.Release|x86.ActiveCfg = Release|x86
+		{829B9F3A-A701-421C-8005-E72997222CBF}.Release|x86.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
