@@ -21,13 +21,13 @@
 !include Sections.nsh
 
 ; The name of the installer
-Name "Friendlier-win32-beta-1"
-Caption "Friendlier Windows32 Beta Build 1"
+Name "Friendlier-win32-full-1"
+Caption "Friendlier Windows32 Full Build 1"
 
 !define ICON "Friendlier.ico"
 !define COMPANY "Xyglo"
 !define SOFTWARE "Friendlier"
-!define VERSION "1.0.0 Beta"
+!define VERSION "1.0.0 Full"
 
 !insertmacro MUI_PAGE_LICENSE "Licence.txt"
 !insertmacro MUI_LANGUAGE "English"
@@ -40,7 +40,7 @@ Caption "Friendlier Windows32 Beta Build 1"
 !define XNAInstaller "xnafx40_redist.msi"
 
 ; The file to write
-OutFile "friendlier-win32-beta-1.exe"
+OutFile "friendlier-win32-full-1.exe"
 
 ; The default installation directory
 ;

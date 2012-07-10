@@ -66,7 +66,7 @@ namespace Xyglo
 
         public LicenceManager()
         {
-            testLoad();
+            //testLoad();
         }
 
         protected void testLoad()

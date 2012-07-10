@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using Xyglo;
+using System.Diagnostics;
 
 namespace KeyManager
 {
@@ -17,7 +18,7 @@ namespace KeyManager
         /// </summary>
         LicenceManager m_licenceManager = new LicenceManager();
 
-        protected string m_filePath = Environment.GetFolderPath(Environment.SpecialFolder.Personal) + "/licences.txt";
+        protected string m_filePath = Environment.GetFolderPath(Environment.SpecialFolder.Personal) + "\\licences.txt";
 
         public LicenceGenerator()
         {
@@ -76,8 +77,24 @@ namespace KeyManager
         /// Validate and store all the values to the licencemanager
         /// </summary>
         /// <returns></returns>
-        protected bool validateButtons()
+        protected bool validateButtons(bool loading = false)
         {
+            // If loading only check the password
+            if (loading)
+            {
+
+                if (passwordTextBox.Text == "")
+                {
+                    toolStripStatusLabel.Text = "Please fill password to decrypt.";
+                    toolStripStatusLabel.ForeColor = Color.Red;
+                    return false;
+                }
+
+                m_licenceManager.m_password = passwordTextBox.Text;
+                return true;
+            }
+
+
             // Store the latest values
             //
             if (appNameTextBox.Text == "")
@@ -232,6 +249,7 @@ namespace KeyManager
                 MessageBox.Show("Failed to write key file " + fe.Message);
                 toolStripStatusLabel.Text = "Failure";
                 toolStripStatusLabel.ForeColor = Color.Red;
+                return;
             }
 
             // Set message and reset keys
@@ -241,6 +259,9 @@ namespace KeyManager
             // This will have been updated by the licencemanager
             //
             sequenceNumberTextBox.Text = m_licenceManager.m_sequenceNumber.ToString();
+
+            MessageBox.Show("Licence file available at " + m_filePath);
+
             //toolStripProgressBar.Value = 0;
         }
 
@@ -248,7 +269,7 @@ namespace KeyManager
         {
             try
             {
-                if (!validateButtons())
+                if (!validateButtons(true))
                 {
                     return;
                 }
@@ -301,5 +322,85 @@ namespace KeyManager
         {
             setCheckBoxes();
         }
+
+        private void LicenceGenerator_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void aboutButton_Click(object sender, EventArgs e)
+        {
+            MessageBox.Show("Licence Generator brought to you by @xyglo", "About");
+        }
+
+        private void fromDateTimePicker_ValueChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void toDateTimePicker_ValueChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void appVersiontextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void sequenceNumberTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label3_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void passwordTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label4_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label5_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void licenceNumericUpDown_ValueChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void label6_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        /// <summary>
+        /// Get some code
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void getCodeButton_Click(object sender, EventArgs e)
+        {
+            Process.Start("ClientDecrypt.txt");
+        }
+
+        private void appNameTextBox_TextChanged(object sender, EventArgs e)
+        {
+        }
+
     }
 }

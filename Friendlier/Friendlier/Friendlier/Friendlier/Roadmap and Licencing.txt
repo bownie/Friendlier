@@ -1,0 +1,30 @@
+Summer 2012 - Friendlier Initial - FRN.1.X.X
+
+October 2012 - Friendlier Kinect (kinect and voice) - FRN.2.X.X
+
+February 2012 - Friendlier Metro (swipe) - FRN.3.X.X
+
+--
+
+Licence
+
+- installer for key (in the demo, and in the installer eventually)
+- for one device at a time (can check on local machine which app id last accessed this key)
+- pre-encode key with licence creation date, created by whom, ip address
+- activation link in friendlier
+
+
+Therefore:
+
+- Crypt/decrypt library for the key
+- 
+
+
+
+Promotion
+
+- Demo videos
+
+ - setting up mingw/Qt and building
+ - setting up java and building
+ - run as external command?

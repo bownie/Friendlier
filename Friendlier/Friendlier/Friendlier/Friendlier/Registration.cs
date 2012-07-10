@@ -63,6 +63,7 @@ namespace Xyglo
             // Licence key goes here
             //
             string licenceKey = "";
+            ClientRegistrationDetails clientReg;
 
             //Now using GetValue(...) we read in various values 
             //from the opened key
@@ -77,6 +78,8 @@ namespace Xyglo
                 m_productName = rkey1.GetValue("Product Name").ToString();
                 m_productVersion = rkey1.GetValue("Product Version").ToString();
                 licenceKey = rkey1.GetValue("Licence Key").ToString();
+
+                clientReg = ClientDecrypt.desDecryptString(licenceKey, "winsomel0s3some");
 
                 rkey1.Close();
 
@@ -93,9 +96,20 @@ namespace Xyglo
                 return false;
             }
 
+            // Check only the product name, major version and 
+            if (clientReg.appName == VersionInformation.getProductName() &&
+                clientReg.appVersion.Split('.')[0] == VersionInformation.getProductVersion().Split('.')[0] &&
+                Convert.ToDateTime(clientReg.fromDate) < DateTime.Now &&
+                Convert.ToDateTime(clientReg.toDate) > DateTime.Now)
+            {
+                Logger.logMsg("Registration::checkRegistry() - confirmed licence");
+                return true;
+            }
+
             // Now check the licence key value 
             //
-            return (licenceKey == getLicenceKey());
+//            return (licenceKey == getLicenceKey());
+            return false;
         }
 
         /// <summary>
@@ -209,5 +223,6 @@ namespace Xyglo
         {
             return getLicenceKey(org, user, product, version);
         }
+
     }
 }

@@ -17,7 +17,7 @@
     <XnaProfile>Reach</XnaProfile>
     <XnaCrossPlatformGroupID>8e10573d-40b5-4360-ab22-5406bdc08ec8</XnaCrossPlatformGroupID>
     <XnaOutputType>Game</XnaOutputType>
-    <ApplicationIcon>Friendlier.ico</ApplicationIcon>
+    <ApplicationIcon>Friendlier3.ico</ApplicationIcon>
     <Thumbnail>Xyglo.png</Thumbnail>
     <IsWebBootstrapper>false</IsWebBootstrapper>
     <PublishUrl>publish\</PublishUrl>
@@ -60,6 +60,7 @@
     <PlatformTarget>x86</PlatformTarget>
     <XnaCompressContent>true</XnaCompressContent>
   </PropertyGroup>
+  <PropertyGroup />
   <PropertyGroup>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
@@ -135,6 +136,7 @@
     <Compile Include="BloomSettings.cs" />
     <Compile Include="BraceDepth.cs" />
     <Compile Include="BufferView.cs" />
+    <Compile Include="ClientDecrypt.cs" />
     <Compile Include="Command.cs" />
     <Compile Include="CppSyntaxManager.cs" />
     <Compile Include="DateTimeNowCache.cs" />
@@ -183,6 +185,8 @@
   <ItemGroup>
     <Content Include="ACKNOWLEDGEMENTS.txt" />
     <Content Include="Friendlier.ico" />
+    <Content Include="Friendlier2.ico" />
+    <Content Include="Friendlier3.ico" />
     <Content Include="Rocket Model.txt" />
     <Content Include="TODO.txt" />
     <Content Include="Xyglo.png" />
@@ -225,6 +229,7 @@
       <Project>{7FC83919-9ECC-4686-B948-73E64D2B9DA9}</Project>
       <Name>FriendlierContent %28Content%29</Name>
       <XnaReferenceType>Content</XnaReferenceType>
+      <EmbedInteropTypes>False</EmbedInteropTypes>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

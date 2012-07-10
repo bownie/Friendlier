@@ -14,12 +14,22 @@ USE CASES
 - The writer - writing a book, researching
 - The journalist - writing a story, researching
 
+Release
+-------
+- Frustrum culling to improve performance [DONE]
+- return does not use highlight [FIXED]
+- exit not working [FIXED - it was the temporary message]
+- maximise button [DONE]
+- clicking on top right cross doens't close down neatly [DONE]
+- GOTO line implementation [DONE]
+- Fix windows line endings?  Handle both? [DONEish]
+- error with collections during background build [CHANGED MUTEX TO FILE BUFFER LEVEL]
+
 BUGS
 ----
 
 - Do file buffering to improve performance
 - Check out highlighting and other performance sinks
-- Frustrum culling to improve performance [DONE]
 - fix defaults in project file etc
 - fix tabs and write tests for them
 - complete tests for textcommands [INPROGRESS]
@@ -36,16 +46,11 @@ BUGS
 - alternate build command doesn't produce stdout
 - project manage - file opening works but on exit/restart project is incorrect
 - log file contention still with long build/multiple build threads perhaps? [CHANGED THREADING]
-
 - mouse click to navigate in file browser
 - clear save as filename between save as's
 - highlight going beyond top of file
 - hash comment not at beginning of line doesn't highlight
 - want F1 to send me to the LAST Bufferview I used (i.e. after build)
-- return does not use highlight [FIXED]
-- exit not working [FIXED - it was the temporary message]
-- maximise button [DONE]
-- clicking on top right cross doens't close down neatly [DONE]
 
 BUILD and USABILITY FEATURES TODO and BUGS
 ----
@@ -60,19 +65,9 @@ C:\Q\Desktop\Qt\4.7.4\mingw\bin\qmake.exe -makefile C:\dev-alpha2\win32-mingw-rt
 
 - Paging on File Management [NOT VITAL]
 - click on diff preview to position in file [NOT VITAL BUT NICE]
-
 - change bufferviews? [NOT VITAL]
 - Elegant long line Config [NOT VITAL]
-
-- GOTO line implementation [DONE]
-- Fix windows line endings?  Handle both? [DONEish]
-
-
-To Check
-
---------
-- slow when editing.. [TRACING]
-- error with collections during background build [ADDED NEW MUTEX WHICH MAY FIX]
+- slow when editing.. [SYNTAX HIGHLIGHTING]
 - Build in Progress - ensure confirmation of exit [PARTIALLY DONE]
 
 
