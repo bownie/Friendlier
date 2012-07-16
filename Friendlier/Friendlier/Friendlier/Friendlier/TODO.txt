@@ -24,14 +24,14 @@ Release
 - GOTO line implementation [DONE]
 - Fix windows line endings?  Handle both? [DONEish]
 - error with collections during background build [CHANGED MUTEX TO FILE BUFFER LEVEL]
+- fix defaults in project file etc [DONE]
 
 BUGS
 ----
 
+- fix tabs and write tests for them
 - Do file buffering to improve performance
 - Check out highlighting and other performance sinks
-- fix defaults in project file etc
-- fix tabs and write tests for them
 - complete tests for textcommands [INPROGRESS]
 - highlighting with long lines on editor
 - word jumping with long lines on editor
@@ -41,7 +41,7 @@ BUGS
 - case on searches is annoying
 - copy search between bufferviews
 - quit is not showing the Y/N consistently
-- replacetextcommand not working - putting first char at end of line
+- replacetextcommand not working - putting first char at end of line [DONE]
 - control word jump is too aggressive - must take slashes etc into account
 - alternate build command doesn't produce stdout
 - project manage - file opening works but on exit/restart project is incorrect

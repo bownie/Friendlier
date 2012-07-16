@@ -1,0 +1,141 @@
+Setting up Friendlier for Building C++ projects with mingw
+----------------------------------------------------------
+
+To build C++ on Windows you'll need to download a compiler that is able to be run from the Windows command line.
+Friendlier is configurable so that you can point it to the build command and the Makefile that is used to build the
+project and it will capture the standard output and standard error from this process within a BufferView in Friendlier.
+Then you can use these errors/warnings to zap directly to source file lines that have issues by double clicking
+on these error lines.
+
+
+Prerequisites
+-------------
+
+To start with then you will need to download a compiler.  An example of a great free command-line compatible compiler
+is in the MinGW (Minimal GNU for Windows) package.  This package contains the g++ (GNU++) C++ compiler which is suitable
+for compiling most C++ you care to find.  You can get download instructions for MinGW from here:
+
+http://www.mingw.org/wiki/Getting_Started
+
+Alternatively you could download the QtCreator package (from Nokai) which includes a mingw distribution which you
+can then reference.  In the case of building Qt apps (and in this case I have been building Rosegarden for Windows)
+you may find it useful to install QtCreator as it comes with all the Qt libraries of a compatible level too.  I 
+would also highly recommend QtCreator (or the Qt libraries at least) because they come with qmake which is a nice
+simple way to create and maintain C++ projects.  This guide will assume you've got MinGW and Qt/QMake installed.
+
+Additionaly QtCreator is a very fine (and free) IDE for developing C++.  You can certainly use it in addition to Friendlier!
+
+Once you have MinGW installed - either standalone or through QtCreator then you need to ensure that your PATH 
+environment is set up to find the build tools.
+
+Open a command window:
+
+a) Click on Start Menu
+b) Type cmd and hit return
+c) Type 'set' and look for the PATH variable ensuring that it includes a path to the ming\bin directory.
+d) If not set then please add this through Control Panel\System and Security\System and then Advanced System Settings
+   and then 'Advanced' tab and the 'Environment Variables'
+
+You can test that the mingw32-make.exe is in your path for example by opening a cmd window and typing this command.
+The command should be found and should complain that no Makefile has been found.
+
+If you want to build an existing MinGW compatible project then you can download and install the source code at this
+point.
+
+If you want to start a new C++ project from scratch then you should create a new empty directory to hold you source code.
+For the following example we will assume you've got an empty directory for your project at C:\MyCppProject
+
+
+Configuring Friendlier and Building
+-----------------------------------
+
+You can now start Friendlier.  Note that any configuration items you modify will be stored automatically when you
+shut down Friendlier and restart it.
+
+When Friendlier has started:
+
+1. Ctrl + G to open configuration items
+
+2. Select BUILDDIRECTORY and set to the build directory to that which you require for the solution.
+
+   i.e. C:\MyCppProject
+
+   Tip: You can cut and paste values into the configuration value which can save some typing
+
+3. Firstly we'll need to create a project file for your new project.  If Friendlier isn't looking at an empty BufferView
+   then you can press ALT+N together to open a new one.
+
+4. You can set up a new project file by following the examples here for qmake:
+
+     http://doc.qt.nokia.com/4.7-snapshot/qmake-project-files.html
+
+   and:
+
+     http://doc.qt.nokia.com/4.7-snapshot/qmake-common-projects.html
+
+   For our example you can enter the following information in your empty BufferView:
+
+    TEMPLATE = app
+    DESTDIR  = C:\NewCppProject
+    SOURCES += HelloWorld.cpp
+    CONFIG  += console qt warn_on release
+
+
+5. Now save this BufferView as a file.  Hit ALT+S (for Save) and you'll be prompted for a location.
+   Use the cursor keys to navigate your file system to the C:\MyCppProject directory.  Once there 
+   then type the name of the project file "HelloWorld.pro" and hit return.  You'll see the file name
+   gets added to the directory location at the top of the screen.  When you hit return the file will
+   be saved.
+
+6. Now we need to create our HelloWord.cpp file.  Open a new BufferView by hitting ALT+N.  You'll be 
+   prompted for a position to place this new BufferView - use the cursor keys to selection a location.
+
+
+7. Now you can create the contents for this file:
+
+    #include <iostream>
+
+    int main(int argc, char **argv)
+    {
+      std::cout << "Hello World" << std::endl;
+      return 0;
+    }
+
+    and save this file as C:\MyCppProject\HelloWorld.cpp
+
+8. Now we can configure and run qmake for this project.  Open the config screen with ALT+G.
+
+9. Select ALTERNATEBUILDCOMMAND and hit return.  Give this the path to the qmake command on your system.
+   For example on my system Qt is installed under C:\Q\ and the path to qmake is:
+
+    C:\Q\Desktop\Qt\4.7.4\mingw\bin\qmake.exe   
+   
+   You'll also need to add the path to your project file and what to do with it.  We want to generate
+   a Makefile from this project file so we set ALTERNATEBUILDCOMMAND to read like this:
+
+   C:\Q\Desktop\Qt\4.7.4\mingw\bin\qmake.exe -makefile C:\NewCppProject\HelloWorld.pro
+
+
+10. Go back to editing mode by hitting Escape.  If you've set this ALTERNATEBUILDCOMMAND up correctly you
+    should then be able to hit F7 in Friendlier and qmake will run.  It should create three Makefiles
+    (Makefile, Makefile.Debug, Makefile.Release) plus a debug and release directory under C:\NewCppProject
+
+11. Now configure your BUILDCOMMAND.  Hit ALT+G and set it to something like:
+
+      C:\Q\mingw\bin\mingw32-make.exe -f C:\NewCppProject\Makefile
+
+12. Get back to editing mode (Escape to come out of Configuration mode) and then hit F6 and you 
+    should see your HelloWorld.cpp building.  Friendlier will switch to the standard out log so 
+    you can see the build progress.
+
+13. If the build completes successfully you can now run your program.  Open a cmd window and change
+    to the C:\NewCppProject directory and run your HelloWorld.exe application.
+
+14. If your build doesn't complete successfully you will be shown the standard error output window (in red)
+    which will give you clues as to why the build failed.  If you need to modify your project (.pro) file
+    again you will also need to hit F7 again to re-run qmake.  This will regenerate the Makefile afresh and
+    then you can hit F6 to rebuild the source code.
+
+In this manner you can quickly create a C++ project from scratch.  Please study the qmake documentation
+to see how you can add libraries and other include files to your C++ project along with other resources.
+With Qt libraries you can also build native GUI applications in Windows C++.  Have fun!

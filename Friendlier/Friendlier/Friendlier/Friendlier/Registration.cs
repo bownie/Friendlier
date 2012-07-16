@@ -79,7 +79,7 @@ namespace Xyglo
                 m_productVersion = rkey1.GetValue("Product Version").ToString();
                 licenceKey = rkey1.GetValue("Licence Key").ToString();
 
-                clientReg = ClientDecrypt.desDecryptString(licenceKey, "winsomel0s3some");
+                clientReg = ClientDecrypt.desDecryptString(licenceKey, "MYPASS");
 
                 rkey1.Close();
 

@@ -39,6 +39,8 @@ namespace TestProject1
         /// </summary>
         List<Command> m_commands;
 
+        private TestContext testContextInstance;
+
         [TestInitialize]
         public void initialise()
         {
@@ -63,8 +65,6 @@ namespace TestProject1
             // TODO: Add constructor logic here
             //
         }
-
-        private TestContext testContextInstance;
 
         /// <summary>
         ///Gets or sets the test context which provides
@@ -139,8 +139,8 @@ namespace TestProject1
             // Add a couple more
             //
             distinctList.Add(new Highlight(0, 10, 50, "ABCEDEFGHI", HighlightType.Define));
-            distinctList.Add(new Highlight(10, 0, 5, "Hello", HighlightType.Comment));
-            distinctList.Add(new Highlight(1, 50, 55, "Trust", HighlightType.Keyword));
+            distinctList.Add(new Highlight(10, 0, 5, "Hello", HighlightType.Keyword));
+            distinctList.Add(new Highlight(1, 50, 55, "Trust", HighlightType.Comment));
             distinctList.Add(new Highlight(5, 10, 15, "Small", HighlightType.UserHighlight));
 
             // Sort them

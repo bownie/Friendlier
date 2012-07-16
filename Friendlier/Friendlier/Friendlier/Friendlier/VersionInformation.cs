@@ -34,7 +34,7 @@ namespace Xyglo
         /// <summary>
         /// Version of this software
         /// </summary>
-        static private string m_version = "1.0.0 Beta";
+        static private string m_version = "1.0.0";
 
         /// <summary>
         /// Email to report bugs at

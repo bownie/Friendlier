@@ -3005,7 +3005,7 @@ namespace Xyglo
                     else
                     {
                         Logger.logMsg("Friendlier::processCombinationsCommands() - copying to clipboard");
-                        string text = m_project.getSelectedBufferView().getSelection().getClipboardString();
+                        string text = m_project.getSelectedBufferView().getSelection(m_project).getClipboardString();
 
                         // We can only set this is the text is not empty
                         if (text != "")
@@ -3027,7 +3027,7 @@ namespace Xyglo
                     {
                         Logger.logMsg("Friendlier::processCombinationsCommands() - cut");
 
-                        System.Windows.Forms.Clipboard.SetText(m_project.getSelectedBufferView().getSelection().getClipboardString());
+                        System.Windows.Forms.Clipboard.SetText(m_project.getSelectedBufferView().getSelection(m_project).getClipboardString());
                         m_project.getSelectedBufferView().deleteCurrentSelection(m_project);
                         rC = true;
                     }
@@ -3595,11 +3595,11 @@ namespace Xyglo
                 case Keys.OemQuotes:
                     if (m_shiftDown)
                     {
-                        key = "#";
+                        key = "\"";
                     }
                     else
                     {
-                        key = "~";
+                        key = "'";
                     }
                     break;
 
@@ -6993,6 +6993,59 @@ namespace Xyglo
                 }
                 else
                 {
+                    // If the end of the build command is no a .exe or a .bat then assume we've got a 
+                    // space in the file name somewhere.  This code fixes spaces in file names for us
+                    // in the command list for the first argument but could (and should) be extended
+                    // to all arguments that don't make any sense.
+                    //
+                    if (!File.Exists(commandList[0]))
+                    {
+                        if (commandList[0].Length > 5)
+                        {
+                            int pos = 0;
+
+                            while (pos < commandList.Length)
+                            {
+                                string endCommand = commandList[pos].Substring(commandList[pos].Length - 4, 4).ToUpper();
+
+                                if (endCommand == ".EXE" || endCommand == ".BAT")
+                                {
+                                    // Create a new command list and combine the first 'pos' commands into
+                                    // a single correct one.
+                                    //
+                                    string [] newCommandList = new string[commandList.Length - pos];
+
+                                    for (int i = 0; i < commandList.Length; i++)
+                                    {
+                                        if (i <= pos)
+                                        {
+                                            newCommandList[0] += commandList[i];
+
+                                            if (i < pos)
+                                            {
+                                                newCommandList[0] += " ";
+                                            }
+                                        }
+                                        else
+                                        {
+                                            newCommandList[i - pos] = commandList[i];
+                                        }
+                                    }
+
+                                    // Now assigned command list from newCommandList
+                                    commandList = newCommandList;
+                                    break;
+                                }
+                                else
+                                {
+                                    pos++;
+                                }
+                            }
+
+                            //if (commandList[0].Substring(commandList[0].Length - 4, 3).ToUpper() != "EXE
+                        }
+                    }
+
                     // We ensure that full path is given to build command at this time
                     //
                     if (!File.Exists(commandList[0]))
@@ -7078,6 +7131,11 @@ namespace Xyglo
                         info.Arguments = m_project.getArguments(commandList);
                         info.RedirectStandardOutput = true;
                         info.RedirectStandardError = true;
+
+                        // Append the command to the stdout file
+                        //
+                        m_buildStdOutView.getFileBuffer().appendLine("Running command: " + string.Join(" ", commandList));
+                        m_buildStdOutView.getFileBuffer().save();
 
                         m_buildProcess = new Process();
                         m_buildProcess.StartInfo = info;

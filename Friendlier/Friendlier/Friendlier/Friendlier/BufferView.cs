@@ -1593,7 +1593,7 @@ namespace Xyglo
         /// a cut and paste buffer for example.
         /// </summary>
         /// <returns></returns>
-        public TextSnippet getSelection()
+        public TextSnippet getSelection(Project project)
         {
             TextSnippet rS = new TextSnippet();
 
@@ -1616,7 +1616,9 @@ namespace Xyglo
             {
                 if (m_fileBuffer.getLineCount() > 0)
                 {
-                    line = m_fileBuffer.getLine(shiftStart.Y).Substring(shiftStart.X, shiftEnd.X - shiftStart.X);
+                    FilePosition fileShiftStart = screenToFilePosition(project, shiftStart);
+                    FilePosition fileShiftEnd = screenToFilePosition(project, shiftEnd);
+                    line = m_fileBuffer.getLine(shiftStart.Y).Substring(fileShiftStart.X, fileShiftEnd.X - fileShiftStart.X);
                     rS.setSnippetSingle(line);
                 }
                 else
@@ -1752,7 +1754,12 @@ namespace Xyglo
                 int breakPos = 0;
                 for (int i = 0; i < Math.Min(fp.X, line.Length - 1); i++)
                 {
-                    if (line[i] == ' ' || line[i] == '\t')
+                    if (line[i] == ' ' ||
+                        line[i] == '\t' ||
+                        line[i] == '.' ||
+                        line[i] == ':' ||
+                        line[i] == '/' ||
+                        line[i] == '\\' )
                     {
                         breakPos = i;
                     }
@@ -1771,13 +1778,20 @@ namespace Xyglo
         {
             ScreenPosition fp = m_cursorPosition;
             string line = m_fileBuffer.getLine(fp.Y);
+            string wordBoundarylist = " \t.:/\\";
 
             if (fp.X < line.Length)
             {
                 try
                 {
-                    int jumpPosition = line.IndexOf(' ', fp.X);
+                    int jumpPosition = -1;
+                    int wordPos = 0;
 
+                    while (jumpPosition == -1 && wordPos < wordBoundarylist.Length)
+                    {
+                        jumpPosition = line.IndexOf(wordBoundarylist[wordPos++], fp.X);
+                    }
+                    
                     if (jumpPosition != -1)
                     {
                         if (fp.X == jumpPosition)
