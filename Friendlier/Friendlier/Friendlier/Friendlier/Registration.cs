@@ -199,16 +199,19 @@ namespace Xyglo
         /// <returns></returns>
         static private string md5Sum(byte[] FileOrText, bool strip = true) //Output: String<-> Input: Byte[] //
         {
-            string rS = BitConverter.ToString(new MD5CryptoServiceProvider().ComputeHash(FileOrText)).ToLower();
+            string rS = "";
+            using (MD5CryptoServiceProvider md5Service = new MD5CryptoServiceProvider())
+            {
+                rS = BitConverter.ToString(md5Service.ComputeHash(FileOrText)).ToLower();
 
-            if (strip)
-            {
-                return rS.Replace("-", "");
+                if (strip)
+                {
+                    return rS.Replace("-", "");
+                }
             }
-            else
-            {
-                return rS;
-            }
+
+
+            return rS;
         }
 
         /// <summary>

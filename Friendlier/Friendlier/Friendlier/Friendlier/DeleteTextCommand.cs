@@ -42,7 +42,7 @@ namespace Xyglo
         public override ScreenPosition doCommand()
         {
             string newLine, bufLine;
-            
+
             // Return position
             //
             ScreenPosition rp = new ScreenPosition(m_startPos);
@@ -68,7 +68,7 @@ namespace Xyglo
                         string editLine = line.Substring(0, m_startPos.X) +
                                           line.Substring(m_startPos.X + 1, line.Length - (m_startPos.X + 1));
 
-                        
+
                         m_fileBuffer.setLine(m_startPos.Y, editLine);
                     }
                     else
@@ -208,13 +208,16 @@ namespace Xyglo
         /// <summary>
         /// Dispose of current TextSnippet - clear it and return it
         /// </summary>
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
             Logger.logMsg("DeleteTextCommand:Dispose() - returning snippet");
 
-            // At the moment this isn't working properly
-            //
-            //SnippetFactory.returnSnippet(m_snippet);
+            if (disposing)
+            {
+                // At the moment this isn't working properly
+                //
+                //SnippetFactory.returnSnippet(m_snippet);
+            }
         }
     }
 }

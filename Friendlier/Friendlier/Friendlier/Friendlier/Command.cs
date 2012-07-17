@@ -93,7 +93,21 @@ namespace Xyglo
         /// <summary>
         /// Abstract method to dispose of this object
         /// </summary>
-        public abstract void Dispose();
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this); // so that Dispose (false) isn't called later
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Dispose all managed objects
+            }
+
+            // Release unmanaged resources
+        }
 
         /// <summary>
         /// Store our project pointer in the command for things like tab spaces etc
@@ -175,6 +189,15 @@ namespace Xyglo
         public TextSnippet getSnippet()
         {
             return m_snippet;
+        }
+
+        /// <summary>
+        /// Return the FileBuffer for this command
+        /// </summary>
+        /// <returns></returns>
+        public FileBuffer getFileBuffer()
+        {
+            return m_fileBuffer;
         }
 
     }

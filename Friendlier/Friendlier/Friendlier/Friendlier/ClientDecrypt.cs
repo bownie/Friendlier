@@ -33,40 +33,44 @@ namespace Xyglo
             // We use the MD5 hash generator as the result is a 128 bit byte array
             // which is a valid length for the TripleDES encoder we use below
 
-            MD5CryptoServiceProvider HashProvider = new MD5CryptoServiceProvider();
-            byte[] TDESKey = HashProvider.ComputeHash(UTF8.GetBytes(Passphrase));
-
-            // Step 2. Create a new TripleDESCryptoServiceProvider object
-            TripleDESCryptoServiceProvider TDESAlgorithm = new TripleDESCryptoServiceProvider();
-
-            // Step 3. Setup the decoder
-            TDESAlgorithm.Key = TDESKey;
-            TDESAlgorithm.Mode = CipherMode.ECB;
-            TDESAlgorithm.Padding = PaddingMode.PKCS7;
-
-            // Step 4. Convert the input string to a byte[]
-            byte[] DataToDecrypt = Convert.FromBase64String(Message);
-
-            // Step 5. Attempt to decrypt the string
-            try
+            using (var HashProvider = MD5CryptoServiceProvider.Create())
             {
-                ICryptoTransform Decryptor = TDESAlgorithm.CreateDecryptor();
-                Results = Decryptor.TransformFinalBlock(DataToDecrypt, 0, DataToDecrypt.Length);
-            }
-            finally
-            {
-                // Clear the TripleDes and Hashprovider services of any sensitive information
-                TDESAlgorithm.Clear();
-                HashProvider.Clear();
-            }
+                byte[] TDESKey = HashProvider.ComputeHash(UTF8.GetBytes(Passphrase));
 
-            // Step 6. Return the decrypted string in UTF8 format
-            string result = UTF8.GetString(Results);
+                // Step 2. Create a new TripleDESCryptoServiceProvider object
+                using (var TDESAlgorithm = TripleDESCryptoServiceProvider.Create())
+                {
 
-            clientRegistration.appName = result.Split('|')[0];
-            clientRegistration.appVersion = result.Split('|')[1];
-            clientRegistration.fromDate = result.Split('|')[2];
-            clientRegistration.toDate = result.Split('|')[3];
+                    // Step 3. Setup the decoder
+                    TDESAlgorithm.Key = TDESKey;
+                    TDESAlgorithm.Mode = CipherMode.ECB;
+                    TDESAlgorithm.Padding = PaddingMode.PKCS7;
+
+                    // Step 4. Convert the input string to a byte[]
+                    byte[] DataToDecrypt = Convert.FromBase64String(Message);
+
+                    // Step 5. Attempt to decrypt the string
+                    try
+                    {
+                        ICryptoTransform Decryptor = TDESAlgorithm.CreateDecryptor();
+                        Results = Decryptor.TransformFinalBlock(DataToDecrypt, 0, DataToDecrypt.Length);
+                    }
+                    finally
+                    {
+                        // Clear the TripleDes and Hashprovider services of any sensitive information
+                        TDESAlgorithm.Clear();
+                        HashProvider.Clear();
+                    }
+
+                    // Step 6. Return the decrypted string in UTF8 format
+                    string result = UTF8.GetString(Results);
+
+                    clientRegistration.appName = result.Split('|')[0];
+                    clientRegistration.appVersion = result.Split('|')[1];
+                    clientRegistration.fromDate = result.Split('|')[2];
+                    clientRegistration.toDate = result.Split('|')[3];
+                }
+            }
             return clientRegistration;
         }
 

@@ -34,7 +34,7 @@ namespace Xyglo
     /// </summary>
     [DataContractAttribute]
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    public class Highlight : IComparable
+    public sealed class Highlight : IComparable
     {
         // ------------------------------------ MEMBER VARIABLES -----------------------------
         //

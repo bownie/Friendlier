@@ -25,15 +25,17 @@ Release
 - Fix windows line endings?  Handle both? [DONEish]
 - error with collections during background build [CHANGED MUTEX TO FILE BUFFER LEVEL]
 - fix defaults in project file etc [DONE]
+- highlighting with long lines on editor [DONE]
 
 BUGS
 ----
 
+- tabs in the differ
+- control word jump is too aggressive - must take slashes etc into account [DONE?]
 - fix tabs and write tests for them
 - Do file buffering to improve performance
 - Check out highlighting and other performance sinks
 - complete tests for textcommands [INPROGRESS]
-- highlighting with long lines on editor
 - word jumping with long lines on editor
 - drag and drop file to exact position
 - paste doesn't do last line [FIXED?]
@@ -42,7 +44,7 @@ BUGS
 - copy search between bufferviews
 - quit is not showing the Y/N consistently
 - replacetextcommand not working - putting first char at end of line [DONE]
-- control word jump is too aggressive - must take slashes etc into account
+
 - alternate build command doesn't produce stdout
 - project manage - file opening works but on exit/restart project is incorrect
 - log file contention still with long build/multiple build threads perhaps? [CHANGED THREADING]
@@ -262,6 +264,14 @@ For Later
 
 CODE METRICS
 ------------
+
+As of 16/07/2012:
+
+27097 ( 6688 exec)
+
+53 days since last at 97 lines per day
+259 days since start at 104 lines per day
+
 
 As of 24/05/2012:
 

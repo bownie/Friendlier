@@ -35,7 +35,7 @@ namespace Xyglo
     /// Does implement mutex locking for file access to ensure that this is thread safe.
     /// </summary>
     //[DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
-    public class FileBuffer
+    public class FileBuffer : IDisposable
     {
         //////////// MEMBER VARIABLES ///////////////
 
@@ -84,6 +84,11 @@ namespace Xyglo
         /// </summary>
         [DataMember]
         protected bool m_readOnly = false;
+
+        /// <summary>
+        /// Was the last command an undo?
+        /// </summary>
+        protected bool m_lastCommandUndo = false;
 
         /// <summary>
         /// Last GameTime that we fetched this file
@@ -187,6 +192,36 @@ namespace Xyglo
 
 
         /////////////// METHODS ///////////////////
+
+        /// <summary>
+        /// Dispose this object
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Disposing object
+        /// </summary>
+        /// <param name="disposing"></param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                m_lineMutex.Dispose();
+
+                if (m_commands != null)
+                {
+                    foreach(Command command in m_commands)
+                    {
+                        command.Dispose();
+                    }
+                }
+            }
+        }
+
 
         /// <summary>
         /// Initialise some stuff
@@ -416,18 +451,19 @@ namespace Xyglo
                 m_lines.Clear();
             }
 
-            // Open a file non-exclusively for reading
+            // Create FileStream
             //
-            FileStream fs = new FileStream(m_filename, FileMode.Open, FileAccess.Read, System.IO.FileShare.ReadWrite);
-            using (StreamReader sr = new StreamReader(fs))
+            using (FileStream fs = new FileStream(m_filename, FileMode.Open, FileAccess.Read, System.IO.FileShare.ReadWrite))
             {
+                StreamReader sr = new StreamReader(fs);
+                // Open a file for reading
+                //
                 string line;
                 while ((line = sr.ReadLine()) != null && m_lines.Count < m_lineLimit)
                 {
                     m_lines.Add(line);
                 }
             }
-
             // Release lock
             //
             m_lineMutex.ReleaseMutex();
@@ -435,55 +471,33 @@ namespace Xyglo
             m_lastFetchSystemTime = DateTime.Now;
         }
 
+        protected long m_lastFileSize = 0;
+
         /// <summary>
         /// We call this when we want to refetch a file for example if we're tailing it
         /// and need a recent copy.   For the moment this is horribly inefficient.
         /// </summary>
         public bool refetchFile(GameTime gametime, SyntaxManager syntaxManager)
         {
-            //m_fetchWindow = new TimeSpan(0, 0, 1);
+            // Check file size from the last fetch - don't necessarily reload if 
+            // we don't need to.
+            //
+            FileInfo f = new FileInfo(m_filename);
+            if (f.Length == m_lastFileSize)
+                return false;
+
+            m_lastFileSize = f.Length;
 
             // The outer counter determines the test window - when we check for
             // the file modification.
             //
             if (gametime.TotalGameTime - m_lastFetchTime > m_fetchWindow)
             {
-                //Logger.logMsg("FileBuffer::fetchFile() - testing file for fetch " + m_filename);
-
-                // Now we see if it's been updated recently and if so we refetch
-                // and reset our counters.
+                // Load file and set last fetch time
                 //
-                //FileInfo fileInfo = new FileInfo(m_filename);
-                //fileInfo.Refresh();
-
-                //DateTime fileModTime = File.GetLastWriteTime(m_filename); // fileInfo.LastWriteTime; 
-                //DateTime fileCreTime = File.GetCreationTime(m_filename);
-
-
-                //string name = m_filename;
-                //DateTime lastModTime = File.GetLastWriteTime(bv.getFileBuffer().getFilepath());
-                
-                //if (fileModTime != m_lastFetchSystemTime)
-                //{
-                
-                    // Get lock;
-                    //
-                    m_lineMutex.WaitOne();
-
-                    m_lines.Clear();
-
-                    // Calling this also updates the m_lastFetchSystemTime
-                    //
-                    loadFile(syntaxManager);
-                    m_lastFetchTime = gametime.TotalGameTime;
-
-                    // Release lock
-                    //
-                    m_lineMutex.ReleaseMutex();
-
-                    //Logger.logMsg("FileBuffer::fetchFile() - refetching file " + m_filename);
-                    return true;
-                //}
+                loadFile(syntaxManager);
+                m_lastFetchTime = gametime.TotalGameTime;
+                return true;
             }
 
             return false;
@@ -494,16 +508,14 @@ namespace Xyglo
         /// </summary>
         public void forceRefetchFile(SyntaxManager syntaxManager)
         {
-            // Get lock
+            // Clear through mutex then load (implicit mutex)
             //
             m_lineMutex.WaitOne();
-
             m_lines.Clear();
+            m_lineMutex.ReleaseMutex();
+
             loadFile(syntaxManager);
 
-            // Release
-            //
-            m_lineMutex.ReleaseMutex();
         }
 
         /// <summary>
@@ -767,9 +779,22 @@ namespace Xyglo
         /// <returns></returns>
         public Command getLastCommand()
         {
-            if (m_commands != null && m_undoPosition > 0 && m_undoPosition <= m_commands.Count)
+            if (m_commands == null)
+                return null;
+
+            if (m_lastCommandUndo) // was the last command an undo?
             {
-                return m_commands[m_undoPosition - 1];
+                if (m_undoPosition >= 0 && m_undoPosition < m_commands.Count)
+                {
+                    return m_commands[m_undoPosition]; // should always works
+                }
+            }
+            else
+            {
+                if (m_undoPosition > 0 && m_undoPosition <= m_commands.Count)
+                {
+                    return m_commands[m_undoPosition - 1];
+                }
             }
 
             return null;
@@ -803,6 +828,44 @@ namespace Xyglo
 
         }
 
+        public void insertHighlightingRange(FilePosition startPosition, FilePosition endPosition, TextSnippet snippet)
+        {
+            List<Highlight> modifySelection;
+
+            // Ensure the list is sorted - do we need to do this every time?
+            //
+            m_highlightList.Sort();
+
+            // Now fetch highlights to modify - if on one line only that line
+            //
+            if (snippet.isSingleCharacter() && startPosition == endPosition)
+            {
+                modifySelection = m_highlightList.Where(item => item.m_startHighlight.Y == startPosition.Y).ToList();
+
+                // Store a deep copy of this list in snippet
+                //
+                foreach (Highlight hl in modifySelection)
+                {
+                    snippet.m_highlights.Add(new Highlight(hl));
+                }
+
+                // Now modify the highlights
+                //
+                foreach (Highlight hl in modifySelection)
+                {
+                    if (hl.m_startHighlight.Y == startPosition.Y && hl.m_startHighlight.X >= startPosition.X)
+                    {
+                        // Deal with single line, single character case
+                        if (snippet.isSingleCharacter())
+                        {
+                            hl.m_startHighlight.X++;
+                            hl.m_endHighlight.X++;
+                        }
+                    }
+                }
+            }
+        }
+
         /// <summary>
         /// Remove a range from the highlighting.  If we specify a range and no lines deleted then just the highlighting
         /// is removed.   If linesDeleted is specified then we also remove that number of lines from subsequent
@@ -813,10 +876,6 @@ namespace Xyglo
         public void removeHighlightingRange(FilePosition startPosition, FilePosition endPosition, TextSnippet snippet)
         {
             List<Highlight> modifySelection;
-
-            // Ensure the list is sorted
-            //
-            m_highlightList.Sort();
 
             // Now fetch highlights to modify - if on one line only that line
             //
@@ -871,103 +930,7 @@ namespace Xyglo
                     }
                 }
             }
-
-            /*
-            if (linesDeleted == 0)
-            {
-                // Have to be deleting on one line.  Get all the highlighting for this line beyond the start point.
-                //
-                List<Highlight> deleteSelection = m_highlightList.Where(item => item.m_startHighlight.X >= startPosition.X && item.m_startHighlight.Y == endPosition.Y).ToList();
-
-                // Iterate through deleting and re-inserting
-                //
-                foreach (var item in deleteSelection)
-                {
-                    if (item.m_endHighlight.X < endPosition.X)
-                    //if (m_highlightList.Remove(item))
-                    //{
-                        Logger.logMsg("FileBuffer::removeHighlightingRange() - removed highlight item");
-
-                        // Modify these entries
-                        //
-                        Highlight h = item;
-
-                        // We will always at least delete one character - perhaps a range
-                        //
-                        int xAdjust = Math.Max(1, endPosition.X - startPosition.X);
-
-                        // Adjust X by removed range
-                        //
-                        if (item.m_startHighlight.X > 0)
-                        {
-                            fp.X -= xAdjust;
-                        }
-
-                        if (h.m_startHighlight.X > 0)
-                        {
-                            h.m_startHighlight.X -= xAdjust;
-                            h.m_endHighlight.X -= xAdjust;
-
-                            // Only re-add if this is true otherwise we've broken the token anyway
-                            m_highlightSortedList.Add(fp, h);
-                        }
-                    }
-                    else
-                    {
-                        Logger.logMsg("FilerBuffer::removeHighlightingRange() - failed to remove highlight");
-                    }
-                }
-
-                // Now return
-                //
-                return;
-            }
-
-
-            // First fetch all the highlights that start after our startPosition
-            //
-            List<KeyValuePair<FilePosition, Highlight>> removeList = m_highlightSortedList.Where(item => item.Key >= startPosition).ToList();
-
-            // Check for multi-line spanning highlights from before our deletion
-            //
-            List<KeyValuePair<FilePosition, Highlight>> modifyList = m_highlightSortedList.Where(item => item.Key < startPosition && item.Value.m_endHighlight > startPosition).ToList();
-
-            // Modified elements still need removing
-            //
-            removeList.AddRange(modifyList);
-
-            Logger.logMsg("FileBuffer::removeHighlightingRange - removing " + removeList.Count() + " highlights");
-
-            // Remove all of these
-            //
-            foreach (KeyValuePair<FilePosition, Highlight> item in removeList)
-            {
-                m_highlightSortedList.Remove(item.Key);
-            }
-
-            // The list we want to restore is everything not in the selection - do this 
-            // by line and regenerate the first and last lines afterwards.
-            //
-            List<KeyValuePair<FilePosition, Highlight>> restList = removeList.Where(item => item.Key.Y > endPosition.Y).ToList();
-
-            // And re-insert
-            //
-            foreach (KeyValuePair<FilePosition, Highlight> item in restList)
-            {
-                // Adjust FilePosition by number of lines removed
-                //
-                FilePosition fp = item.Key;
-                Highlight hl = item.Value;
-
-                fp.Y -= (endPosition.Y - startPosition.Y + 1);
-                hl.m_startHighlight.Y -= (endPosition.Y - startPosition.Y + 1);
-                hl.m_endHighlight.Y -= (endPosition.Y - startPosition.Y + 1);
-
-                m_highlightSortedList.Add(fp, item.Value);
-            }
-    */
         }
-
 
         /// <summary>
         /// Deletes a selection from a FileBuffer - returns true if it actually deleted something.
@@ -991,12 +954,15 @@ namespace Xyglo
                 // Ensure we are neat and tidy
                 //
                 tidyUndoStack(command);
-            }
+           }
             catch (Exception e)
             {
                 Logger.logMsg("FileBuffer::deleteSelection() - nothing to delete : " + e.Message);
             }
 
+            // Last command wasn't an undo
+            //
+            m_lastCommandUndo = false;
 
             return fp;
         }
@@ -1014,13 +980,18 @@ namespace Xyglo
                 return new ScreenPosition(endSelection);
             }
 
+            ScreenPosition fp = new ScreenPosition();
+
             ReplaceTextCommand command = new ReplaceTextCommand(project, "Replace Text", this, startSelection, endSelection, text, highlightStart, highlightEnd);
-            ScreenPosition fp = command.doCommand();
+            fp = command.doCommand();
 
             // Ensure we are neat and tidy
             //
             tidyUndoStack(command);
 
+            // Last command wasn't an undo
+            //
+            m_lastCommandUndo = false;
             return fp;
         }
 
@@ -1067,8 +1038,10 @@ namespace Xyglo
                 return new ScreenPosition(insertPosition);
             }
 
+            ScreenPosition fp = new ScreenPosition();
+
             InsertTextCommand command = new InsertTextCommand(project, "Insert Text", this, insertPosition, text, highlightStart, highlightEnd);
-            ScreenPosition fp = command.doCommand();
+            fp = command.doCommand();
 
             // Ensure we are neat and tidy
             //
@@ -1079,9 +1052,17 @@ namespace Xyglo
             if (text == "}")
             {
                 ReformatTextCommand reformatCommand = new ReformatTextCommand(project, "Auto Reformat", this, insertPosition, insertPosition);
-                fp = reformatCommand.doCommand();
-                tidyUndoStack(reformatCommand);
+                {
+                    fp = reformatCommand.doCommand();
+                    tidyUndoStack(reformatCommand);
+                }
             }
+
+            // Last command wasn't an undo
+            //
+            m_lastCommandUndo = false;
+
+            //Logger.logMsg("NUMBER OF COMMNADS = " + m_commands.Count);
 
             return fp;
         }
@@ -1092,12 +1073,18 @@ namespace Xyglo
         /// <param name="insertPosition"></param>
         public ScreenPosition insertNewLine(Project project, FilePosition insertPosition, ScreenPosition highlightStart, ScreenPosition highlightEnd, string indent)
         {
+            ScreenPosition fp = new ScreenPosition();
+
             InsertTextCommand command = new InsertTextCommand(project, "Insert new line", this, insertPosition, highlightStart, highlightEnd, true, indent);
-            ScreenPosition fp = command.doCommand();
+            fp = command.doCommand();
 
             // Ensure we are neat and tidy
             //
             tidyUndoStack(command);
+
+            // Last command wasn't an undo
+            //
+            m_lastCommandUndo = false;
 
             return fp;
         }
@@ -1143,6 +1130,10 @@ namespace Xyglo
             rP.Second = new Pair<ScreenPosition, ScreenPosition>();
             rP.Second.First = startHighlight;
             rP.Second.Second = endHighlight;
+
+            // Last command wasn't an undo
+            //
+            m_lastCommandUndo = false;
 
             return rP;
 
@@ -1216,6 +1207,10 @@ namespace Xyglo
             rP.Second = new Pair<ScreenPosition, ScreenPosition>();
             rP.Second.First = startHighlight;
             rP.Second.Second = endHighlight;
+
+            // Set this indicator
+            //
+            m_lastCommandUndo = true;
 
             return rP;
         }

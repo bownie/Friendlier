@@ -45,27 +45,30 @@ namespace Xyglo
         static public Texture2D CreateCircle(GraphicsDevice device, int radius)
         {
             int outerRadius = radius * 2 + 2; // So circle doesn't go out of bounds
-            Texture2D texture = new Texture2D(device, outerRadius, outerRadius);
+            Texture2D texture = null;
 
-            Color[] data = new Color[outerRadius * outerRadius];
-
-            // Colour the entire texture transparent first.
-            for (int i = 0; i < data.Length; i++)
-                data[i] = Color.Transparent;
-
-            // Work out the minimum step necessary using trigonometry + sine approximation.
-            double angleStep = 1f / radius;
-
-            for (double angle = 0; angle < Math.PI * 2; angle += angleStep)
+            using (texture = new Texture2D(device, outerRadius, outerRadius))
             {
-                // Use the parametric definition of a circle: http://en.wikipedia.org/wiki/Circle#Cartesian_coordinates
-                int x = (int)Math.Round(radius + radius * Math.Cos(angle));
-                int y = (int)Math.Round(radius + radius * Math.Sin(angle));
+                Color[] data = new Color[outerRadius * outerRadius];
 
-                data[y * outerRadius + x + 1] = Color.White;
+                // Colour the entire texture transparent first.
+                for (int i = 0; i < data.Length; i++)
+                    data[i] = Color.Transparent;
+
+                // Work out the minimum step necessary using trigonometry + sine approximation.
+                double angleStep = 1f / radius;
+
+                for (double angle = 0; angle < Math.PI * 2; angle += angleStep)
+                {
+                    // Use the parametric definition of a circle: http://en.wikipedia.org/wiki/Circle#Cartesian_coordinates
+                    int x = (int)Math.Round(radius + radius * Math.Cos(angle));
+                    int y = (int)Math.Round(radius + radius * Math.Sin(angle));
+
+                    data[y * outerRadius + x + 1] = Color.White;
+                }
+
+                texture.SetData(data);
             }
-
-            texture.SetData(data);
             return texture;
         }
 
@@ -75,30 +78,33 @@ namespace Xyglo
         {
             int aDiameter = radius * 2;
             Vector2 aCenter = new Vector2(radius, radius);
+            Texture2D aCircle = null;
 
-            Texture2D aCircle = new Texture2D(graphics, aDiameter, aDiameter, true, SurfaceFormat.Color);
-            //Texture2D a2 = new Texture2D(graphics, aDiameter, aDiameter, 1, SurfaceFormat.Color);
-            Color[] aColors = new Color[aDiameter * aDiameter];
-
-            for (int i = 0; i < aColors.Length; i++)
+            using (aCircle = new Texture2D(graphics, aDiameter, aDiameter, true, SurfaceFormat.Color))
             {
-                int x = (i + 1) % aDiameter;
-                int y = (i + 1) / aDiameter;
+                //Texture2D a2 = new Texture2D(graphics, aDiameter, aDiameter, 1, SurfaceFormat.Color);
+                Color[] aColors = new Color[aDiameter * aDiameter];
 
-                Vector2 aDistance = new Vector2(Math.Abs(aCenter.X - x), Math.Abs(aCenter.Y - y));
-
-
-                if (Math.Sqrt((aDistance.X * aDistance.X) + (aDistance.Y * aDistance.Y)) > radius)
+                for (int i = 0; i < aColors.Length; i++)
                 {
-                    aColors[i] = Color.Black;
+                    int x = (i + 1) % aDiameter;
+                    int y = (i + 1) / aDiameter;
+
+                    Vector2 aDistance = new Vector2(Math.Abs(aCenter.X - x), Math.Abs(aCenter.Y - y));
+
+
+                    if (Math.Sqrt((aDistance.X * aDistance.X) + (aDistance.Y * aDistance.Y)) > radius)
+                    {
+                        aColors[i] = Color.Black;
+                    }
+                    else
+                    {
+                        aColors[i] = Color.White;
+                    }
                 }
-                else
-                {
-                    aColors[i] = Color.White;
-                }
+
+                aCircle.SetData<Color>(aColors);
             }
-
-            aCircle.SetData<Color>(aColors);
 
             return aCircle;
         }

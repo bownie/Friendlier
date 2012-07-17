@@ -311,10 +311,13 @@ namespace Xyglo
         /// <summary>
         /// Dispose of current TextSnippet - clear it and return it
         /// </summary>
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            SnippetFactory.returnSnippet(m_snippet);
-            Logger.logMsg("ReplaceTextCommand::Dispose()");
+            if (disposing)
+            {
+                SnippetFactory.returnSnippet(m_snippet);
+                Logger.logMsg("ReplaceTextCommand::Dispose()");
+            }
         }
 
         /// <summary>

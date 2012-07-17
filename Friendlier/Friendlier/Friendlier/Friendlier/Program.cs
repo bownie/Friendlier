@@ -7,7 +7,7 @@
 #endregion
 
 
-#define OUTER_EXCEPTION_HANDLING
+//#define OUTER_EXCEPTION_HANDLING
 
 using System;
 using System.IO;
@@ -37,7 +37,6 @@ namespace Xyglo
                 //
                 //TreeBuilder tb = new TreeBuilder();
                 //tb.topologicalSort();
-
 
                 // Render the tree
                 //
@@ -119,8 +118,11 @@ namespace Xyglo
                 //
                 project.setViewMode(Project.ViewMode.Formal);
 
-                Friendlier friendlier = new Friendlier(project);
-                friendlier.Run();
+                using (Friendlier friendlier = new Friendlier(project))
+                {
+                    friendlier.Run();
+                }
+
 #if OUTER_EXCEPTION_HANDLING
             }
             catch (Exception e)

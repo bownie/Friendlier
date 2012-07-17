@@ -68,9 +68,12 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Update the highlighting information after we've made a modification
+        /// Update the highlighting information after we've made a modification.   Accepts a command name and
+        /// a direction.  Does not run this command - only updates the highlighting following it.
         /// </summary>
-        public abstract void updateHighlighting(FileBuffer fileBuffer , int line);
+        /// <param name="command"></param>
+        /// <param name="doCommand"></param>
+        public abstract void updateHighlighting(Command command, bool doCommand);
 
         /// <summary>
         /// Generate highlighting for a specified file range and specify characters add or removed if fromPos = toPos

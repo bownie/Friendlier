@@ -1401,7 +1401,7 @@ namespace Xyglo
             //
             if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
             {
-                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer.getLastCommand(), true);
             }
 
             // Cancel our highlight
@@ -1429,7 +1429,7 @@ namespace Xyglo
             //
             if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
             {
-                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer.getLastCommand(), true);
             }
         }
 
@@ -1507,7 +1507,7 @@ namespace Xyglo
             //
             if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
             {
-                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer.getLastCommand(), true);
             }
 
             // Keep visible
@@ -1582,7 +1582,7 @@ namespace Xyglo
             //
             if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
             {
-                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer.getLastCommand(), true);
             }
 
             keepVisible();
@@ -2073,6 +2073,11 @@ namespace Xyglo
                     m_highlightEnd = rP.Second.Second;
                 }
             }
+
+            if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
+            {
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer.getLastCommand(), false);
+            }
         }
 
         /// <summary>
@@ -2092,11 +2097,12 @@ namespace Xyglo
             m_highlightStart.Y = 0;
             m_highlightEnd = m_highlightStart;
 
-            // Update the syntax highlighting
+            // Update the syntax highlighting - this should also work for redo (assuming that we don't
+            // redo or undo more than one command at a time using this interface).
             //
             if (project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
             {
-                project.getSyntaxManager().updateHighlighting(m_fileBuffer, m_cursorPosition.Y);
+                project.getSyntaxManager().updateHighlighting(m_fileBuffer.getLastCommand(), true);
             }
 
             // Ensure that the cursor is visible in the BufferView

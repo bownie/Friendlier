@@ -32,7 +32,7 @@ namespace Xyglo
     /// Not used currently.
     /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
-    public class DiffView : XygloView
+    public class DiffView : XygloView, IDisposable
     {
         // ------------------------------- MEMBER VARIABLES ----------------------------------
         //
@@ -82,23 +82,10 @@ namespace Xyglo
 
         // -------------------------------- CONSTRUCTORS --------------------------------------
         //
-        public DiffView(GraphicsDeviceManager graphics, Project project, BufferView bv1, BufferView bv2)
+        public DiffView(BufferView bv1, BufferView bv2)
         {
-            // Set our members
-            //
-            m_fontManager = project.getFontManager();
             m_sourceBufferView1 = bv1;
             m_sourceBufferView2 = bv2;
-
-            // Override colours for this type of view?
-            //
-
-            // And initialise
-            //
-            initialise(graphics, project);
-
-            // Create the SpriteBatch
-            m_highLightSpriteBatch = new SpriteBatch(graphics.GraphicsDevice);
         }
 
 
@@ -107,8 +94,16 @@ namespace Xyglo
         /// <summary>
         /// Initialise this object with a project
         /// </summary>
-        protected void initialise(GraphicsDeviceManager graphics, Project project)
+        public void initialise(GraphicsDeviceManager graphics, Project project)
         {
+            // Set font manager
+            //
+            m_fontManager = project.getFontManager();
+
+            // Create the SpriteBatch
+            //
+            m_highLightSpriteBatch = new SpriteBatch(graphics.GraphicsDevice);
+
             if (m_fileBuffer1 == null)
                 m_fileBuffer1 = new FileBuffer();
 
@@ -144,6 +139,31 @@ namespace Xyglo
             m_flatTexture.SetData(foregroundColors);
 
         }
+
+        /// <summary>
+        /// Dispose this object
+        /// </summary>
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Disposing object
+        /// </summary>
+        /// <param name="disposing"></param>
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                m_flatTexture.Dispose();
+                m_highLightSpriteBatch.Dispose();
+                m_fileBuffer1.Dispose();
+                m_fileBuffer2.Dispose();
+            }
+        }
+
 
         /// <summary>
         /// Get first destination BufferView

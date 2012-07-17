@@ -15,6 +15,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Diagnostics;
 using BloomPostprocess;
+using System.Security.Permissions;
 
 namespace Xyglo
 {
@@ -1124,7 +1125,6 @@ namespace Xyglo
             //setActiveBuffer();
         }
 
-
         /// <summary>
         /// LoadContent will be called once per game and is the place to load
         /// all of your content.
@@ -1200,7 +1200,14 @@ namespace Xyglo
             }
 
             this.Window.Title = "Friendlier v" + VersionInformation.getProductVersion();
-            m_basicEffect = new BasicEffect(m_graphics.GraphicsDevice)
+
+            // We have to initialise this as follows to work around CA2000 warning
+            //
+            m_basicEffect = new BasicEffect(m_graphics.GraphicsDevice);
+            m_basicEffect.TextureEnabled = true;
+            m_basicEffect.VertexColorEnabled = true;
+
+            /*
             {
                 TextureEnabled = true,
                 VertexColorEnabled = true,
@@ -1209,6 +1216,7 @@ namespace Xyglo
                 //World = Matrix.Identity,
                 //DiffuseColor = Vector3.One
             };
+             * */
 
             // Create and initialize our effect
             //
@@ -1404,11 +1412,12 @@ namespace Xyglo
                 else if (m_project.getBufferViews().Count == 0) // Or if we have none then create one
                 {
                     BufferView bv = new BufferView(m_project.getFontManager());
-                    FileBuffer fb = new FileBuffer();
-
-                    m_project.addBufferView(bv);
-                    m_project.addFileBuffer(fb);
-                    bv.setFileBuffer(fb);
+                    using (FileBuffer fb = new FileBuffer())
+                    {
+                        m_project.addBufferView(bv);
+                        m_project.addFileBuffer(fb);
+                        bv.setFileBuffer(fb);
+                    }
                 }
 
                 // Unset the view selection
@@ -1943,10 +1952,23 @@ namespace Xyglo
                             m_differ.clear();
                         }
                         break;
-                        
+                    
+                        // Two stage exit from the Configuration edit
+                        //
+                    case FriendlierState.Configuration:
+                        if (m_editConfigurationItem == true)
+                        {
+                            m_editConfigurationItem = false;
+                        }
+                        else
+                        {
+                            m_state = FriendlierState.TextEditing;
+                            m_editConfigurationItem = false;
+                        }
+                        break;
+
                     case FriendlierState.FileOpen:
                     case FriendlierState.Information:
-                    case FriendlierState.Configuration:
                     case FriendlierState.PositionScreenOpen:
                     case FriendlierState.PositionScreenNew:
                     case FriendlierState.PositionScreenCopy:
@@ -2166,6 +2188,7 @@ namespace Xyglo
         /// Process action keys in the Update() statement
         /// </summary>
         /// <param name="gameTime"></param>
+        [SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
         protected void processActionKeys(GameTime gameTime)
         {
             // Main key handling statement
@@ -2452,12 +2475,12 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.F6, gameTime))
             {
-                doBuildCommand(gameTime);
+                doBuildCommand(gameTime, "Starting Build...");
             }
             else if (checkKeyState(Keys.F7, gameTime))
             {
                 string command = m_project.getConfigurationValue("ALTERNATEBUILDCOMMAND");
-                doBuildCommand(gameTime, command);
+                doBuildCommand(gameTime, "Starting Alternate Build...", command);
             }
             else if (checkKeyState(Keys.F11, gameTime)) // Toggle full screen
             {
@@ -2859,6 +2882,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="?"></param>
         /// <returns></returns>
+        [SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
         protected bool processCombinationsCommands(GameTime gameTime)
         {
             bool rC = false;
@@ -3096,7 +3120,7 @@ namespace Xyglo
                     {
                         //System.Windows.Forms.MessageBox.Show("Undo stack is empty - " + e.Message);
                         Logger.logMsg("Friendlier::processCombinationsCommands() - got exception " + e.Message);
-                        setTemporaryMessage("Nothing to undo.", 2, gameTime);
+                        setTemporaryMessage("Nothing to undo with exception.", 2, gameTime);
                     }
                 }
                 else if (checkKeyState(Keys.Y, gameTime))  // Redo
@@ -3338,6 +3362,7 @@ namespace Xyglo
         /// checking for collisions, gathering input, and playing audio.
         /// </summary>
         /// <param name="gameTime">Provides a snapshot of timing values.</param>
+        [SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
         protected override void Update(GameTime gameTime)
         {
             // Update the frustrum matrix
@@ -4025,20 +4050,11 @@ namespace Xyglo
         /// </summary>
         protected BufferView addNewFileBuffer(string filename = null, bool readOnly = false, bool tailFile = false)
         {
-            // Create an empty buffer and add it to the list of buffers
-            //
-            FileBuffer newFB;
+            BufferView newBV = null;
+            FileBuffer newFB = (filename == null ? new FileBuffer() : new FileBuffer(filename, readOnly));
 
-            if (filename == null)
+            if (filename != null)
             {
-                newFB = new FileBuffer();
-            }
-            else
-            {
-                newFB = new FileBuffer(filename, readOnly);
-
-                // Load the file
-                //
                 newFB.loadFile(m_project.getSyntaxManager());
             }
 
@@ -4054,7 +4070,7 @@ namespace Xyglo
                 newPos = getFreeBufferViewPosition(m_newPosition); // use the m_newPosition for the direction
             }
 
-            BufferView newBV = new BufferView(m_project.getFontManager(), newFB, newPos, 0, 20, fileIndex, readOnly);
+            newBV = new BufferView(m_project.getFontManager(), newFB, newPos, 0, 20, fileIndex, readOnly);
             newBV.setTailing(tailFile);
             m_project.addBufferView(newBV);
 
@@ -4406,8 +4422,8 @@ namespace Xyglo
                     m_project.setRHSDiff(bv2);
                         
 #if USING_DIFFVIEW
-                    DiffView diffView = new DiffView(m_graphics, m_project, bv1, bv2);
-
+                    DiffView diffView = new DiffView(bv1, bv2);
+                    diffView.initialise(m_graphics, m_project);
                     if (diffView.process())
                     {
                         m_project.addGenericView(diffView);
@@ -6920,7 +6936,13 @@ namespace Xyglo
                 m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), m_project.getConfigurationItem(m_configPosition).Name, new Vector2((int)xPos, (int)yPos), m_itemColour, 0, Vector2.Zero, 1.0f, 0, 0);
                 yPos += m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay);
 
-                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), m_editConfigurationItemValue, new Vector2((int)xPos, (int)yPos), m_highlightColour, 0, Vector2.Zero, 1.0f, 0, 0);
+                string configString = m_editConfigurationItemValue;
+                if (configString.Length > m_project.getSelectedBufferView().getBufferShowWidth())
+                {
+                    configString = "[..]" + configString.Substring(configString.Length - m_project.getSelectedBufferView().getBufferShowWidth() + 4, m_project.getSelectedBufferView().getBufferShowWidth() - 4);
+                }
+
+                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), configString, new Vector2((int)xPos, (int)yPos), m_highlightColour, 0, Vector2.Zero, 1.0f, 0, 0);
             }
             else
             {
@@ -6928,8 +6950,6 @@ namespace Xyglo
 
                 m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), text, new Vector2((int)xPos, (int)yPos), Color.White, 0, Vector2.Zero, 1.0f, 0, 0);
                 yPos += m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * 2;
-
-                
 
                 // Write all the configuration items out - if we're highlight one of them then change
                 // the colour.
@@ -6960,9 +6980,9 @@ namespace Xyglo
         /// <summary>
         /// Perform an external build
         /// </summary>
-        protected void doBuildCommand(GameTime gameTime, string overrideString = "")
+        [SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
+        protected void doBuildCommand(GameTime gameTime, string buildMessage, string overrideString = "")
         {
-
             if (m_buildProcess != null)
             {
                 Logger.logMsg("Friendlier::doBuildCommand() - build in progress");
@@ -7115,7 +7135,6 @@ namespace Xyglo
                         //
                         setActiveBuffer(m_buildStdOutView);
 
-
                         // Build the argument list
                         //
                         ProcessStartInfo info = new ProcessStartInfo();
@@ -7155,14 +7174,19 @@ namespace Xyglo
                         m_buildProcess.BeginOutputReadLine();
                         m_buildProcess.BeginErrorReadLine();
 
-                        //Process.Start(m_project.getBuildCommand());
-                        setTemporaryMessage("Starting build..", 4, gameTime);
-                        startBanner(m_gameTime, "Build started", 5);
+                        // Inform that we're starting the build
+                        //
+                        setTemporaryMessage(buildMessage, 4, gameTime);
 
-                        //string stdout = proc.StandardOutput.ReadToEnd();
-                        //string stderr = proc.StandardError.ReadToEnd();
-                        //process.WaitForExit();//
+                        // We don't do banner any more
+                        //startBanner(m_gameTime, "Build started", 5);
 
+
+                        /*
+                         * Can't check the exit code at this point!
+                         * 
+                        // Handle any immediate exit error code
+                        //
                         if (m_buildProcess.ExitCode != 0)
                         {
                             Logger.logMsg("Friendlier::doBuildCommand() - build process failed with code " + m_buildProcess.ExitCode);
@@ -7171,12 +7195,27 @@ namespace Xyglo
                         {
                             Logger.logMsg("Friendlier::doBuildCommand() - started build command succesfully");
                         }
+                         * */
                     }
                 }
             }
             catch (Exception e)
             {
                 Logger.logMsg("Can't run command " + e.Message);
+
+                // Disconnect the file handlers and the exit handler
+                //
+                m_buildProcess.OutputDataReceived -= new DataReceivedEventHandler(logBuildStdOut);
+                m_buildProcess.ErrorDataReceived -= new DataReceivedEventHandler(logBuildStdErr);
+                m_buildProcess.Exited -= new EventHandler(buildCompleted);
+
+                // Set an error message
+                //
+                setTemporaryMessage("Problem when running command - " + e.Message, 5, gameTime);
+
+                // Dispose of the build process object
+                //
+                m_buildProcess = null;
             }
         }
 

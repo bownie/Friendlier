@@ -36,70 +36,10 @@ namespace Xyglo
         //
         public CppSyntaxManager(Project project) : base(project)
         {
-            initialiseKeywords();
         }
-
 
         // ---------------------------------------- METHODS -----------------------------------------------
         //
-
-        /*
-        protected List<Highlight> m_returnLineList = new List<Highlight>();
-
-        /// <summary>
-        /// Get some highlighting suggestions from the indicated line
-        /// </summary>
-        /// <param name="line"></param>
-        /// <returns></returns>
-        public override List<Highlight> getHighlighting(int line)
-        {
-            m_returnLineList.Clear();
-
-            // Find all highlighting for this line
-            //
-            m_returnLineList = m_highlightList.FindAll(
-            delegate(Highlight h)
-            {
-                return h.m_startHighlight.Y == line;
-            }
-            );
-
-            // Ensure it's sorted
-            //
-            m_returnLineList.Sort();
-
-            // Return 
-            //
-            return m_returnLineList;
-        }
-
-        /// <summary>
-        /// Get some highlighting suggestions from the indicated line range
-        /// </summary>
-        /// <param name="line"></param>
-        /// <returns></returns>
-        public override List<Highlight> getHighlighting(int startLine, int endLine)
-        {
-            m_returnLineList.Clear();
-
-            // Find all highlighting for this line
-            //
-            m_returnLineList = m_highlightList.FindAll(
-            delegate(Highlight h)
-            {
-                return (h.m_startHighlight.Y >= startLine && h.m_startHighlight.Y <= endLine);
-            }
-            );
-
-            // Ensure it's sorted
-            //
-            m_returnLineList.Sort();
-
-            // Return 
-            //
-            return m_returnLineList;
-        }
-         */
 
         /// <summary>
         /// Generate highlighting for every FileBuffer for example whenever we load a project - we might want
@@ -133,26 +73,18 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Update the highlighting for this FileBuffer - eventually we'll do this correctly, for the
-        /// moment we redo everything for each command which is incredibly wasteful.
+        /// Update the highlighting based on the last command run and the direction it was run in.
+        /// If doCommand is false then the last command was an 'undo'.
         /// </summary>
-        /// <param name="fileBuffer"></param>
-        /// <param name="line"></param>
-        public override void updateHighlighting(FileBuffer fileBuffer, int line)
+        /// <param name="command"></param>
+        /// <param name="doCommand"></param>
+        public override void updateHighlighting(Command command, bool doCommand)
         {
-            // Examine the last command and modify the highlighting accordingly
-            //
-            Command command = fileBuffer.getLastCommand();
-
-            if (command == null)
-            {
-                return;
-            }
-
-            Logger.logMsg("CppSyntaxManager::updateHighlighting() - updating " + fileBuffer.getFilepath(), true);
+            Logger.logMsg("CppSyntaxManager::updateHighlighting() - updating " + command.getFileBuffer().getFilepath(), true);
 
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
             sw.Start();
+
             if (command.GetType() == typeof(Xyglo.DeleteTextCommand))
             {
                 Logger.logMsg("CppSyntaxManager::updateHighlighting - update following DeleteTextCommand");
@@ -160,10 +92,23 @@ namespace Xyglo
                 // Fetch the command and remove the highlighting for affected range
                 //
                 DeleteTextCommand dtc = (DeleteTextCommand)command;
-                //command.getSnippet().getLinesDeleted();
 
-                fileBuffer.removeHighlightingRange(dtc.getStartPos(), dtc.getEndPos(), command.getSnippet());
-                generateHighlighting(fileBuffer, dtc.getStartPos(), dtc.getEndPos());
+                if (doCommand)
+                {
+                    command.getFileBuffer().removeHighlightingRange(dtc.getStartPos(), dtc.getEndPos(), command.getSnippet());
+                }
+                else
+                {
+                    command.getFileBuffer().insertHighlightingRange(dtc.getStartPos(), dtc.getEndPos(), command.getSnippet());
+                }
+
+                //if (doCommand)
+                //{
+                    //generateHighlighting(command.getFileBuffer(), dtc.getStartPos(), dtc.getEndPos());
+                //}
+                //else
+                //{
+                //}
                 //generateAllHighlighting(fileBuffer);
             }
             else if (command.GetType() == typeof(Xyglo.InsertTextCommand))
@@ -178,7 +123,7 @@ namespace Xyglo
             }
 
             sw.Stop();
-            Logger.logMsg("CppSyntaxManager::updateHighlighting() - completed " + fileBuffer.getFilepath() + " in " + sw.Elapsed.TotalMilliseconds + " ms", true);
+            Logger.logMsg("CppSyntaxManager::updateHighlighting() - completed " + command.getFileBuffer().getFilepath() + " in " + sw.Elapsed.TotalMilliseconds + " ms", true);
         }
 
         /// <summary>
@@ -199,14 +144,12 @@ namespace Xyglo
             // Remove the range we're going to update
             //
             fileBuffer.clearHighlights(fromPos, toPos);
-            //fileBuffer.clearAllHighlights();
 
             int xPosition = 0;
             int lastXPosition = 0;
             int foundPosition = 0;
             bool inMLComment = false;
             int lineCommentPosition = -1; // position where a line comment starts
-
 
 #if TABS_DONT_WORK_HERE
             int startTab = 0;
@@ -234,7 +177,6 @@ namespace Xyglo
                 //
                 startTab = -1;
 #endif
-
                 // Scan whole line potentially many times for embedded comments etc
                 //
                 while (xPosition < line.Length)

@@ -24,7 +24,7 @@ namespace Xyglo
     /// A Configuration item
     /// </summary>
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
-    public class Configuration : IComparable
+    public sealed class Configuration : IComparable
     {
         /// <summary>
         /// The name of this configuration item
@@ -364,6 +364,7 @@ namespace Xyglo
             // Build the syntax manager - for the moment we force it to Cpp
             //
             m_syntaxManager = new CppSyntaxManager(this);
+            m_syntaxManager.initialiseKeywords();
 
             // Default tab to two spaces here
             //
@@ -1023,18 +1024,23 @@ namespace Xyglo
         static public Project dataContractDeserialise(FontManager fontManager, string fileName)
         {
             Logger.logMsg("Project::dataContractDeserialise() - deserializing an instance of the Project object.");
-            FileStream fs = new FileStream(fileName, FileMode.Open);
-            XmlDictionaryReader reader =
-                XmlDictionaryReader.CreateTextReader(fs, new XmlDictionaryReaderQuotas());
-            DataContractSerializer ser = new DataContractSerializer(typeof(Project));
-
+            
+            
             // Deserialize the data and read it from the instance.
             //
             Project deserializedProject;
             try
             {
-                deserializedProject = (Project)ser.ReadObject(reader, true);
-                deserializedProject.setFontManager(fontManager);
+                using (FileStream fs = new FileStream(fileName, FileMode.Open))
+                {
+                    XmlDictionaryReader reader =
+                        XmlDictionaryReader.CreateTextReader(fs, new XmlDictionaryReaderQuotas());
+                    DataContractSerializer ser = new DataContractSerializer(typeof(Project));
+
+
+                    deserializedProject = (Project)ser.ReadObject(reader, true);
+                    deserializedProject.setFontManager(fontManager);
+                }
             }
             catch (Exception e)
             {
@@ -1045,16 +1051,6 @@ namespace Xyglo
                 deserializedProject = new Project(fontManager);
                 BufferView bv = new BufferView();
                 deserializedProject.addBufferView(bv);
-                reader.Close();
-                fs.Close();
-                //File.Delete(fileName);  
-            }
-            finally
-            {
-                // Close everything
-                //
-                reader.Close();
-                fs.Close();
             }
 
             return deserializedProject;
@@ -1072,12 +1068,11 @@ namespace Xyglo
             m_activeTime += snapshot - m_lastAccessTime;
             m_lastWriteTime = snapshot;
 
-            FileStream writer = new FileStream(m_projectFile, FileMode.Create);
-
-            System.Runtime.Serialization.DataContractSerializer x =
-                new System.Runtime.Serialization.DataContractSerializer(this.GetType());
-            x.WriteObject(writer, this);
-            writer.Close();
+            using (FileStream writer = new FileStream(m_projectFile, FileMode.Create))
+            {
+                System.Runtime.Serialization.DataContractSerializer x = new System.Runtime.Serialization.DataContractSerializer(this.GetType());
+                x.WriteObject(writer, this);
+            }
         }
 
         /// <summary>
@@ -1170,27 +1165,55 @@ namespace Xyglo
                 // Build the syntax manager - for the moment we force it to Cpp
                 //
                 m_syntaxManager = new CppSyntaxManager(this);
+                m_syntaxManager.initialiseKeywords();
             }
+
+            // A remove list in case we need it
+            //
+            List<BufferView> removeList = new List<BufferView>();
 
             // Only load files by active FileBuffers
             //
             foreach (BufferView bv in m_bufferViews)
             {
-                Logger.logMsg("Project::loadFiles() - loading " + bv.getFileBuffer().getFilepath(), true);
-                bv.getFileBuffer().loadFile(m_syntaxManager);
-                Logger.logMsg("Project::loadFiles() - completed loading " + bv.getFileBuffer().getFilepath(), true);
-
-                // Don't generate any highlighting for tailing files as we consider those as outputs
-                //
-                if (!bv.isTailing())
+                // Check for existence
+                if (!File.Exists(bv.getFileBuffer().getFilepath()))
                 {
-                    Logger.logMsg("Project::loadFiles() - generating highlighting for " + bv.getFileBuffer().getFilepath(), true);
-                    if (getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
+                    Logger.logMsg("Project::loadFiles() - this file is now missing and will be removed " + bv.getFileBuffer().getFilepath());
+                    removeList.Add(bv);
+                }
+                else
+                {
+                    Logger.logMsg("Project::loadFiles() - loading " + bv.getFileBuffer().getFilepath(), true);
+                    bv.getFileBuffer().loadFile(m_syntaxManager);
+                    Logger.logMsg("Project::loadFiles() - completed loading " + bv.getFileBuffer().getFilepath(), true);
+
+                    // Don't generate any highlighting for tailing files as we consider those as outputs
+                    //
+                    if (!bv.isTailing())
                     {
-                        m_syntaxManager.generateAllHighlighting(bv.getFileBuffer());
+                        Logger.logMsg("Project::loadFiles() - generating highlighting for " + bv.getFileBuffer().getFilepath(), true);
+                        if (getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
+                        {
+                            m_syntaxManager.generateAllHighlighting(bv.getFileBuffer());
+                        }
                     }
                 }
+            }
 
+            // Remove the BufferViews and any associated FileBuffers from the storage classes
+            //
+            if (removeList.Count > 0)
+            {
+                foreach (BufferView bv in removeList)
+                {
+                    m_bufferViews.Remove(bv);
+
+                    if (m_fileBuffers.Contains(bv.getFileBuffer()))
+                    {
+                        removeFileBuffer(bv.getFileBuffer());
+                    }
+                }
             }
 
             // Also reset our access timer

@@ -346,10 +346,13 @@ namespace Xyglo
         /// <summary>
         ///  Overridden dispose method
         /// </summary>
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            m_originalText = "";
-            m_fileBuffer = null;
+            if (disposing)
+            {
+                m_originalText = "";
+                m_fileBuffer = null;
+            }
         }
     }
 }

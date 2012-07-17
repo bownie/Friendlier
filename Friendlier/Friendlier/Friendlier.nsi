@@ -8,6 +8,10 @@
 ; ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Client" Install IntOp $8 $0 & 1
 ; http://stackoverflow.com/questions/3542496/nsis-installer-with-net-4-0
 
+; Request application privileges for Windows Vista/7 etc
+;
+RequestExecutionLevel admin
+
 ; We're using the modern UI
 ;
 !include "MUI.nsh"
@@ -19,15 +23,17 @@
 !include WinMessages.nsh
 !include LogicLib.nsh
 !include Sections.nsh
+!include nsDialogs.nsh
+
 
 ; The name of the installer
-Name "Friendlier-win32-full-1"
-Caption "Friendlier Windows32 Full Build 1"
+Name "Friendlier-win32-final"
+Caption "Friendlier Windows32 Final Build"
 
-!define ICON "Friendlier.ico"
+!define ICON "XygloNew.ico"
 !define COMPANY "Xyglo"
 !define SOFTWARE "Friendlier"
-!define VERSION "1.0.0 Full"
+!define VERSION "1.0.1 Final"
 
 !insertmacro MUI_PAGE_LICENSE "Licence.txt"
 !insertmacro MUI_LANGUAGE "English"
@@ -40,7 +46,7 @@ Caption "Friendlier Windows32 Full Build 1"
 !define XNAInstaller "xnafx40_redist.msi"
 
 ; The file to write
-OutFile "friendlier-win32-full-1.exe"
+OutFile "friendlier-win32-final.exe"
 
 ; The default installation directory
 ;
@@ -51,22 +57,51 @@ InstallDir $PROGRAMFILES\${COMPANY}\${SOFTWARE}
 ;
 InstallDirRegKey HKLM "Software\${COMPANY}\${SOFTWARE}" "Install_Dir"
 
-; Request application privileges for Windows Vista/7 etc
-;
-RequestExecutionLevel admin
-
 ; Application icon
 ;
 Icon ${ICON}
 
 ;--------------------------------
 ; Pages
-Page components
+Page components 
 Page directory
 Page instfiles
+Page Custom getLicencePage installLicence
 
 UninstPage uninstConfirm
 UninstPage instfiles
+
+
+; ------------------ DIALOGS ------------------
+
+Function getLicencePage
+
+	DetailPrint "Enter licence details"
+
+	Var /Global MyTextbox
+
+	!insertmacro MUI_HEADER_TEXT "Enter licence details" "Please enter your licence key.  This software will run in demo mode until you purchase a valid licence.  Please see http://www.xyglo.com for more details."
+
+	nsDialogs::Create /NOUNLOAD 1018
+	Pop $0
+	${NSD_CreateText} 10% 20u 80% 12u ""
+	Pop $MyTextbox
+	nsDialogs::Show
+
+FunctionEnd
+
+Function installLicence
+	${NSD_GetText} $MyTextbox $0
+	;Abort ;Don't move to next page (If the input was invalid etc)
+
+	${if} $0 != ""
+	  DetailPrint "Installing licence $0"
+	  WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Licence Key" "$0"
+	  MessageBox mb_ok "Licence is installed."
+	${endif} 
+	
+FunctionEnd
+
 
 ;--------------------------------
 ; .NET 4.0 check and installer
@@ -74,6 +109,8 @@ UninstPage instfiles
 ; Non-optional section starts with a '-'
 ;
 Section "-MS .NET Framework v${NETVersion}" NETFramework
+
+  !insertmacro MUI_HEADER_TEXT "Checking for .NET 4.0" ""
 
   ; Read the registry string where .NET should be
   ;
@@ -113,6 +150,8 @@ SectionEnd
 ;
 Section "-XNA Framework v${XNAVersion}" XNAFramework
 
+  !insertmacro MUI_HEADER_TEXT "Checking for XNA 4.0" ""
+
   ; Read the registry string where .NET should be
   ;
   ReadRegStr $R0 HKLM "SOFTWARE\Microsoft\XNA\Framework\v4.0" "Installed"
@@ -145,6 +184,8 @@ SectionEnd
 ;
 Section "Friendlier"
 
+	!insertmacro MUI_HEADER_TEXT "Installing Friendlier" "The selected components will be installed."
+
     SectionIn RO
 
     ; Set output path to the installation directory.
@@ -164,7 +205,7 @@ Section "Friendlier"
 	; Kinect?
 
 
-    File "Friendlier.ico"
+    File "Xyglo.ico"
 
     ; Write the installation path into the registry
     WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}" "Install_Dir" "$INSTDIR"
@@ -185,7 +226,7 @@ Section "Friendlier"
 	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "User Organisation" "none"
 	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Product Name" "${SOFTWARE}"
 	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Product Version" "${VERSION}"
-	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Licence Key" "nonel"
+	WriteRegStr HKLM "Software\${COMPANY}\${SOFTWARE}\CurrentVersion" "Licence Key" ""
 
 
 SectionEnd
