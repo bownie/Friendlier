@@ -7162,6 +7162,7 @@ namespace Xyglo
                         m_buildProcess.ErrorDataReceived += new DataReceivedEventHandler(logBuildStdErr);
                         m_buildProcess.Exited += new EventHandler(buildCompleted);
 
+
                         m_buildProcess.EnableRaisingEvents = true;
 
                         Logger.logMsg("Friendlier::doBuildCommand() - working directory = " + info.WorkingDirectory);
