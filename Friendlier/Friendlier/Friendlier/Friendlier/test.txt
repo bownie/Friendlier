@@ -1,0 +1,45 @@
+Use Cases/Examples/Tutorials
+
+1. Open/Close files/Navigation
+2. File Management/Loose Coupling
+3. Code Editing/Building
+4. Visual Diff/Versioning
+
+1. C++ example
+- Start Friendlier/Nice welcome screen
+- Open file/show navigation in file
+- Drag file in/show syntax highlighting
+- Close file
+- New file
+- Quit out/Restart in position
+
+2.
+- Show files in manage project
+- show navigation by file list
+- delete files from project
+- drag and drop files
+- show more information on file list
+
+3.
+- build hello world
+- create source file
+- create project file
+- build and show output
+- simplicity
+
+4.
+- open existing complex project [DONE - modify project file]
+- show build config/start build [ADDED ALTERNATE BUILD]
+- show bug fixing
+- show diff [LOVELY]
+- complete build (must complete)
+- show performance meters
+
+
+
+
+
+
+C:\Q\mingw\bin\mingw32-make.exe -f C:\newdir\Makefile
+
+"
