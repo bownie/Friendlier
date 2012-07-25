@@ -6,11 +6,14 @@
 //-----------------------------------------------------------------------------
 #endregion
 
+//#define CPP_SYNTAX_MANAGER_DEBUG
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace Xyglo
 {
@@ -32,6 +35,11 @@ namespace Xyglo
 
         public static Regex m_token = new Regex(@"\b([A-Za-z_][A-Za-z0-9_]+)\b");
 
+        /// <summary>
+        /// Mutex to protected highlighting when running in multiple threads
+        /// </summary>
+        protected Mutex m_highlightingMutex = new Mutex();
+
         // -------------------------------------- CONSTRUCTORS --------------------------------------------
         //
         public CppSyntaxManager(Project project) : base(project)
@@ -45,13 +53,17 @@ namespace Xyglo
         /// Generate highlighting for every FileBuffer for example whenever we load a project - we might want
         /// to think about persisting the highlighting and restoring it if it's onerous to work this out..
         /// </summary>
-        public override void generateAllHighlighting(FileBuffer fileBuffer)
+        public override bool generateAllHighlighting(FileBuffer fileBuffer, bool backgroundThread)
         {
+#if SMART_HELP_DEBUG
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - starting");
+#endif
 
-            generateHighlighting(fileBuffer, new FilePosition(0, 0), fileBuffer.getEndPosition());
+            return generateHighlighting(fileBuffer, new FilePosition(0, 0), fileBuffer.getEndPosition(), backgroundThread);
 
+#if SMART_HELP_DEBUG
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - completed.");
+#endif
         }
 
         /// <summary>
@@ -73,69 +85,18 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Update the highlighting based on the last command run and the direction it was run in.
-        /// If doCommand is false then the last command was an 'undo'.
-        /// </summary>
-        /// <param name="command"></param>
-        /// <param name="doCommand"></param>
-        public override void updateHighlighting(Command command, bool doCommand)
-        {
-            Logger.logMsg("CppSyntaxManager::updateHighlighting() - updating " + command.getFileBuffer().getFilepath(), true);
-
-            System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
-            sw.Start();
-
-            if (command.GetType() == typeof(Xyglo.DeleteTextCommand))
-            {
-                Logger.logMsg("CppSyntaxManager::updateHighlighting - update following DeleteTextCommand");
-
-                // Fetch the command and remove the highlighting for affected range
-                //
-                DeleteTextCommand dtc = (DeleteTextCommand)command;
-
-                if (doCommand)
-                {
-                    command.getFileBuffer().removeHighlightingRange(dtc.getStartPos(), dtc.getEndPos(), command.getSnippet());
-                }
-                else
-                {
-                    command.getFileBuffer().insertHighlightingRange(dtc.getStartPos(), dtc.getEndPos(), command.getSnippet());
-                }
-
-                //if (doCommand)
-                //{
-                    //generateHighlighting(command.getFileBuffer(), dtc.getStartPos(), dtc.getEndPos());
-                //}
-                //else
-                //{
-                //}
-                //generateAllHighlighting(fileBuffer);
-            }
-            else if (command.GetType() == typeof(Xyglo.InsertTextCommand))
-            {
-                Logger.logMsg("CppSyntaxManager::updateHighlighting - update following InsertTextCommand");
-                //generateAllHighlighting(fileBuffer);
-            }
-            else if (command.GetType() == typeof(Xyglo.ReplaceTextCommand))
-            {
-                Logger.logMsg("CppSyntaxManager::updateHighlighting - update following ReplaceTextCommand");
-                //generateAllHighlighting(fileBuffer);
-            }
-
-            sw.Stop();
-            Logger.logMsg("CppSyntaxManager::updateHighlighting() - completed " + command.getFileBuffer().getFilepath() + " in " + sw.Elapsed.TotalMilliseconds + " ms", true);
-        }
-
-        /// <summary>
         /// Generate the highlightList by parsing the entire file and throwing away all previous highlighting
         /// information.  This is done once per file load in an ideal world as it takes a while.
         /// </summary>
-        public override void generateHighlighting(FileBuffer fileBuffer, FilePosition fromPos, FilePosition toPos, int characters = 0)
+        public override bool generateHighlighting(FileBuffer fileBuffer, FilePosition fromPos, FilePosition toPos, bool backgroundThread = false)
         {
+#if CPP_SYNTAX_MANAGER_DEBUG
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - updating " + fileBuffer.getFilepath(), true);
-
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
             sw.Start();
+#endif
+
+            m_highlightingMutex.WaitOne();
 
             // We have to recalculate these every time in case we're removing or adding lines
             //
@@ -143,7 +104,7 @@ namespace Xyglo
 
             // Remove the range we're going to update
             //
-            fileBuffer.clearHighlights(fromPos, toPos);
+            fileBuffer.clearHighlights(fromPos, toPos, backgroundThread);
 
             int xPosition = 0;
             int lastXPosition = 0;
@@ -151,20 +112,29 @@ namespace Xyglo
             bool inMLComment = false;
             int lineCommentPosition = -1; // position where a line comment starts
 
+            // Reset this before a long running process
+            //
+            m_interruptProcessing = false;
+
 #if TABS_DONT_WORK_HERE
             int startTab = 0;
 #endif
 
             // Scan range that we have set
             //
-            for (int i = fromPos.Y; i < toPos.Y; i++)
+            for (int i = fromPos.Y; i < toPos.Y + 1; i++)
             {
+                if (m_interruptProcessing)
+                {
+                    Logger.logMsg("CppSyntaxManager::generateHighlighting() - processing highlights interrupted");
+                    return false; // false means don't copy anything from background to foreground as we have crap in the buffer
+                }
+
                 // If we're displaying with expanded tabs then make sure we also expand them
                 // here.  We might want to change this back if we have any issues with wanting
                 // to work back from Highlights to meaningful words.
                 //
-                string preLine = fileBuffer.getLine(i);
-                string line = preLine.Replace("\t", m_project.getTab());
+                string line = fileBuffer.getLine(i).Replace("\t", m_project.getTab());
 
                 // Reset xPosition
                 //
@@ -172,11 +142,6 @@ namespace Xyglo
                 foundPosition = -1;
                 lineCommentPosition = -1;
 
-#if TABS_DONT_WORK_HERE
-                // Initialise startTab so we can handle multiple blocks of tabs efficiently
-                //
-                startTab = -1;
-#endif
                 // Scan whole line potentially many times for embedded comments etc
                 //
                 while (xPosition < line.Length)
@@ -188,12 +153,11 @@ namespace Xyglo
                     if (inMLComment)
                     {
                         int endOfComment = line.Substring(xPosition).IndexOf("*/");
-                        //int endOfComment = indexOf(CppSyntaxManager.m_closeComment, line.Substring(xPosition));
 
                         if (endOfComment != -1) // end comment and continue
                         {
                             Highlight newHighlight = new Highlight(i, xPosition, xPosition + endOfComment + 2, line.Substring(xPosition, endOfComment + 2), HighlightType.Comment);
-                            fileBuffer.setHighlight(newHighlight);
+                            fileBuffer.setHighlight(newHighlight, backgroundThread);
                             xPosition += endOfComment + 2;
                             inMLComment = false;
                         }
@@ -202,8 +166,9 @@ namespace Xyglo
                             // Insert comment to end of line and don't unset inMLComment as we're still in it
                             //
                             Highlight newHighlight = new Highlight(i, xPosition, line.Length, line.Substring(xPosition, line.Length - xPosition), HighlightType.Comment);
-                            fileBuffer.setHighlight(newHighlight);
+                            fileBuffer.setHighlight(newHighlight, backgroundThread);
                             xPosition = line.Length;
+                            continue; // skip to next line
                         }
                     }
                     else
@@ -211,140 +176,120 @@ namespace Xyglo
                         // Now deal with starting comments
                         //
                         foundPosition = line.Substring(xPosition).IndexOf("/*");
-                        //foundPosition = indexOf(CppSyntaxManager.m_openComment, line.Substring(xPosition));
 
-                        //if (foundPosition < xPosition)
-                        //{
-                        //}
-                        //else
-                        //{
+                        if ((foundPosition = line.IndexOf("#")) == 0)
+                        {
+                            // Create a highlight for a #define
+                            Highlight newHighlight = new Highlight(i, foundPosition, line.Length, line, HighlightType.Define);
+                            fileBuffer.setHighlight(newHighlight, backgroundThread);
 
-                            // #defines etc
-                            if ((foundPosition = line.IndexOf("#")) == 0)
+                            // And exit this loop
+                            xPosition = line.Length;
+                        }
+                        else if ((foundPosition = line.IndexOf("//")) != -1)
+                        //else if ((foundPosition = indexOf(CppSyntaxManager.m_lineComment, line)) != -1)
+                        {
+                            Highlight newHighlight = new Highlight(i, foundPosition, line.Length, line.Substring(foundPosition, line.Length - foundPosition), HighlightType.Comment);
+                            fileBuffer.setHighlight(newHighlight, backgroundThread);
+                            lineCommentPosition = foundPosition;
+                            xPosition = line.Length;
+                        }
+
+                        // Now process any other characters ensuring that we're still within the string
+                        // and we're not beyond the start of a line comment boundary.
+                        //
+                        if (xPosition < line.Length && ( xPosition < lineCommentPosition || lineCommentPosition == -1))
+                        {
+                            if (line[xPosition] == '{') 
                             {
-                                // Create a highlight for a #define
-                                Highlight newHighlight = new Highlight(i, foundPosition, line.Length, line, HighlightType.Define);
-                                fileBuffer.setHighlight(newHighlight);
-
-                                // And exit this loop
-                                xPosition = line.Length;
-                            }
-                            else if ((foundPosition = line.IndexOf("//")) != -1)
-                            //else if ((foundPosition = indexOf(CppSyntaxManager.m_lineComment, line)) != -1)
-                            {
-                                Highlight newHighlight = new Highlight(i, foundPosition, line.Length, line.Substring(foundPosition, line.Length - foundPosition), HighlightType.Comment);
-                                fileBuffer.setHighlight(newHighlight);
-                                lineCommentPosition = foundPosition;
-                                xPosition = line.Length;
-                            }
-
-                            // Now process any other characters ensuring that we're still within the string
-                            // and we're not beyond the start of a line comment boundary.
-                            //
-                            if (xPosition < line.Length && ( xPosition < lineCommentPosition || lineCommentPosition == -1))
-                            {
-                                if (line[xPosition] == '{') 
-                                {
-                                    // Check to see if there is an existing BraceDepth entry here
-                                    //
-                                    if (testBraceDepth(xPosition, i) == -1)
-                                    {
-                                        // Test the indent depth on the next line
-                                        //
-                                        int newDepth = testIndentDepth(fileBuffer, i + 1);
-
-                                        // If it's not set then we just estimate it based on previous values plus '2'
-                                        if (newDepth == -1)
-                                        {
-                                            newDepth = getIndentDepth(xPosition, i) + 2;
-                                        }
-
-                                        BraceDepth bd = new BraceDepth(xPosition, i, newDepth);
-                                        m_bracePositions.Add(bd, newDepth);
-                                    }
-                                }
-                                else if (line[xPosition] == '}')
-                                {
-                                    if (testBraceDepth(xPosition, i) == -1)
-                                    {
-                                        int existingDepth = getIndentDepth(xPosition, i);
-                                        int newDepth = Math.Max(existingDepth - 2, 0);
-
-                                        BraceDepth bd = new BraceDepth(xPosition, i, newDepth);
-                                        m_bracePositions.Add(bd, newDepth);
-                                    }
-                                }
-                                else if (line[xPosition] == '/' && (xPosition + 1 < line.Length && line[xPosition + 1] == '*'))
-                                {
-                                    // Insert highlight if this is only thing on line
-                                    //
-                                    Highlight newHighlight = new Highlight(i, xPosition, xPosition + 2, line.Substring(xPosition, 2), HighlightType.Comment);
-                                    fileBuffer.setHighlight(newHighlight);
-
-                                    // Move past comment start
-                                    //
-                                    xPosition += 2; // might go over end of line so beware this
-
-                                    inMLComment = true;
-                                }
-
-                                else
-                                {
-                                    // Fetch a token
-                                    //
-                                    Match m = m_token.Match(line.Substring(xPosition));
-
-                                    // If we have a token inspect it
-                                    //
-                                    if (m.Success)
-                                    {
-
-                                        // Note that our pattern might match on a substring but not be valid in the
-                                        // whole string - so check previous character to see if it's a word boundary
-                                        //
-                                        bool startBoundary = true;
-                                        if (xPosition > 0)
-                                        {
-                                            Match m2 = m_token.Match(line.Substring(xPosition - 1));
-
-                                            if (m2.Success && line[xPosition - 1] != ' ' && line[xPosition - 1] != '\t' )
-                                            {
-                                                startBoundary = false;
-                                            }
-                                        }
-
-                                        if (startBoundary)
-                                        {
-                                            // Not sure we need this
-                                            //string stripWhitespace = m.Value.Replace(" ", "");
-                                            //int adjustLength = m.Value.Length - stripWhitespace.Length;
-                                            //GroupCollection coll = m.Groups;
-
-                                            if (m_keywords.Contains(m.Value))
-                                            {
-                                                Highlight newHighlight = new Highlight(i, xPosition + m.Index, xPosition + m.Index + m.Value.Length, m.Value, HighlightType.Keyword);
-                                                fileBuffer.setHighlight(newHighlight);
-                                                xPosition = newHighlight.m_endHighlight.X;
-                                            }
-                                        }
-                                    }
-                                }
-#if TABS_DONT_WORK_HERE
-                                // End of tab run - insert highlight
+                                // Check to see if there is an existing BraceDepth entry here
                                 //
-                                if (line[xPosition] != '\t' && startTab != -1)
+                                if (testBraceDepth(xPosition, i) == -1)
                                 {
-                                    Highlight newHighlight = new Highlight(i, startTab, xPosition, "TB", SyntaxManager.m_commentColour);
-                                    fileBuffer.setHighlight(newHighlight);
-                                    startTab = -1;
+                                    // Test the indent depth on the next line
+                                    //
+                                    int newDepth = testIndentDepth(fileBuffer, i + 1);
+
+                                    // If it's not set then we just estimate it based on previous values plus '2'
+                                    if (newDepth == -1)
+                                    {
+                                        newDepth = getIndentDepth(xPosition, i) + 2;
+                                    }
+
+                                    BraceDepth bd = new BraceDepth(xPosition, i, newDepth);
+                                    m_bracePositions.Add(bd, newDepth);
                                 }
-                                else if (line[xPosition] == '\t' && startTab == -1) // Handle tabs - we might want to highlight there
-                                {
-                                    startTab = xPosition;
-                                }
-#endif
                             }
-                        //}
+                            else if (line[xPosition] == '}')
+                            {
+                                if (testBraceDepth(xPosition, i) == -1)
+                                {
+                                    int existingDepth = getIndentDepth(xPosition, i);
+                                    int newDepth = Math.Max(existingDepth - 2, 0);
+
+                                    BraceDepth bd = new BraceDepth(xPosition, i, newDepth);
+                                    m_bracePositions.Add(bd, newDepth);
+                                }
+                            }
+                            else if (line[xPosition] == '/' && (xPosition + 1 < line.Length && line[xPosition + 1] == '*'))
+                            {
+                                // Insert highlight if this is only thing on line
+                                //
+                                Highlight newHighlight = new Highlight(i, xPosition, xPosition + 2, line.Substring(xPosition, 2), HighlightType.Comment);
+                                fileBuffer.setHighlight(newHighlight, backgroundThread);
+
+                                // Move past comment start
+                                //
+                                xPosition += 2; // might go over end of line so beware this
+
+                                inMLComment = true;
+                            }
+
+                            else
+                            {
+                                // Fetch a token
+                                //
+                                Match m = m_token.Match(line.Substring(xPosition));
+
+                                // If we have a token inspect it
+                                //
+                                if (m.Success)
+                                {
+
+                                    // Note that our pattern might match on a substring but not be valid in the
+                                    // whole string - so check previous character to see if it's a word boundary
+                                    //
+                                    bool startBoundary = true;
+                                    if (xPosition > 0)
+                                    {
+                                        Match m2 = m_token.Match(line.Substring(xPosition - 1));
+
+                                        if (m2.Success && line[xPosition - 1] != ' ' && line[xPosition - 1] != '\t' )
+                                        {
+                                            startBoundary = false;
+                                        }
+                                    }
+
+                                    // Has our pre-check passed?
+                                    //
+                                    if (startBoundary)
+                                    {
+                                        if (m_keywords.Contains(m.Value))
+                                        {
+                                            Highlight newHighlight = new Highlight(i, xPosition + m.Index, xPosition + m.Index + m.Value.Length, m.Value, HighlightType.Keyword);
+                                            fileBuffer.setHighlight(newHighlight, backgroundThread);
+                                            xPosition = newHighlight.m_endHighlight.X;
+                                        }
+                                        else
+                                        {
+                                            // Step past token
+                                            //
+                                            xPosition += m.Value.Length;
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     if (lastXPosition == xPosition)
@@ -354,11 +299,21 @@ namespace Xyglo
                 }
             }
 
+#if CPP_SYNTAX_MANAGER_DEBUG
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - removing dupes and sorting");
-            fileBuffer.checkAndSort();
+#endif
+            fileBuffer.checkAndSort(backgroundThread);
+
+#if CPP_SYNTAX_MANAGER_DEBUG
 
             sw.Stop();
             Logger.logMsg("CppSyntaxManager::generateHighlighting() - completed " + fileBuffer.getFilepath() + " in " + sw.Elapsed.TotalMilliseconds + " ms", true);
+#endif
+
+            // Release the mutex for this
+            m_highlightingMutex.ReleaseMutex();
+
+            return true;
         }
 
         /// <summary>

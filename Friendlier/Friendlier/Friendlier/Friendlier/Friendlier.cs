@@ -2604,6 +2604,7 @@ namespace Xyglo
             else if (checkKeyState(Keys.Tab, gameTime)) // Insert a tab space
             {
                 m_project.getSelectedBufferView().insertText(m_project, "\t");
+                updateSmartHelp();
             }
             else if (checkKeyState(Keys.Insert, gameTime))
             {
@@ -2764,6 +2765,7 @@ namespace Xyglo
 
                         m_project.getSelectedBufferView().deleteSingle(m_project);
                     }
+                    updateSmartHelp();
                 }
             }
             else if (checkKeyState(Keys.Enter, gameTime))
@@ -2895,6 +2897,7 @@ namespace Xyglo
                     {
                         m_project.getSelectedBufferView().insertNewLine(m_project, indent);
                     }
+                    updateSmartHelp();
                 }
             }
         }
@@ -3114,6 +3117,7 @@ namespace Xyglo
                             {
                                 m_project.getSelectedBufferView().insertText(m_project, System.Windows.Forms.Clipboard.GetText());
                             }
+                            updateSmartHelp();
                             rC = true;
                      
                         }
@@ -3131,6 +3135,7 @@ namespace Xyglo
                         if (m_project.getSelectedBufferView().getFileBuffer().getUndoPosition() > 0)
                         {
                             m_project.getSelectedBufferView().undo(m_project, 1);
+                            updateSmartHelp();
                         }
                         else
                         {
@@ -3159,6 +3164,7 @@ namespace Xyglo
                             m_project.getSelectedBufferView().getFileBuffer().getCommandStackLength())
                         {
                             m_project.getSelectedBufferView().redo(m_project, 1);
+                            updateSmartHelp();
                         }
                         else
                         {
@@ -3586,7 +3592,7 @@ namespace Xyglo
                 m_heldDownLastRepeatTime = gameTime.TotalGameTime.TotalSeconds;
                 // If we're repeating then don't repeat too fast
                 //
-                //Logger.logMsg("Friendlier::processKeys() - got key repeat");
+                Logger.logMsg("Friendlier::processKeys() - got key repeat");
             }
 
             // At this point any held down key is valid for the next iteration
@@ -3941,9 +3947,38 @@ namespace Xyglo
                     {
                         m_project.getSelectedBufferView().insertText(m_project, key);
                     }
+                    updateSmartHelp();
                 }
             }
         }
+
+        /// <summary>
+        /// Update syntax highlighting if we need to 
+        /// </summary>
+        protected void updateSmartHelp()
+        {
+            // Update the syntax highlighting
+            //
+            if (m_project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
+            {
+                FileBuffer fb = m_project.getSelectedBufferView().getFileBuffer();
+                int startLine = m_project.getSelectedBufferView().getBufferShowStartY();
+                int endLine = m_project.getSelectedBufferView().getBufferShowStartY() + m_project.getSelectedBufferView().getBufferShowLength();
+
+                // Ensure that the syntax manager isn't processing highlights at the time of the next request.
+                //
+                m_project.getSyntaxManager().interruptProcessing();
+
+                // We process all highlighting in the SmartHelpWorker thread.  Note that you have to do this
+                // all in the same thread or the main GUI gets locked out.  Although it would make sense to
+                // do just the on-screen bit in main thread we can minimise latency by keeping the highlight
+                // thread sleep
+                //
+                m_smartHelpWorker.updateSyntaxHighlighting(m_project.getSyntaxManager(), m_project.getSelectedBufferView().getFileBuffer(),
+                    startLine, endLine);
+            }
+        }
+
 
         /// <summary>
         /// Run a search on the current BufferView

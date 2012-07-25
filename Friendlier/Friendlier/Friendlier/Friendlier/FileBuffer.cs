@@ -139,10 +139,10 @@ namespace Xyglo
         protected List<Highlight> m_backgroundHighlightList = new List<Highlight>();
 
         /// <summary>
-        /// Indicate that something is updating our m_backgroundHighlightList
+        /// List used only to swap between m_highlightList and m_backgroundHighlightList
         /// </summary>
         [NonSerialized]
-        protected volatile bool m_updatingBackground = false;
+        List<Highlight> m_swapList = new List<Highlight>();
 
         /// <summary>
         /// Use this to allow us to process highlighting in the background
@@ -839,6 +839,7 @@ namespace Xyglo
 
         }
 
+        /*
         /// <summary>
         /// Insert a range into the highlighting.  Often works in combination with a removed range and the action
         /// depends on the command calling it.  StartPosition, endPosition and snippet hold all the information
@@ -860,11 +861,10 @@ namespace Xyglo
 
             // For new line inserts
             //
-            /*
-            if (snippet.isNewLine())
-            {
+            //if (snippet.isNewLine())
+            //{
 
-            }*/
+            //}
 
             // Now fetch highlights to modify - if on one line only that line
             //
@@ -1007,7 +1007,7 @@ namespace Xyglo
                     }
                 }
             }
-        }
+        }*/
 
         /// <summary>
         /// Deletes a selection from a FileBuffer - returns true if it actually deleted something.
@@ -1216,6 +1216,7 @@ namespace Xyglo
 
         }
 
+        /*
         /// <summary>
         /// Undo any highlighting changes using the highlights stored in the snippet
         /// </summary>
@@ -1232,6 +1233,7 @@ namespace Xyglo
             m_highlightList.AddRange(snippet.m_highlights);
             m_highlightList.Sort();
         }
+         * */
 
 
         /// <summary>
@@ -1475,10 +1477,11 @@ namespace Xyglo
             return new FilePosition(0, 0);
         }
 
+        /*
         /// <summary>
         /// Clear the list of all highlights
         /// </summary>
-        public void clearAllHighlights(bool background = false)
+        public void clearAllHighlights(bool background)
         {
             if (background)
                 m_backgroundHighlightList.Clear();
@@ -1489,12 +1492,12 @@ namespace Xyglo
                 m_highlightMutex.ReleaseMutex();
             }
         }
-
+        */
 
         /// <summary>
         /// Clear the highlight dictionary
         /// </summary>
-        public void clearHighlights(FilePosition fromPos, FilePosition toPos, bool background = false)
+        public void clearHighlights(FilePosition fromPos, FilePosition toPos, bool background)
         {
             if (background)
             {
@@ -1523,7 +1526,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="line"></param>
         /// <param name="highlight"></param>
-        public void setHighlight(Highlight highlight, bool background = false)
+        public void setHighlight(Highlight highlight, bool background)
         {
             if (background)
             {
@@ -1552,11 +1555,11 @@ namespace Xyglo
         /// <summary>
         /// Ensure that the highlight list is sorted, ordered and consistent
         /// </summary>
-        public void checkAndSort(bool background = false)
+        public void checkAndSort(bool background)
         {
             if (background)
             {
-                m_backgroundHighlightList = m_highlightList.Distinct().ToList();
+                m_backgroundHighlightList = m_backgroundHighlightList.Distinct().ToList();
                 m_backgroundHighlightList.Sort();
             }
             else
@@ -1577,22 +1580,40 @@ namespace Xyglo
             }
         }
 
+
         /// <summary>
-        /// Copy across the background highlighting to the live highlighting
+        /// Swap across the background highlighting to the live highlighting - this should be done from
+        /// the syntax highlighting thread only so we can also spend some time here creating a new 
+        /// List for the next set of background highlighting.   We can also do a deep copy if we want to.
         /// </summary>
-        public void copyBackgroundHighlighting()
+        public void copyBackgroundHighlighting(bool slowDeepCopy = false)
         {
             m_highlightMutex.WaitOne();
 
-            m_highlightList.Clear();
+            //Logger.logMsg("FileBuffer::copyBackgroundHighlighting() - m_highlightList count = " + m_highlightList.Count);
+            //Logger.logMsg("FileBuffer::copyBackgroundHighlighting() - m_backgroundHighlightList count = " + m_backgroundHighlightList.Count);
 
-            // Deep copy the list into the highlight list
-            //
-            foreach (Highlight hl in m_backgroundHighlightList)
+            if (slowDeepCopy)
             {
-                m_highlightList.Add(new Highlight(hl));
+                m_highlightList.Clear();
+
+                // Deep copy the list into the highlight list
+                //
+                foreach (Highlight hl in m_backgroundHighlightList)
+                {
+                    m_highlightList.Add(new Highlight(hl));
+                }
             }
-            
+            else
+            {
+                m_swapList = m_highlightList;
+                m_highlightList = m_backgroundHighlightList;
+
+                // Clear this list and swap it onto the background list
+                m_swapList.Clear();
+                m_backgroundHighlightList = m_swapList;
+            }
+  
             m_highlightMutex.ReleaseMutex();
         }
     }

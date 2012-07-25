@@ -43,6 +43,12 @@ namespace Xyglo
         [NonSerialized]
         protected SortedList m_bracePositions = new SortedList();
 
+        /// <summary>
+        /// Allow another thread to interrupt this process when it's doing something lengthy like
+        /// regenerating highlighting for a large file etc.
+        /// </summary>
+        protected volatile bool m_interruptProcessing = false;
+
 
         /////////////////////////////// CONSTRUCTORS ///////////////////////////////////////
 
@@ -68,23 +74,31 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Allow another thread to interrupt us
+        /// </summary>
+        public void interruptProcessing()
+        {
+            m_interruptProcessing = true;
+        }
+
+        /// <summary>
         /// Update the highlighting information after we've made a modification.   Accepts a command name and
         /// a direction.  Does not run this command - only updates the highlighting following it.
         /// </summary>
         /// <param name="command"></param>
         /// <param name="doCommand"></param>
-        public abstract void updateHighlighting(Command command, bool doCommand);
+        //public abstract void updateHighlighting(Command command, bool doCommand);
 
         /// <summary>
         /// Generate highlighting for a specified file range and specify characters add or removed if fromPos = toPos
         /// </summary>
         /// <param name="fileBuffer"></param>
-        public abstract void generateHighlighting(FileBuffer fileBuffer, FilePosition fromPos, FilePosition toPos, int characters = 0);
+        public abstract bool generateHighlighting(FileBuffer fileBuffer, FilePosition fromPos, FilePosition toPos, bool backgroundThread = false);
 
         /// <summary>
         /// Generates all highlighting for a given FileBuffer
         /// </summary>
-        public abstract void generateAllHighlighting(FileBuffer fileBuffer);
+        public abstract bool generateAllHighlighting(FileBuffer fileBuffer, bool backgroundThread = false);
 
         /// <summary>
         /// Ensure we have a method which initialises a list of keywords
