@@ -109,6 +109,9 @@ namespace Xyglo
             m_highlightStart = highlightStart;
             m_highlightEnd = highlightEnd;
 
+            // Set newline at the snippet level too
+            //
+            m_snippet.setNewLine(m_newLine);
 
             // Generate an initial ScreenPosition from the FilePosition - we use this for undo
             //
@@ -247,7 +250,6 @@ namespace Xyglo
                 {
                     m_fileBuffer.insertLine(0, "");
                 }
-
                 
                 if (m_snippet.m_lines.Count() == 1)
                 {

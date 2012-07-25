@@ -16,7 +16,9 @@ namespace Xyglo
 {
     /// <summary>
     /// A class that holds information about some text that we are adding or deleting
-    /// from an existing item.
+    /// from an existing FileBuffer.  This snippet also holds clues in that we can tell
+    /// it to keep a track of a newly inserted line, or a deleted line or lines and works
+    /// with single characters to multilines.  Still not quite there but getting there.
     /// </summary>
     public class TextSnippet
     {
@@ -39,6 +41,11 @@ namespace Xyglo
         /// Single character delete
         /// </summary>
         protected bool m_isSingle = false;
+
+        /// <summary>
+        /// Has a new line been added as part of this snippet/command
+        /// </summary>
+        protected bool m_isNewLine = false;
 
         /// <summary>
         /// Position in the SnippetFactory - do we use this?
@@ -70,6 +77,24 @@ namespace Xyglo
         public bool isSingleCharacter()
         {
             return m_isSingle;
+        }
+
+        /// <summary>
+        /// Set the newline attribute of this TextSnippet
+        /// </summary>
+        /// <param name="newLine"></param>
+        public void setNewLine(bool newLine)
+        {
+            m_isNewLine = newLine;
+        }
+
+        /// <summary>
+        /// Is this snippet part of a NewLine insertion?
+        /// </summary>
+        /// <returns></returns>
+        public bool isNewLine()
+        {
+            return m_isNewLine;
         }
 
         public void incrementLinesDeleted(int increment)

@@ -14,6 +14,10 @@ USE CASES
 - The writer - writing a book, researching
 - The journalist - writing a story, researching
 
+
+- Integrate with Scintilla
+
+
 Release
 -------
 - Frustrum culling to improve performance [DONE]

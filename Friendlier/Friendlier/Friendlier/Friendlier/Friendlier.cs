@@ -451,6 +451,16 @@ namespace Xyglo
         protected Thread m_counterWorkerThread;
 
         /// <summary>
+        /// SmartHelp worker thread
+        /// </summary>
+        protected SmartHelpWorker m_smartHelpWorker;
+
+        /// <summary>
+        /// The thread that is used for the counter
+        /// </summary>
+        protected Thread m_smartHelpWorkerThread;
+
+        /// <summary>
         /// Worker thread for the Kinect management
         /// </summary>
         protected KinectWorker m_kinectWorker;
@@ -1146,9 +1156,13 @@ namespace Xyglo
             m_counterWorkerThread = new Thread(m_counterWorker.startWorking);
             m_counterWorkerThread.Start();
 
+            m_smartHelpWorker = new SmartHelpWorker();
+            m_smartHelpWorkerThread = new Thread(m_smartHelpWorker.startWorking);
+            m_smartHelpWorkerThread.Start();
+
             // Loop until worker thread activates.
             //
-            while (!m_counterWorkerThread.IsAlive);
+            while (!m_counterWorkerThread.IsAlive && !m_smartHelpWorkerThread.IsAlive);
             Thread.Sleep(1);
 
             // Start up the worker thread for Kinect integration
@@ -1813,6 +1827,15 @@ namespace Xyglo
                     m_counterWorkerThread.Join();
                     m_counterWorker = null;
                 }
+
+                // Join the smart help worker 
+                //
+                if (m_smartHelpWorker != null)
+                {
+                    m_smartHelpWorker.requestStop();
+                    m_smartHelpWorkerThread.Join();
+                    m_smartHelpWorker = null;
+                }
                     
                 // Modify Z if we're in the file selector height of 600.0f
                 //
@@ -2475,12 +2498,12 @@ namespace Xyglo
             }
             else if (checkKeyState(Keys.F6, gameTime))
             {
-                doBuildCommand(gameTime, "Starting Build...");
+                doBuildCommand(gameTime);
             }
             else if (checkKeyState(Keys.F7, gameTime))
             {
                 string command = m_project.getConfigurationValue("ALTERNATEBUILDCOMMAND");
-                doBuildCommand(gameTime, "Starting Alternate Build...", command);
+                doBuildCommand(gameTime, command);
             }
             else if (checkKeyState(Keys.F11, gameTime)) // Toggle full screen
             {
@@ -6981,8 +7004,9 @@ namespace Xyglo
         /// Perform an external build
         /// </summary>
         [SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.UnmanagedCode)]
-        protected void doBuildCommand(GameTime gameTime, string buildMessage, string overrideString = "")
+        protected void doBuildCommand(GameTime gameTime, string overrideString = "")
         {
+
             if (m_buildProcess != null)
             {
                 Logger.logMsg("Friendlier::doBuildCommand() - build in progress");
@@ -7162,7 +7186,6 @@ namespace Xyglo
                         m_buildProcess.ErrorDataReceived += new DataReceivedEventHandler(logBuildStdErr);
                         m_buildProcess.Exited += new EventHandler(buildCompleted);
 
-
                         m_buildProcess.EnableRaisingEvents = true;
 
                         Logger.logMsg("Friendlier::doBuildCommand() - working directory = " + info.WorkingDirectory);
@@ -7177,15 +7200,10 @@ namespace Xyglo
 
                         // Inform that we're starting the build
                         //
-                        setTemporaryMessage(buildMessage, 4, gameTime);
-
-                        // We don't do banner any more
-                        //startBanner(m_gameTime, "Build started", 5);
-
+                        setTemporaryMessage("Starting build..", 4, gameTime);
+                        startBanner(m_gameTime, "Build started", 5);
 
                         /*
-                         * Can't check the exit code at this point!
-                         * 
                         // Handle any immediate exit error code
                         //
                         if (m_buildProcess.ExitCode != 0)

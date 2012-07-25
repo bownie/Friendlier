@@ -64,6 +64,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Diff">
+      <HintPath>..\..\Build Libraries\Diff.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.Contracts, Version=1.0.0.0, Culture=neutral, PublicKeyToken=736440c9b414ea16, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\..\QuickGraph\Microsoft.Contracts.dll</HintPath>
@@ -154,6 +157,7 @@
     <Compile Include="Pair.cs" />
     <Compile Include="ReformatTextCommand.cs" />
     <Compile Include="ScreenPosition.cs" />
+    <Compile Include="SmartHelpWorker.cs" />
     <Compile Include="User.cs" />
     <Compile Include="XygloKinectHelper.cs" />
     <Compile Include="XygloKinectManager.cs" />

@@ -121,12 +121,6 @@ namespace Xyglo
         protected TimeSpan m_fetchWindow;
 
         /// <summary>
-        /// Sortedlist of highlights
-        /// </summary>
-        //[NonSerialized]
-        //protected SortedList<FilePosition, Highlight> m_highlightSortedList = new SortedList<FilePosition, Highlight>();
-
-        /// <summary>
         /// A normal List for holding Highlights.  These are markers overlaying text elements which
         /// hold colouration information for text highlighting purposes.
         /// </summary>
@@ -137,6 +131,23 @@ namespace Xyglo
         /// List of highlights we're going to return to the drawFileBuffer in the main loop
         /// </summary>
         protected List<Highlight> m_returnLineList = new List<Highlight>();
+
+        /// <summary>
+        /// This is the list that is updated in the background 
+        /// </summary>
+        [NonSerialized]
+        protected List<Highlight> m_backgroundHighlightList = new List<Highlight>();
+
+        /// <summary>
+        /// Indicate that something is updating our m_backgroundHighlightList
+        /// </summary>
+        [NonSerialized]
+        protected volatile bool m_updatingBackground = false;
+
+        /// <summary>
+        /// Use this to allow us to process highlighting in the background
+        /// </summary>
+        protected Mutex m_highlightMutex = new Mutex();
 
         /// <summary>
         /// Protected our m_lines during read/write
@@ -828,6 +839,17 @@ namespace Xyglo
 
         }
 
+        /// <summary>
+        /// Insert a range into the highlighting.  Often works in combination with a removed range and the action
+        /// depends on the command calling it.  StartPosition, endPosition and snippet hold all the information
+        /// required but there is an impliced command through their use.  So changes to commands could affect
+        /// how this works.  Not a totally clean solution but reasonable in terms of the rest of the design 
+        /// (whereby the SyntaxManager.updateHighlighting command is a central interface for doing and undoing
+        /// all highlighting changes).
+        /// </summary>
+        /// <param name="startPosition"></param>
+        /// <param name="endPosition"></param>
+        /// <param name="snippet"></param>
         public void insertHighlightingRange(FilePosition startPosition, FilePosition endPosition, TextSnippet snippet)
         {
             List<Highlight> modifySelection;
@@ -836,9 +858,18 @@ namespace Xyglo
             //
             m_highlightList.Sort();
 
+            // For new line inserts
+            //
+            /*
+            if (snippet.isNewLine())
+            {
+
+            }*/
+
             // Now fetch highlights to modify - if on one line only that line
             //
-            if (snippet.isSingleCharacter() && startPosition == endPosition)
+            if ((snippet.isSingleCharacter() && startPosition == endPosition)       // for delete command of single character
+                || (snippet.m_lines.Count == 1 && snippet.m_lines[0].Length == 1))  // for insert of single character
             {
                 modifySelection = m_highlightList.Where(item => item.m_startHighlight.Y == startPosition.Y).ToList();
 
@@ -856,7 +887,8 @@ namespace Xyglo
                     if (hl.m_startHighlight.Y == startPosition.Y && hl.m_startHighlight.X >= startPosition.X)
                     {
                         // Deal with single line, single character case
-                        if (snippet.isSingleCharacter())
+                        if (snippet.isSingleCharacter()         // delete case
+                            || snippet.m_lines[0].Length == 1)  // insert case
                         {
                             hl.m_startHighlight.X++;
                             hl.m_endHighlight.X++;
@@ -867,9 +899,9 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Remove a range from the highlighting.  If we specify a range and no lines deleted then just the highlighting
-        /// is removed.   If linesDeleted is specified then we also remove that number of lines from subsequent
-        /// highlighting entries.  This allows us to deal with inline deletions and well as complete deletions
+        /// Remove a range from the highlighting.  We use the startPosition and endPosition in combination with the
+        /// information stored in the snippet to work out what we have to do, but bear in mind that we already now which
+        /// command has issued this request so there is a certain amount of pre-logic assumed here.
         /// </summary>
         /// <param name="startLine"></param>
         /// <param name="endLine"></param>
@@ -877,9 +909,53 @@ namespace Xyglo
         {
             List<Highlight> modifySelection;
 
+            // First handle lines deleted and remove those highlights and mvoe down everything else
+            //
+            if (snippet.getLinesDeleted() > 0)
+            {
+                // First get the selection to delete
+                //
+                modifySelection = m_highlightList.Where(item => item.m_startHighlight.Y >= startPosition.Y && item.m_startHighlight.Y < startPosition.Y + snippet.getLinesDeleted()).ToList();
+
+                // And delete it
+                //
+                foreach(Highlight hl in modifySelection)
+                {
+                    m_highlightList.Remove(hl);
+                }
+
+                // Everything remaining after the start position needs some Y values taking off them
+                //
+                modifySelection = m_highlightList.Where(item => item.m_startHighlight.Y >= startPosition.Y).ToList();
+
+                // Get the previous line length so we can add it to any highlights that are joined 
+                // on to this line.
+                //
+                int previousLineLength = getLine(startPosition.Y).Length;
+
+                foreach (Highlight hl in modifySelection)
+                {
+                    // If we're attaching to a previous line and the previous line has something on it 
+                    // already adjust the X portion of the highlights)
+                    //
+                    if ((hl.m_startHighlight.Y - snippet.getLinesDeleted()) == startPosition.Y)
+                    {
+                        hl.m_startHighlight.X += previousLineLength;
+                        hl.m_endHighlight.X += previousLineLength;
+                    }
+
+                    // Now take the line count away
+                    //
+                    hl.m_startHighlight.Y -= snippet.getLinesDeleted();
+                    hl.m_endHighlight.Y -= snippet.getLinesDeleted();
+                }
+                return;
+            }
+
             // Now fetch highlights to modify - if on one line only that line
             //
-            if (snippet.isSingleCharacter() && startPosition == endPosition)
+            if ((snippet.isSingleCharacter() && startPosition == endPosition)       // for delete command of single character
+                || (snippet.m_lines.Count == 1 && snippet.m_lines[0].Length == 1))  // for insert of single character)
             {
                 modifySelection = m_highlightList.Where(item => item.m_startHighlight.Y == startPosition.Y).ToList();
 
@@ -897,7 +973,8 @@ namespace Xyglo
                     if (hl.m_startHighlight.Y == startPosition.Y && hl.m_startHighlight.X >= startPosition.X)
                     {
                         // Deal with single line, single character case
-                        if (snippet.isSingleCharacter())
+                        if (snippet.isSingleCharacter()         // delete case
+                            || snippet.m_lines[0].Length == 1)  // insert case
                         {
                             hl.m_startHighlight.X--;
                             hl.m_endHighlight.X--;
@@ -1186,7 +1263,7 @@ namespace Xyglo
 
                     // Fix the highlighting
                     //
-                    undoHighlighting(m_commands[i].getStartPos(), m_commands[i].getSnippet());
+                    //undoHighlighting(m_commands[i].getStartPos(), m_commands[i].getSnippet());
                 }
 
                 // Reduce the m_undoPosition accordingly
@@ -1315,6 +1392,10 @@ namespace Xyglo
             m_returnLineList.Clear();
             Highlight convertHL;
 
+            // Get the mutex
+            //
+            m_highlightMutex.WaitOne();
+
             foreach (Highlight item in m_highlightList.Where(item => item.m_startHighlight.Y == line).ToList())
             {
                 convertHL = new Highlight(item);
@@ -1342,6 +1423,10 @@ namespace Xyglo
                     m_returnLineList.Add(convertHL);
                 }
             }
+
+            // Release the mutex
+            //
+            m_highlightMutex.ReleaseMutex();
 
             return m_returnLineList;
         }
@@ -1393,21 +1478,43 @@ namespace Xyglo
         /// <summary>
         /// Clear the list of all highlights
         /// </summary>
-        public void clearAllHighlights()
+        public void clearAllHighlights(bool background = false)
         {
-            m_highlightList.Clear();
+            if (background)
+                m_backgroundHighlightList.Clear();
+            else
+            {
+                m_highlightMutex.WaitOne();
+                m_highlightList.Clear();
+                m_highlightMutex.ReleaseMutex();
+            }
         }
 
 
         /// <summary>
         /// Clear the highlight dictionary
         /// </summary>
-        public void clearHighlights(FilePosition fromPos, FilePosition toPos)
+        public void clearHighlights(FilePosition fromPos, FilePosition toPos, bool background = false)
         {
-            List<Highlight> removeList = m_highlightList.Where(item => item.m_startHighlight >= fromPos && item.m_endHighlight <= toPos).ToList();
-            foreach (Highlight item in removeList)
+            if (background)
             {
-                m_highlightList.Remove(item);
+                List<Highlight> removeList = m_backgroundHighlightList.Where(item => item.m_startHighlight >= fromPos && item.m_endHighlight <= toPos).ToList();
+                foreach (Highlight item in removeList)
+                {
+                    m_backgroundHighlightList.Remove(item);
+                }
+            }
+            else
+            {
+                m_highlightMutex.WaitOne();
+
+                List<Highlight> removeList = m_highlightList.Where(item => item.m_startHighlight >= fromPos && item.m_endHighlight <= toPos).ToList();
+                foreach (Highlight item in removeList)
+                {
+                    m_highlightList.Remove(item);
+                }
+
+                m_highlightMutex.ReleaseMutex();
             }
         }
 
@@ -1416,28 +1523,77 @@ namespace Xyglo
         /// </summary>
         /// <param name="line"></param>
         /// <param name="highlight"></param>
-        public void setHighlight(Highlight highlight)
+        public void setHighlight(Highlight highlight, bool background = false)
         {
-            if (m_highlightList.Contains(highlight))
+            if (background)
             {
-                throw new Exception("FileBuffer::setHighlight() - attempting to set duplicate");
-            }
+                if (m_backgroundHighlightList.Contains(highlight))
+                {
+                    throw new Exception("FileBuffer::setHighlight() - attempting to set duplicate");
+                }
 
-            m_highlightList.Add(highlight);
+                m_backgroundHighlightList.Add(highlight);
+            }
+            else
+            {
+                m_highlightMutex.WaitOne();
+
+                if (m_highlightList.Contains(highlight))
+                {
+                    throw new Exception("FileBuffer::setHighlight() - attempting to set duplicate");
+                }
+
+                m_highlightList.Add(highlight);
+
+                m_highlightMutex.ReleaseMutex();
+            }
         }
 
         /// <summary>
         /// Ensure that the highlight list is sorted, ordered and consistent
         /// </summary>
-        public void checkAndSort()
+        public void checkAndSort(bool background = false)
         {
-            // Remove duplicates
-            //
-            m_highlightList = m_highlightList.Distinct().ToList();
+            if (background)
+            {
+                m_backgroundHighlightList = m_highlightList.Distinct().ToList();
+                m_backgroundHighlightList.Sort();
+            }
+            else
+            {
+                m_highlightMutex.WaitOne();
 
-            // Sort
+                // Remove duplicates
+                //
+                m_highlightList = m_highlightList.Distinct().ToList();
+
+                // Sort
+                //
+                m_highlightList.Sort();
+
+                // Release
+                //
+                m_highlightMutex.ReleaseMutex();
+            }
+        }
+
+        /// <summary>
+        /// Copy across the background highlighting to the live highlighting
+        /// </summary>
+        public void copyBackgroundHighlighting()
+        {
+            m_highlightMutex.WaitOne();
+
+            m_highlightList.Clear();
+
+            // Deep copy the list into the highlight list
             //
-            m_highlightList.Sort();
+            foreach (Highlight hl in m_backgroundHighlightList)
+            {
+                m_highlightList.Add(new Highlight(hl));
+            }
+            
+            m_highlightMutex.ReleaseMutex();
         }
     }
 }
