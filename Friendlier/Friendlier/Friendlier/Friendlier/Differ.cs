@@ -103,7 +103,6 @@ namespace Xyglo
         /// </summary>
         Vector2 m_leftBoxEnd;
 
-
         /// <summary>
         /// Colour of unchanged lines
         /// </summary>
@@ -136,6 +135,13 @@ namespace Xyglo
 
         // -------------------------------- CONSTRUCTORS --------------------------------------
         //
+
+
+        /// <summary>
+        /// Construct a Differ object.  A Differ contains a Google DiffMatchPatch object and this is
+        /// used to generate the raw diff.  Then on top of this the Differ class provides an interface
+        /// which gives it a line-level usefulness for our display purposes.
+        /// </summary>
         public Differ()
         {
             if (m_diff == null)
@@ -206,9 +212,9 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// This is our locally stored snapshots of differnces - result and line length which
+        /// This is our locally stored snapshots of differences - result and line length which
         /// is enough to generate the visible diff from but we also want the source line number
-        /// associated with any value here
+        /// associated with any value here.
         /// </summary>
         protected List<Pair<DiffResult, int>> m_lhsDiff = new List<Pair<DiffResult, int>>();
 
@@ -497,20 +503,20 @@ namespace Xyglo
                 switch (m_rhsDiff[i].First)
                 {
                     case DiffResult.Deleted:
-                        lineColour = Color.Red;
+                        lineColour = m_deletedColour;
                         break;
 
                     case DiffResult.Inserted:
-                        lineColour = Color.Green;
+                        lineColour = m_insertedColour;
                         break;
 
                     case DiffResult.Padding:
-                        lineColour = Color.Black;
+                        lineColour = m_paddingColour;
                         break;
 
                     case DiffResult.Unchanged:
                     default:
-                        lineColour = Color.White;
+                        lineColour = m_unchangedColour;
                         break;
                 }
 
@@ -548,8 +554,11 @@ namespace Xyglo
         /// <returns></returns>
         public bool process()
         {
-            //List<DiffMatchPatch.Diff> rL = dm.diff_lineMode(m_sourceBufferView1.getFileBuffer().getTextString(), m_sourceBufferView2.getFileBuffer().getTextString());
-            //m_diffList = m_diff.diff_main(m_sourceBufferView1.getFileBuffer().getTextString(), m_sourceBufferView2.getFileBuffer().getTextString());
+            Logger.logMsg("Differ::process - starting diff process");
+
+
+            // We use the diff publicLineMode - which is a hack to get line style diffing working
+            //
             m_diffList = m_diff.diff_publicLineMode(m_sourceBufferView1.getFileBuffer().getTextString(), m_sourceBufferView2.getFileBuffer().getTextString());
 
             // For no diffs or one diff the same then we've got nothing to do here
@@ -566,13 +575,28 @@ namespace Xyglo
             //
             //DiffMatchPatch.Diff lastDiff;
 
-            // Leftline and rightline store the line we're currently on in the
-            // relevant diff output file.
-            //
-            //int leftLine = 0;
-            //int rightLine = 0;
-            //bool newLine = false;
+            Logger.logMsg("Differ::process() - got " + m_diffList.Count + " diffs to process");
+
+            // 
             int lastDeleteLines = 0;
+
+
+#if PREALLOC
+            int totalPairs = 0;
+
+            // Preallocate some memory to speed things up a bit
+            //
+            foreach (DiffMatchPatch.Diff diff in m_diffList)
+            {
+                totalPairs += diff.text.Count(item => item == '\n');
+            }
+
+            // Preallocate lis
+            //
+            List<Pair<DiffResult, int>> tempList = new List<Pair<DiffResult, int>>(totalPairs);
+
+            int currentPair = 0;
+#endif
 
             // Process all the diffs
             //
@@ -589,7 +613,13 @@ namespace Xyglo
                     case DiffMatchPatch.Operation.DELETE:
                         for (int i = 0; i < linesAffected; i++)
                         {
+#if PREALLOC
+                            tempList[currentPair].First = DiffResult.Deleted;
+                            tempList[currentPair].Second = diff.text.Split('\n')[i].Length;
+                            m_lhsDiff.Add(tempList[currentPair++]);
+#else
                             m_lhsDiff.Add(new Pair<DiffResult, int>(DiffResult.Deleted, diff.text.Split('\n')[i].Length));
+#endif
                         }
 
                         // Set this so we know how many lines were deleted from the lhs
@@ -600,14 +630,26 @@ namespace Xyglo
                     case DiffMatchPatch.Operation.INSERT:
                         for(int i = 0; i < linesAffected; i++)
                         {
+#if PREALLOC
+                            tempList[currentPair].First = DiffResult.Inserted;
+                            tempList[currentPair].Second = diff.text.Split('\n')[i].Length;
+                            m_rhsDiff.Add(tempList[currentPair++]);
+#else
                             m_rhsDiff.Add(new Pair<DiffResult, int>(DiffResult.Inserted, diff.text.Split('\n')[i].Length));
+#endif
 
                             // If we didn't delete anything last then we need to pad the left hand side
                             // by the total lines affected.
                             //
                             if (lastDeleteLines == 0)
                             {
+#if PREALLOC
+                                tempList[currentPair].First = DiffResult.Padding;
+                                tempList[currentPair].Second = 0;
+                                m_lhsDiff.Add(tempList[currentPair++]);
+#else
                                 m_lhsDiff.Add(new Pair<DiffResult, int>(DiffResult.Padding, 0));
+#endif
                             }
                         }
 
@@ -618,14 +660,26 @@ namespace Xyglo
                         {
                             for (int i = linesAffected; i < lastDeleteLines; i++)
                             {
+#if PREALLOC
+                                tempList[currentPair].First = DiffResult.Padding;
+                                tempList[currentPair].Second = 0;
+                                m_rhsDiff.Add(tempList[currentPair++]);
+#else
                                 m_rhsDiff.Add(new Pair<DiffResult, int>(DiffResult.Padding, 0));
+#endif
                             }
                         }
                         else if (lastDeleteLines > 0 && lastDeleteLines < linesAffected)
                         {
                             for (int i = lastDeleteLines; i < linesAffected; i++)
                             {
+#if PREALLOC
+                                tempList[currentPair].First = DiffResult.Padding;
+                                tempList[currentPair].Second = 0;
+                                m_lhsDiff.Add(tempList[currentPair++]);
+#else
                                 m_lhsDiff.Add(new Pair<DiffResult, int>(DiffResult.Padding, 0));
+#endif
                             }
                         }
 
@@ -637,19 +691,44 @@ namespace Xyglo
                         // Insert padding at this point if we're deleted some prior lines
                         for (int i = 0; i < lastDeleteLines; i++ )
                         {
+#if PREALLOC
+                            tempList[currentPair].First = DiffResult.Padding;
+                            tempList[currentPair].Second = 0;
+                            m_rhsDiff.Add(tempList[currentPair++]);
+#else
                             m_rhsDiff.Add(new Pair<DiffResult, int>(DiffResult.Padding, 0));
+#endif
                         }
 
                         for (int i = 0; i < linesAffected; i++)
                         {
+#if PREALLOC
+                            tempList[currentPair].First = DiffResult.Unchanged;
+                            tempList[currentPair].Second = diff.text.Split('\n')[i].Length;
+                            m_rhsDiff.Add(tempList[currentPair++]);
+
+                            tempList[currentPair].First = DiffResult.Unchanged;
+                            tempList[currentPair].Second = diff.text.Split('\n')[i].Length;
+                            m_lhsDiff.Add(tempList[currentPair++]);
+
+#else
                             m_rhsDiff.Add(new Pair<DiffResult, int>(DiffResult.Unchanged, diff.text.Split('\n')[i].Length));
                             m_lhsDiff.Add(new Pair<DiffResult, int>(DiffResult.Unchanged, diff.text.Split('\n')[i].Length));
+#endif
                         }
                         lastDeleteLines = 0;
                         break;
                 }
             }
 
+#if PREALLOC
+            // Deallocate explicitly anything not yet used
+            //
+            for (int i = currentPair; i < tempList.Count; i++)
+            {
+                tempList[i] = null;
+            }
+#endif
             return true;
         }
     }

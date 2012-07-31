@@ -15,7 +15,7 @@ USE CASES
 - The journalist - writing a story, researching
 
 
-- Integrate with Scintilla
+- Integrate with Scintilla [NO]
 
 
 Release
@@ -30,6 +30,7 @@ Release
 - error with collections during background build [CHANGED MUTEX TO FILE BUFFER LEVEL]
 - fix defaults in project file etc [DONE]
 - highlighting with long lines on editor [DONE]
+- Check out highlighting and other performance sinks [MOVED HIGHLIGHTING TO THREAD]
 
 BUGS
 ----
@@ -37,8 +38,7 @@ BUGS
 - tabs in the differ
 - control word jump is too aggressive - must take slashes etc into account [DONE?]
 - fix tabs and write tests for them
-- Do file buffering to improve performance
-- Check out highlighting and other performance sinks
+- Do file buffering to improve performance 
 - complete tests for textcommands [INPROGRESS]
 - word jumping with long lines on editor
 - drag and drop file to exact position

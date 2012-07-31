@@ -179,9 +179,24 @@ namespace Xyglo
             {
                 // Do something for a single line
 
-                // Fetch and store the line
+                // Fetch and store the line - bear in mind we might have deleted it already if we're
+                // replacing the entire line.
                 //
-                string fetchLine = m_fileBuffer.getLine(m_startPos.Y);
+                string fetchLine = "";
+                if (m_startPos.Y < m_fileBuffer.getLineCount())
+                {
+                    fetchLine = m_fileBuffer.getLine(m_startPos.Y);
+                }
+                else
+                {
+                    // Add lines until we have enough
+                    //
+                    while (m_startPos.Y >= m_fileBuffer.getLineCount())
+                    {
+                        m_fileBuffer.insertLine(m_fileBuffer.getLineCount(), "");
+                    }
+
+                }
 
                 if (m_newLine)
                 {

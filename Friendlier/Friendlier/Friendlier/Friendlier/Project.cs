@@ -1152,7 +1152,7 @@ namespace Xyglo
         /// <summary>
         /// When we are ready we can load all the files that have BufferViews
         /// </summary>
-        public void loadFiles()
+        public void loadFiles(SmartHelpWorker worker)
         {
             Logger.logMsg("Project::loadFiles() - starting");
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
@@ -1168,25 +1168,53 @@ namespace Xyglo
                 m_syntaxManager.initialiseKeywords();
             }
 
+            // A remove list in case we need it
+            //
+            List<BufferView> removeList = new List<BufferView>();
+
             // Only load files by active FileBuffers
             //
             foreach (BufferView bv in m_bufferViews)
             {
-                Logger.logMsg("Project::loadFiles() - loading " + bv.getFileBuffer().getFilepath(), true);
-                bv.getFileBuffer().loadFile(m_syntaxManager);
-                Logger.logMsg("Project::loadFiles() - completed loading " + bv.getFileBuffer().getFilepath(), true);
-
-                // Don't generate any highlighting for tailing files as we consider those as outputs
-                //
-                if (!bv.isTailing())
+                // Check for existence
+                if (!File.Exists(bv.getFileBuffer().getFilepath()))
                 {
-                    Logger.logMsg("Project::loadFiles() - generating highlighting for " + bv.getFileBuffer().getFilepath(), true);
-                    if (getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
+                    Logger.logMsg("Project::loadFiles() - this file is now missing and will be removed " + bv.getFileBuffer().getFilepath());
+                    removeList.Add(bv);
+                }
+                else
+                {
+                    Logger.logMsg("Project::loadFiles() - loading " + bv.getFileBuffer().getFilepath(), true);
+                    bv.getFileBuffer().loadFile(m_syntaxManager);
+                    Logger.logMsg("Project::loadFiles() - completed loading " + bv.getFileBuffer().getFilepath(), true);
+
+                    // Don't generate any highlighting for tailing files as we consider those as outputs
+                    //
+                    if (!bv.isTailing())
                     {
-                        m_syntaxManager.generateAllHighlighting(bv.getFileBuffer());
+                        Logger.logMsg("Project::loadFiles() - generating highlighting for " + bv.getFileBuffer().getFilepath(), true);
+                        if (getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
+                        {
+                            //m_syntaxManager.generateAllHighlighting(bv.getFileBuffer(), true);
+                            worker.updateSyntaxHighlighting(m_syntaxManager, bv.getFileBuffer());
+                        }
                     }
                 }
+            }
 
+            // Remove the BufferViews and any associated FileBuffers from the storage classes
+            //
+            if (removeList.Count > 0)
+            {
+                foreach (BufferView bv in removeList)
+                {
+                    m_bufferViews.Remove(bv);
+
+                    if (m_fileBuffers.Contains(bv.getFileBuffer()))
+                    {
+                        removeFileBuffer(bv.getFileBuffer());
+                    }
+                }
             }
 
             // Also reset our access timer

@@ -411,11 +411,6 @@ namespace Xyglo
         protected Color m_greyedColour = new Color(30, 30, 30, 50);
 
         /// <summary>
-        /// User help string
-        /// </summary>
-        protected string m_userHelp;
-
-        /// <summary>
         /// Position in configuration list when selecting something
         /// </summary>
         protected int m_configPosition;
@@ -693,10 +688,6 @@ namespace Xyglo
             //
             windowedMode();
 
-            // Populate the user help
-            //
-            populateUserHelp();
-
             // Check the demo status and set as necessary
             //
             if (!m_project.getLicenced())
@@ -856,7 +847,7 @@ namespace Xyglo
             }
             else
             {
-                m_project.loadFiles();
+                m_project.loadFiles(m_smartHelpWorker);
             }
 
             // Now do some jiggery pokery to make sure positioning is correct and that
@@ -1964,6 +1955,18 @@ namespace Xyglo
 
                             sp2.X = 0;
                             sp2.Y = m_differ.diffPositionRhsToOriginalPosition(m_diffPosition);
+
+                            // Limit Y in case it overruns file length
+                            //
+                            if (sp1.Y >= bv1.getFileBuffer().getLineCount())
+                            {
+                                sp1.Y = bv1.getFileBuffer().getLineCount() - 1;
+                            }
+                            if (sp2.Y >= bv2.getFileBuffer().getLineCount())
+                            {
+                                sp2.Y = bv2.getFileBuffer().getLineCount() - 1;
+                            }
+
                             bv1.setCursorPosition(sp1);
                             bv2.setCursorPosition(sp2);
                         }
@@ -2639,7 +2642,8 @@ namespace Xyglo
 
                                 if (m_project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
                                 {
-                                    m_project.getSyntaxManager().generateAllHighlighting(fb);
+                                    //m_project.getSyntaxManager().generateAllHighlighting(fb, true);
+                                    m_smartHelpWorker.updateSyntaxHighlighting(m_project.getSyntaxManager(), fb);
                                 }
 
                                 // Break out of Manage mode and back to editing
@@ -3420,10 +3424,9 @@ namespace Xyglo
                 return;
             }
 
-
             // Set the cursor to something useful
             //
-            //System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.IBeam;
+            System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.IBeam;
 
             // Set the startup banner on the first pass through
             //
@@ -3965,6 +3968,19 @@ namespace Xyglo
                 int startLine = m_project.getSelectedBufferView().getBufferShowStartY();
                 int endLine = m_project.getSelectedBufferView().getBufferShowStartY() + m_project.getSelectedBufferView().getBufferShowLength();
 
+                // Limit end line as necessary
+                if (endLine >= fb.getLineCount())
+                {
+                    endLine = Math.Max(fb.getLineCount() - 1, 0);
+                }
+
+                FilePosition startPosition = new FilePosition(0, startLine);
+                FilePosition endPosition = new FilePosition(fb.getLine(endLine).Length, endLine);
+
+                // Process immediately the current visible buffer
+                //
+                m_project.getSyntaxManager().generateHighlighting(fb, startPosition, endPosition, false);
+
                 // Ensure that the syntax manager isn't processing highlights at the time of the next request.
                 //
                 m_project.getSyntaxManager().interruptProcessing();
@@ -4148,7 +4164,8 @@ namespace Xyglo
                 //
                 if (m_project.getConfigurationValue("SYNTAXHIGHLIGHT").ToUpper() == "TRUE")
                 {
-                    m_project.getSyntaxManager().generateAllHighlighting(newFB);
+                    //m_project.getSyntaxManager().generateAllHighlighting(newFB, true);
+                    m_smartHelpWorker.updateSyntaxHighlighting(m_project.getSyntaxManager(), newFB);
                 }
             }
 
@@ -4452,6 +4469,8 @@ namespace Xyglo
         {
             Pair<BufferView, Pair<ScreenPosition, ScreenPosition>> testFind = m_project.testRayIntersection(getPickRay());
 
+            Logger.logMsg("Friendlier::handleDiffPick() - got diff pick request");
+
             // We're only really interesed in the BufferView
             //
             if (testFind.First != null)
@@ -4498,6 +4517,15 @@ namespace Xyglo
                     // Set the BufferViews
                     //
                     m_differ.setBufferViews(bv1, bv2);
+
+
+                    Logger.logMsg("Friendlier::handleDiffPick() - starting diff pick process");
+                    System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+                    sw.Start();
+
+                    // Set wait default
+                    //
+                    System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.WaitCursor;
 
                     if (!m_differ.process())
                     {
@@ -4550,6 +4578,14 @@ namespace Xyglo
                             flyToPosition(look1);
                         }
                     }
+
+                    sw.Stop();
+
+                    // Set wait default
+                    //
+                    System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.IBeam;
+
+                    Logger.logMsg("Friendlier::handleDiffPick() - diff pick took " + sw.ElapsedMilliseconds + " ms to run");
                 }
                 else
                 {
@@ -4886,10 +4922,6 @@ namespace Xyglo
                 }
                 else  // We have held down the left button - so pan
                 {
-                    // Do panning - first set cursor to a hand
-                    //
-                    System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.Hand;
-
                     // We are dragging - work out the rate
                     //
                     double deltaX = pickRay.Position.X - m_lastClickPosition.X;
@@ -4907,6 +4939,15 @@ namespace Xyglo
 
                     Vector3 diffPosition = (nowPosition - m_lastClickPosition);
                     diffPosition.Z = 0;
+
+                    // Only set the cursor if we've started to drag
+                    //
+                    if (diffPosition.X != 0.0f && diffPosition.Y != 0.0f)
+                    {
+                        // Do panning - first set cursor to a hand
+                        //
+                        System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.Hand;
+                    }
 
                     //Logger.logMsg("Friendlier::checkMouse() - mouse dragged: X = " + diffPosition.X + ", Y = " + diffPosition.Y);
 
@@ -4975,7 +5016,7 @@ namespace Xyglo
 
                         // Set default cursor back
                         //
-                        System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.Default;
+                        System.Windows.Forms.Cursor.Current = System.Windows.Forms.Cursors.IBeam;
                     }
                 }
             }
@@ -5128,11 +5169,10 @@ namespace Xyglo
             //
             if (m_state == FriendlierState.ManageProject)
             {
-                drawManageProject(gameTime);
+                m_drawingHelper.drawManageProject(m_overlaySpriteBatch, gameTime, m_modelBuilder, m_graphics, m_configPosition, out m_textScreenLength);
                 base.Draw(gameTime);
                 return;
             }
-
 
             // Here we need to vary the parameters to the SpriteBatch - to the BasicEffect and also the font size.
             // For large fonts we need to be able to downscale them effectively so that they will still look good
@@ -5216,11 +5256,13 @@ namespace Xyglo
             }
             else if (m_state == FriendlierState.Help)
             {
-                drawTextScreen(gameTime, m_userHelp);
+                // Get the text screen length back from the drawing method
+                //
+                m_textScreenLength = m_drawingHelper.drawHelpScreen(m_overlaySpriteBatch, gameTime, m_graphics, m_textScreenPositionY);
             }
             else if (m_state == FriendlierState.Information)
             {
-                drawInformationScreen(gameTime);
+                m_drawingHelper.drawInformationScreen(m_overlaySpriteBatch, gameTime, m_graphics, out m_textScreenLength);
             }
             else if (m_state == FriendlierState.Configuration)
             {
@@ -5300,57 +5342,6 @@ namespace Xyglo
         }
 
 
-        /// <summary>
-        /// Draw an overview of the project from a file perspective and allow modification
-        /// </summary>
-        protected void drawManageProject(GameTime gameTime)
-        {
-            string text = "";
-
-            // The maximum width of an entry in the file list
-            //
-            int maxWidth = ((int)((float)m_project.getSelectedBufferView().getBufferShowWidth() * 0.9f));
-
-            // This is very simply modelled at the moment
-            //
-            foreach(string fileName in m_modelBuilder.getReturnString().Split('\n'))
-            {
-                // Ignore the last split
-                //
-                if (fileName != "")
-                {
-                    if ((m_modelBuilder.getRootString().Length + fileName.Length) < maxWidth)
-                    {
-                        text += m_modelBuilder.getRootString() + fileName + "\n";
-                    }
-                    else
-                    {
-                        //text += m_project.buildFileString(m_modelBuilder.getRootString(), fileName, maxWidth) + "\n";
-                        text += m_project.estimateFileStringTruncation(m_modelBuilder.getRootString(), fileName, maxWidth) + "\n";
-                    }
-
-                }
-            }
-
-            if (text == "")
-            {
-                text = "[Project contains no Files]";
-            }
-
-            // Draw the main text screen - using the m_configPosition as the place holder
-            //
-            drawTextScreen(gameTime, text, 0, m_configPosition);
-
-            // Some key help
-            //
-            string commandText = "[Delete] - remove file from project\n";
-            commandText += "[Insert]  - edit file";
-
-            FilePosition fp =
-                new FilePosition(m_project.getSelectedBufferView().getBufferShowWidth()/2 - commandText.Split('\n')[0].Length/2,
-                                 m_project.getSelectedBufferView().getBufferShowLength() + 9);
-            drawTextOverlay(fp, commandText, Color.LightCoral);
-        }
 
         /// <summary>
         /// Split at string along a given length along word boundaries.   We try to split on space first,
@@ -5765,15 +5756,10 @@ namespace Xyglo
             // Don't draw the cursor if we're not the active window or if we're confirming 
             // something on the screen.
             //
-            if (m_differ == null || !this.IsActive || m_state != FriendlierState.DiffPicker || m_differ.hasDiffs() ==false)
+            if (m_differ == null || m_state != FriendlierState.DiffPicker || m_differ.hasDiffs() == false)
             {
                 return;
             }
-
-            // Start spritebatch
-            //
-            //m_pannerSpriteBatch.Begin(SpriteSortMode.Texture, BlendState.AlphaBlend, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone /*, m_pannerEffect */ );
-            //m_pannerSpriteBatch.Draw(m_flatTexture, new Rectangle((int)v1.X, (int)v1.Y, 1, 100), Color.White);
 
             Color myColour = Color.White;
 
@@ -5832,8 +5818,6 @@ namespace Xyglo
             // Now render the quad
             //
             m_drawingHelper.drawQuad(spriteBatch, topLeft, bottomRight, Color.LightYellow, 0.3f);
-            
-            //m_pannerSpriteBatch.End();
         }
 
         /// <summary>
@@ -6690,81 +6674,6 @@ namespace Xyglo
             }
         }
 
-        /*
-        /// <summary>
-        /// Renders a quad at a given position - we can wrap this within another spritebatch call
-        /// </summary>
-        /// <param name="topLeft"></param>
-        /// <param name="bottomRight"></param>
-        protected void renderQuad(Vector3 topLeft, Vector3 bottomRight, Color quadColour, bool ownSpriteBatch = false)
-        {
-            Vector3 bottomLeft = new Vector3(topLeft.X, bottomRight.Y, topLeft.Z);
-            Vector3 topRight = new Vector3(bottomRight.X, topLeft.Y, bottomRight.Z);
-
-            // We should be caching this rather than newing it all the time
-            //
-            if (!ownSpriteBatch)
-            {
-                m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.PointClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-            }
-
-            m_spriteBatch.Draw(m_flatTexture, new Rectangle(Convert.ToInt16(topLeft.X),
-                                                 Convert.ToInt16(topLeft.Y),
-                                                 Convert.ToInt16(bottomRight.X) - Convert.ToInt16(topLeft.X),
-                                                 Convert.ToInt16(bottomRight.Y) - Convert.ToInt16(topLeft.Y)),
-                                                 quadColour);
-
-            if (!ownSpriteBatch)
-            {
-                m_spriteBatch.End();
-            }
-        }
-        */
-
-        /// <summary>
-        /// Populate the user help string - could do this from a resource file really
-        /// </summary>
-        protected void populateUserHelp()
-        {
-            m_userHelp += "Key Help\n\n";
-
-            m_userHelp += "F1  - Cycle down through buffer views\n";
-            m_userHelp += "F2  - Cycle up through buffer views\n";
-            m_userHelp += "F3  - Search again\n";
-            m_userHelp += "F6  - Perform Build\n";
-            //m_userHelp += "F7  - Zoom Out\n";
-            //m_userHelp += "F8  - Zoom In\n";
-            m_userHelp += "F9  - Rotate anticlockwise around group of 4\n";
-            m_userHelp += "F10 - Rotate clockwise around group of 4\n";
-            m_userHelp += "F11 - Toggle Full Screen Mode\n";
-            //m_userHelp += "F12 - Windowed Mode\n";
-
-            m_userHelp += "Alt + N - New buffer view on new buffer\n";
-            m_userHelp += "Alt + B - Copy existing buffer view on existing buffer\n";
-            m_userHelp += "Alt + O - Open file\n";
-            m_userHelp += "Alt + S - Save (as) file\n";
-            m_userHelp += "Alt + C - Close buffer view\n";
-
-            m_userHelp += "Alt + H - Help screen\n";
-            m_userHelp += "Alt + G - Settings screen\n";
-            
-            m_userHelp += "Alt + Z - Undo\n";
-            m_userHelp += "Alt + Y - Redo\n";
-            m_userHelp += "Alt + A - Select All\n";
-            m_userHelp += "Alt + F - Find\n";
-            m_userHelp += "Alt + [number keys] - Jump to numbered buffer view\n";
-
-            m_userHelp += "\n\n";
-
-            m_userHelp += "Mouse Help\n\n";
-            m_userHelp += "Left click & drag   - Move Window with gravity on new window centres\n";
-            m_userHelp += "Left click on File  - Move Cursor there\n";
-            m_userHelp += "Left click shift    - Change highlight in BufferView\n";
-            m_userHelp += "Scrollwheel in/out  - Zoom in/out\n";
-            m_userHelp += "Shift & Scrollwheel - Cursor up and down in current BufferView\n";
-
-        }
-
         /// <summary>
         /// This can be called from anywhere so let's ensure that we have a bit of locking
         /// around the checkExit code.
@@ -6781,188 +6690,6 @@ namespace Xyglo
             {
                 checkExit(m_gameTime, true);
             }
-        }
-
-        /// <summary>
-        /// Format a screen of information text - slightly different to a help screen as
-        /// the text can be dynamic (i.e. times)
-        /// </summary>
-        /// <param name="text"></param>
-        protected void drawInformationScreen(GameTime gameTime)
-        {
-            // Set up the string
-            //
-            string text = "";
-
-            string truncFileName = m_project.estimateFileStringTruncation("", m_project.getSelectedBufferView().getFileBuffer().getFilepath(), 75);
-
-            text += truncFileName + "\n\n";
-            text += "File status        : " + (m_project.getSelectedBufferView().getFileBuffer().isWriteable() ? "Writeable " : "Read Only") + "\n";
-            text += "File lines         : " + m_project.getSelectedBufferView().getFileBuffer().getLineCount() + "\n";
-            text += "File created       : " + m_project.getSelectedBufferView().getFileBuffer().getCreationSystemTime().ToString() +"\n";
-            text += "File last modified : " + m_project.getSelectedBufferView().getFileBuffer().getLastWriteSystemTime().ToString() + "\n";
-            text += "File last accessed : " + m_project.getSelectedBufferView().getFileBuffer().getLastFetchSystemTime().ToString() + "\n";
-
-            text += "\n"; // divider
-            text += "Project name:      : " + m_project.m_projectName + "\n";
-            text += "Project created    : " + m_project.getCreationTime().ToString() + "\n";
-            text += "Project file       : " + m_project.getExternalProjectDefinitionFile() + "\n";
-            text += "Profile base dir   : " + m_project.getExternalProjectBaseDirectory() + "\n";
-            text += "Number of files    : " + m_project.getFileBuffers().Count + "\n";
-            text += "File lines         : " + m_project.getFilesTotalLines() + "\n";
-            text += "FileBuffers        : " + m_project.getFileBuffers().Count + "\n";
-            text += "BufferViews        : " + m_project.getBufferViews().Count + "\n";
-            text += "\n"; // divider
-
-            // Some timings
-            //
-            TimeSpan nowDiff = (DateTime.Now - m_project.getCreationTime());
-            TimeSpan activeTime = m_project.m_activeTime + (DateTime.Now - m_project.m_lastAccessTime);
-            text += "Project age        : " + nowDiff.Days + " days, " + nowDiff.Hours + " hours, " + nowDiff.Minutes + " minutes\n"; //, " + nowDiff.Seconds + " seconds\n";
-            text += "Total editing time : " + activeTime.Days + " days, " + activeTime.Hours + " hours, " + activeTime.Minutes + " minutes, " + activeTime.Seconds + " seconds\n";
-            
-            // Draw screen of a fixed width
-            //
-            drawTextScreen(gameTime, text, 75);
-        }
-
-        /// <summary>
-        /// Format a screen of information text - this will allow for screen height and provide paging
-        /// using m_textScreenPositionY
-        /// </summary>
-        /// <param name="text"></param>
-        protected void drawTextScreen(GameTime gameTime, string text, int fixedWidth = 0, int highlight = -1)
-        {
-            Vector3 fp = m_project.getSelectedBufferView().getPosition();
-
-            // Always start from 0 for offsets
-            //
-            float yPos = 0.0f;
-            float xPos = 0.0f;
-
-            // Split out the input line
-            //
-            string [] infoRows = text.Split('\n');
-
-            // We need to store this value so that page up and page down work
-            //
-            m_textScreenLength = infoRows.Length;
-
-            //  Position the information centrally
-            //
-            int longestRow = 0;
-            for (int i = 0; i < m_textScreenLength; i++)
-            {
-                if (infoRows[i].Length > longestRow)
-                {
-                    longestRow = infoRows[i].Length;
-                }
-            }
-
-            // Limit the row length when centring
-            //
-            if (fixedWidth == 0)
-            {
-                if (longestRow > m_project.getSelectedBufferView().getBufferShowWidth())
-                {
-                    longestRow = m_project.getSelectedBufferView().getBufferShowWidth();
-                }
-            }
-            else
-            {
-                longestRow = fixedWidth;
-            }
-
-            // Calculate endline
-            //
-            int endLine = m_textScreenPositionY + Math.Min(infoRows.Length - m_textScreenPositionY, m_project.getSelectedBufferView().getBufferShowLength());
-
-            // Modify by height of the screen to centralise
-            //
-            yPos += (m_graphics.GraphicsDevice.Viewport.Height / 2) - (m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * ( endLine - m_textScreenPositionY ) / 2);
-
-            // Adjust xPos
-            //
-            xPos = (m_graphics.GraphicsDevice.Viewport.Width / 2) - (longestRow * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2);
-
-            m_overlaySpriteBatch.Begin();
-
-            // hardcode the font size to 1.0f so it looks nice
-            //
-
-            for (int i = m_textScreenPositionY; i < endLine; i++)
-            {
-                // Always Always Always render a string on an integer - never on a float as it looks terrible
-                //
-                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), infoRows[i], new Vector2((int)xPos, (int)yPos), (highlight == i ? Color.LightBlue : Color.White), 0, Vector2.Zero, 1.0f, 0, 0);
-
-                /*
-                if (i == highlight)
-                {
-                    Logger.logMsg("BLUE");
-                }
-                else
-                {
-                    Logger.logMsg("WHITE");
-                }
-                */
-
-                yPos += m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay);
-            }
-
-            // Draw a page header if we need to
-            //
-            yPos = m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * 3;
-
-            double dPages = Math.Ceiling((float)m_textScreenLength/(float)m_project.getSelectedBufferView().getBufferShowLength());
-            double cPage = Math.Ceiling((float)(m_textScreenPositionY + 1)/((float)m_project.getSelectedBufferView().getBufferShowLength()));
-
-            if (dPages > 1)
-            {
-                string pageString = "---- Page " + cPage + " of " + dPages + " ----";
-
-                // 3 character adjustment below
-                //
-                xPos = (m_graphics.GraphicsDevice.Viewport.Width / 2) - ((pageString.Length + 3) * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2);
-
-                // Always Always Always render a string on an integer - never on a float as it looks terrible
-                //
-                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), pageString, new Vector2((int)xPos, (int)yPos), Color.White);
-            }
-            m_overlaySpriteBatch.End();
-
-        }
-
-        /// <summary>
-        /// Draw some overlay text at a given position
-        /// </summary>
-        /// <param name="xPos"></param>
-        /// <param name="yPos"></param>
-        /// <param name="text"></param>
-        /// <param name="textColour"></param>
-        protected void drawTextOverlay(int xPos, int yPos, string text, Color textColour)
-        {
-            m_overlaySpriteBatch.Begin();
-
-            // Always Always Always render a string on an integer - never on a float as it looks terrible
-            //
-            m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), text, new Vector2(xPos, yPos), textColour);
-
-            m_overlaySpriteBatch.End();
-        }
-
-        /// <summary>
-        /// Draw some text with specified colour and position on the overlay SpriteBatch
-        /// </summary>
-        /// <param name="screenPosition"></param>
-        /// <param name="text"></param>
-        /// <param name="textColour"></param>
-        protected void drawTextOverlay(FilePosition position, string text, Color textColour)
-        {
-            int xPos = (int)((float)position.X * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay));
-            int yPos = (int)((float)position.Y * m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay));
-
-            drawTextOverlay(xPos, yPos, text, textColour);
         }
 
 

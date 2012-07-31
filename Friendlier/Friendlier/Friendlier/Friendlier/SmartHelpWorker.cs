@@ -92,8 +92,10 @@ namespace Xyglo
                             break;
                         }
 
-                        // we're doing something now - generate highlighting in the background 
-                        // (in this thread).
+                        // We're doing something now - generate highlighting in the background 
+                        // (in this thread) and then copy it into the foreground thread (all in
+                        // FileBuffer) once this processing has completed.  This is used for
+                        // updating items that aren't being shown on the screen.
                         //
 #if SMART_HELP_DEBUG
                         Logger.logMsg("SmartHelpWorker::startWorking() - picked up and processing highlights");
@@ -103,27 +105,16 @@ namespace Xyglo
                         FilePosition startPosition = new FilePosition(0, m_requestQueue[0].m_startLine);
                         FilePosition endPosition = new FilePosition(m_requestQueue[0].m_fileBuffer.getLine(m_requestQueue[0].m_endLine).Length, m_requestQueue[0].m_endLine);
                         
-                        // First just regenerate the visible screen and copy that to foreground buffer
-                        //
-                        if (m_requestQueue[0].m_syntaxManager.generateHighlighting(m_requestQueue[0].m_fileBuffer, startPosition, endPosition, true))
-                        {
-
-                            // Copy the highlighting to the live environment
-                            //
-#if SMART_HELP_DEBUG
-                        Logger.logMsg("SmartHelpWorker::startWorking() - copying highlighting to live");
-#endif
-                            m_requestQueue[0].m_fileBuffer.copyBackgroundHighlighting();
-                        }
-
-
-                        // Now background regenerate everything - this must be interruptable
+                        // Now background regenerate everything - this must be interruptable and if it is interruppted (by other
+                        // thread calling SyntaxManager.interruptProcessing() then the copyBackground will not happen (the
+                        // generateAllHighlighting call will return false).
                         //
                         if (m_requestQueue[0].m_syntaxManager.generateAllHighlighting(m_requestQueue[0].m_fileBuffer, true))
                         {
-                            // And copy
+                            // And copy once this completes succesfully
                             //
                             m_requestQueue[0].m_fileBuffer.copyBackgroundHighlighting();
+                            Logger.logMsg("Updated all highlighting");
                         }
 
                         // Remove this instance of something to process
@@ -156,7 +147,7 @@ namespace Xyglo
         /// <param name="syntaxManager"></param>
         /// <param name="fileBuffer"></param>
         /// <returns></returns>
-        public bool updateSyntaxHighlighting(SyntaxManager syntaxManager, FileBuffer fileBuffer, int startLine, int endLine)
+        public bool updateSyntaxHighlighting(SyntaxManager syntaxManager, FileBuffer fileBuffer, int startLine = -1, int endLine = -1)
         {
             // If we're busy doing something else then we can't do this right now
             //
@@ -167,17 +158,14 @@ namespace Xyglo
             Logger.logMsg("SmartHelpWorker::updateSyntaxHighlighting() - got request to process highlights");
 #endif
 
+            // Create a request
+            //
             SmartHelpRequest shRequest = new SmartHelpRequest();
             shRequest.m_creationTime = DateTime.Now;
             shRequest.m_fileBuffer = fileBuffer;
             shRequest.m_syntaxManager = syntaxManager;
-            shRequest.m_startLine = startLine;
+            shRequest.m_startLine = (startLine == -1) ? 0 : startLine;
 
-            // Else set up the processing
-            //
-            //m_syntaxManager = syntaxManager;
-            //m_fileBuffer = fileBuffer;
-            //m_startLine = startLine;
 
             // Limit end line in case we don't have enough in the FileBuffer
             //
@@ -187,15 +175,15 @@ namespace Xyglo
             }
             else
             {
-                shRequest.m_endLine = endLine;
+                shRequest.m_endLine = ( endLine == -1 ) ? (Math.Max(fileBuffer.getLineCount() - 1, 0)) : endLine;
             }
 
-            //m_status = SmartHelpStatus.ProcessingHighlights;
+            // Push the request on the queue
+            //
             m_requestQueue.Add(shRequest);
 
             return true;
         }
-
 
         /// <summary>
         /// Stop this thread

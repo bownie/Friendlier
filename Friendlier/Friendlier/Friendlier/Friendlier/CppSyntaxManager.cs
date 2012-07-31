@@ -6,7 +6,15 @@
 //-----------------------------------------------------------------------------
 #endregion
 
+
+// Do we want lots of debug?
+//
 //#define CPP_SYNTAX_MANAGER_DEBUG
+
+// We can define this if we want to remember previously matched keywords and use them
+// to build a picture of where we are.
+//
+//#define KEYWORD_HISTORY
 
 using System;
 using System.Collections.Generic;
@@ -18,27 +26,57 @@ using System.Threading;
 namespace Xyglo
 {
     /// <summary>
-    /// Specialisation of the SyntaxManager base class specifically for C++
+    /// Specialisation of the SyntaxManager base class specifically for C++.  At the momemnt the highlighting
+    /// is very basic and only covers keywords and preprocessor directives.  However we have flexibility and 
+    /// bear in mind that SyntaxManager runs in two halves - a quick foreground scan of the current screen
+    /// when something has changed, followed by a deeper background full run to ensure that everything is
+    /// properly up to date.  The highlights themselves are stored in the FileBuffer but they are created
+    /// in this class.  The FileBuffer has two lists for highlights - foreground and background to enable
+    /// the two modes of operations - and the lists are subsequently copied or swapped as required.
     /// </summary>
     /// 
     public class CppSyntaxManager : SyntaxManager
     {
         // ------------------------------------ MEMBER VARIABLES ------------------------------------------
         //
-        public static Regex m_openComment = new Regex(@"/\*");
-
-        public static Regex m_closeComment = new Regex(@"\*\/");
-
-        public static Regex m_lineComment = new Regex(@"//");
-
-        public static Regex m_hashLineComment = new Regex(@"#");
-
-        public static Regex m_token = new Regex(@"\b([A-Za-z_][A-Za-z0-9_]+)\b");
 
         /// <summary>
-        /// Mutex to protected highlighting when running in multiple threads
+        /// Open comment Regex
         /// </summary>
-        protected Mutex m_highlightingMutex = new Mutex();
+        public static Regex m_openComment = new Regex(@"/\*");
+
+        /// <summary>
+        /// Close comment Regex 
+        /// </summary>
+        public static Regex m_closeComment = new Regex(@"\*\/");
+
+        /// <summary>
+        /// Line comment Regex
+        /// </summary>
+        public static Regex m_lineComment = new Regex(@"//");
+
+        /// <summary>
+        /// Hash line Regex
+        /// </summary>
+        public static Regex m_hashLineComment = new Regex(@"#");
+
+        /// <summary>
+        /// A definition of a token for our keyword definition
+        /// </summary>
+        public static Regex m_token = new Regex(@"\b([A-Za-z_][A-Za-z0-9_]+)\b");
+
+
+#if KEYWORD_HISTORY
+        /// <summary>
+        /// List of previous keywords
+        /// </summary>
+        public List<string> m_keywordList = new List<string>();
+#endif
+
+        /// <summary>
+        /// Mutex to protected highlighting when running in multiple threads - probably don't need this
+        /// </summary>
+        //protected Mutex m_highlightingMutex = new Mutex();
 
         // -------------------------------------- CONSTRUCTORS --------------------------------------------
         //
@@ -95,16 +133,30 @@ namespace Xyglo
             System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
             sw.Start();
 #endif
+            //m_highlightingMutex.WaitOne();
 
-            m_highlightingMutex.WaitOne();
-
-            // We have to recalculate these every time in case we're removing or adding lines
+            // Remove the range we're going to update - if we're doing a background process then clear all
+            // the highlights.
             //
-            m_bracePositions.Clear();
+            if (backgroundThread)
+            {
+                fileBuffer.clearAllHighlights(backgroundThread);
 
-            // Remove the range we're going to update
-            //
-            fileBuffer.clearHighlights(fromPos, toPos, backgroundThread);
+                // Only redo braces in the background
+                //
+                m_bracePositions.Clear();
+
+#if KEYWORD_HISTORY
+                // Clear the keyword list
+                //
+                m_keywordList.Clear();
+#endif
+
+            }
+            else
+            {
+                fileBuffer.clearHighlights(fromPos, toPos, backgroundThread);
+            }
 
             int xPosition = 0;
             int lastXPosition = 0;
@@ -127,6 +179,11 @@ namespace Xyglo
                 if (m_interruptProcessing)
                 {
                     Logger.logMsg("CppSyntaxManager::generateHighlighting() - processing highlights interrupted");
+
+                    // Don't forget to release the mutex
+                    //
+                    //m_highlightingMutex.ReleaseMutex();
+
                     return false; // false means don't copy anything from background to foreground as we have crap in the buffer
                 }
 
@@ -216,8 +273,13 @@ namespace Xyglo
                                         newDepth = getIndentDepth(xPosition, i) + 2;
                                     }
 
-                                    BraceDepth bd = new BraceDepth(xPosition, i, newDepth);
-                                    m_bracePositions.Add(bd, newDepth);
+                                    // We only recalculate brace depths when looking at the whole file
+                                    //
+                                    if (backgroundThread)
+                                    {
+                                        BraceDepth bd = new BraceDepth(xPosition, i, newDepth);
+                                        m_bracePositions.Add(bd, newDepth);
+                                    }
                                 }
                             }
                             else if (line[xPosition] == '}')
@@ -227,8 +289,13 @@ namespace Xyglo
                                     int existingDepth = getIndentDepth(xPosition, i);
                                     int newDepth = Math.Max(existingDepth - 2, 0);
 
-                                    BraceDepth bd = new BraceDepth(xPosition, i, newDepth);
-                                    m_bracePositions.Add(bd, newDepth);
+                                    // We only recalculate brace depths when looking at the whole file
+                                    //
+                                    if (backgroundThread)
+                                    {
+                                        BraceDepth bd = new BraceDepth(xPosition, i, newDepth);
+                                        m_bracePositions.Add(bd, newDepth);
+                                    }
                                 }
                             }
                             else if (line[xPosition] == '/' && (xPosition + 1 < line.Length && line[xPosition + 1] == '*'))
@@ -279,9 +346,36 @@ namespace Xyglo
                                             Highlight newHighlight = new Highlight(i, xPosition + m.Index, xPosition + m.Index + m.Value.Length, m.Value, HighlightType.Keyword);
                                             fileBuffer.setHighlight(newHighlight, backgroundThread);
                                             xPosition = newHighlight.m_endHighlight.X;
+
+
+#if KEYWORD_HISTORY
+                                            // Push the list
+                                            //
+                                            m_keywordList.Add(m.Value.ToLower());
+
+                                            // keep list to n
+                                            //
+                                            int n = 10;
+                                            if (m_keywordList.Count > n)
+                                            {
+                                                m_keywordList.RemoveRange(0, m_keywordList.Count - n);
+                                            }
+#endif
                                         }
                                         else
                                         {
+#if KEYWORD_HISTORY
+                                            // At this point we are not a keyword - yet we have a nice
+                                            // juicy keyword list which we can use to intuit our purpose
+                                            // as a non-keyword.
+                                            //
+                                            if (m_keywordList.Contains("public") ||
+                                                m_keywordList.Contains("private") ||
+                                                m_keywordList.Contains("protected"))
+                                            {
+                                                Logger.logMsg("WHAT IS THIS ---> " + m.Value);
+                                            }
+#endif
                                             // Step past token
                                             //
                                             xPosition += m.Value.Length;
@@ -311,7 +405,7 @@ namespace Xyglo
 #endif
 
             // Release the mutex for this
-            m_highlightingMutex.ReleaseMutex();
+            //m_highlightingMutex.ReleaseMutex();
 
             return true;
         }

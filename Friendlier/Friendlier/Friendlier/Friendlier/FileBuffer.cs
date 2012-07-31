@@ -542,7 +542,7 @@ namespace Xyglo
             }
             else
             {
-                throw new Exception("FileBuffer():getLine - cannot fetch line " + line);
+                throw new Exception("FileBuffer::getLine() - cannot fetch line " + line);
             }
         }
 
@@ -1477,7 +1477,6 @@ namespace Xyglo
             return new FilePosition(0, 0);
         }
 
-        /*
         /// <summary>
         /// Clear the list of all highlights
         /// </summary>
@@ -1492,7 +1491,6 @@ namespace Xyglo
                 m_highlightMutex.ReleaseMutex();
             }
         }
-        */
 
         /// <summary>
         /// Clear the highlight dictionary
