@@ -3190,24 +3190,38 @@ namespace Xyglo
                 }
                 else if (checkKeyState(Keys.OemPlus, gameTime)) // increment bloom state
                 {
-                    m_bloomSettingsIndex = (m_bloomSettingsIndex + 1) % BloomSettings.PresetSettings.Length;
-                    m_bloom.Settings = BloomSettings.PresetSettings[m_bloomSettingsIndex];
-                    m_bloom.Visible = true;
+                    if (m_shiftDown)
+                    {
+                        m_project.getSelectedBufferView().incrementViewSize();
+                    }
+                    else
+                    {
+                        m_bloomSettingsIndex = (m_bloomSettingsIndex + 1) % BloomSettings.PresetSettings.Length;
+                        m_bloom.Settings = BloomSettings.PresetSettings[m_bloomSettingsIndex];
+                        m_bloom.Visible = true;
 
-                    setTemporaryMessage("Bloom set to " + BloomSettings.PresetSettings[m_bloomSettingsIndex].Name, 3, gameTime);
+                        setTemporaryMessage("Bloom set to " + BloomSettings.PresetSettings[m_bloomSettingsIndex].Name, 3, gameTime);
+                    }
                 }
                 else if (checkKeyState(Keys.OemMinus, gameTime)) // decrement bloom state
                 {
-                    m_bloomSettingsIndex = (m_bloomSettingsIndex - 1);
-
-                    if (m_bloomSettingsIndex < 0)
+                    if (m_shiftDown)
                     {
-                        m_bloomSettingsIndex += BloomSettings.PresetSettings.Length;
+                        m_project.getSelectedBufferView().decrementViewSize();
                     }
+                    else
+                    {
+                        m_bloomSettingsIndex = (m_bloomSettingsIndex - 1);
 
-                    m_bloom.Settings = BloomSettings.PresetSettings[m_bloomSettingsIndex];
-                    m_bloom.Visible = true;
-                    setTemporaryMessage("Bloom set to " + BloomSettings.PresetSettings[m_bloomSettingsIndex].Name, 3, gameTime);
+                        if (m_bloomSettingsIndex < 0)
+                        {
+                            m_bloomSettingsIndex += BloomSettings.PresetSettings.Length;
+                        }
+
+                        m_bloom.Settings = BloomSettings.PresetSettings[m_bloomSettingsIndex];
+                        m_bloom.Visible = true;
+                        setTemporaryMessage("Bloom set to " + BloomSettings.PresetSettings[m_bloomSettingsIndex].Name, 3, gameTime);
+                    }
                 }
                 else if (checkKeyState(Keys.B, gameTime)) // Toggle bloom
                 {
@@ -3405,10 +3419,10 @@ namespace Xyglo
                 m_frustrum.Matrix = m_viewMatrix * m_projection;
             }
 
-            if (m_processKeyboardAllowed != TimeSpan.Zero && gameTime.TotalGameTime < m_processKeyboardAllowed)
-            {
-                return;
-            }
+//            if (m_processKeyboardAllowed != TimeSpan.Zero && gameTime.TotalGameTime < m_processKeyboardAllowed)
+            //{
+                //return;
+            //}
 
             // Return after these commands have been processed for the demo version
             //
@@ -3572,6 +3586,7 @@ namespace Xyglo
             //
             if (m_heldKey != m_currentKeyDown || !m_heldDownKeyValid)
             {
+                Logger.logMsg("SETTING HELD DOWN START TIME");
                 m_heldDownStartTime = gameTime.TotalGameTime.TotalSeconds;
                 m_heldDownLastRepeatTime = gameTime.TotalGameTime.TotalSeconds;
                 m_heldKey = m_currentKeyDown;

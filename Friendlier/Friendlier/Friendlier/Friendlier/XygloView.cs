@@ -21,6 +21,18 @@ namespace Xyglo
     [DataContract(Name = "Friendlier", Namespace = "http://www.xyglo.com")]
     public abstract class XygloView
     {
+
+        /// <summary>
+        /// Define some windo viewing sizes for different layouts of bufferview
+        /// </summary>
+        public enum ViewSize
+        {
+            Small,
+            Medium,
+            Large
+        };
+
+
         /// <summary>
         /// ViewPosition is used to help determine positions of other BufferViews
         /// </summary>
@@ -113,6 +125,12 @@ namespace Xyglo
         [DataMember]
         protected int m_viewHeightSpacing = 10;
 
+        /// <summary>
+        /// Viewing size of the BufferViews
+        /// </summary>
+        [DataMember]
+        protected ViewSize m_viewSize = ViewSize.Medium;
+
         // ----------------------------------------- METHODS ------------------------------------------------------
         //
 
@@ -193,6 +211,66 @@ namespace Xyglo
         /// <param name="factor"></param>
         /// <returns></returns>
         public abstract BoundingBox calculateRelativePositionBoundingBox(ViewPosition position, int factor = 1);
-        
+
+        /// <summary>
+        /// Get the view size
+        /// </summary>
+        /// <returns></returns>
+        public ViewSize getViewSize()
+        {
+            return m_viewSize;
+        }
+
+        /// <summary>
+        /// Set the view size and dimensions accordingly
+        /// </summary>
+        /// <param name="viewSize"></param>
+        public void setViewSize(ViewSize viewSize)
+        {
+            m_viewSize = viewSize;
+
+            switch (viewSize)
+            {
+                case ViewSize.Small:
+                    m_bufferShowWidth = 140;
+                    m_bufferShowLength = 40;
+                    break;
+
+                default:
+                case ViewSize.Medium:
+                    m_bufferShowWidth = 80;
+                    m_bufferShowLength = 20;
+                    break;
+
+                case ViewSize.Large:
+                    m_bufferShowWidth = 50;
+                    m_bufferShowLength = 12;
+                    break;
+            }
+        }
+
+        public void incrementViewSize()
+        {
+            m_viewSize++;
+
+            if (m_viewSize > ViewSize.Large)
+            {
+                m_viewSize = ViewSize.Small;
+            }
+            setViewSize(m_viewSize);
+        }
+
+        public void decrementViewSize()
+        {
+            m_viewSize--;
+
+            if (m_viewSize < 0)
+            {
+                m_viewSize = ViewSize.Large;
+            }
+
+            setViewSize(m_viewSize);
+        }
+
     }
 }

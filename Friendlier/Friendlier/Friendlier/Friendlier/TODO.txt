@@ -15,22 +15,8 @@ USE CASES
 - The journalist - writing a story, researching
 
 
-- Integrate with Scintilla [NO]
 
 
-Release
--------
-- Frustrum culling to improve performance [DONE]
-- return does not use highlight [FIXED]
-- exit not working [FIXED - it was the temporary message]
-- maximise button [DONE]
-- clicking on top right cross doens't close down neatly [DONE]
-- GOTO line implementation [DONE]
-- Fix windows line endings?  Handle both? [DONEish]
-- error with collections during background build [CHANGED MUTEX TO FILE BUFFER LEVEL]
-- fix defaults in project file etc [DONE]
-- highlighting with long lines on editor [DONE]
-- Check out highlighting and other performance sinks [MOVED HIGHLIGHTING TO THREAD]
 
 BUGS
 ----
@@ -116,6 +102,24 @@ http://social.msdn.microsoft.com/forums/en-US/xnaframework/thread/71263016-b26a-
 Build version:
 
 http://autobuildversion.codeplex.com/
+
+
+
+July/August Release (ALPHA 3/BETA)
+---------------------------------
+- Frustrum culling to improve performance [DONE]
+- return does not use highlight [FIXED]
+- exit not working [FIXED - it was the temporary message]
+- maximise button [DONE]
+- clicking on top right cross doens't close down neatly [DONE]
+- GOTO line implementation [DONE]
+- Fix windows line endings?  Handle both? [DONEish]
+- error with collections during background build [CHANGED MUTEX TO FILE BUFFER LEVEL]
+- fix defaults in project file etc [DONE]
+- highlighting with long lines on editor [DONE]
+- Check out highlighting and other performance sinks [MOVED HIGHLIGHTING TO THREAD]
+
+
 
 ALPHA 2 DONE
 ------------
@@ -264,6 +268,8 @@ For Later
 - Command line interface
 - Basic interpreter
 
+
+- Integrate with Scintilla [NO]
 
 
 CODE METRICS

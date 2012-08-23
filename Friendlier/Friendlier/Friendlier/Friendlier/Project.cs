@@ -1202,6 +1202,7 @@ namespace Xyglo
                 }
             }
 
+
             // Remove the BufferViews and any associated FileBuffers from the storage classes
             //
             if (removeList.Count > 0)
@@ -1209,6 +1210,13 @@ namespace Xyglo
                 foreach (BufferView bv in removeList)
                 {
                     m_bufferViews.Remove(bv);
+
+                    // Ensure that the activeBufferIndex is valid
+                    //
+                    if (m_selectedViewId < 0 || m_selectedViewId >= m_bufferViews.Count())
+                    {
+                        m_selectedViewId = Math.Min(0, m_bufferViews.Count() - 1);
+                    }
 
                     if (m_fileBuffers.Contains(bv.getFileBuffer()))
                     {
@@ -1605,6 +1613,10 @@ namespace Xyglo
             return m_viewMode;
         }
 
+        /// <summary>
+        /// Set the view mode
+        /// </summary>
+        /// <param name="viewMode"></param>
         public void setViewMode(ViewMode viewMode)
         {
             m_viewMode = viewMode;
