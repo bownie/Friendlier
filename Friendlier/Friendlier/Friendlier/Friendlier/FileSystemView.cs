@@ -30,11 +30,6 @@ namespace Xyglo
         protected string m_path = null;
 
         /// <summary>
-        /// Number of characters to show in a BufferView line
-        /// </summary>
-        protected int m_bufferShowWidth = 80;
-
-        /// <summary>
         /// Are we scanning at drive level?
         /// </summary>
         bool m_driveLevel = false;
@@ -240,8 +235,8 @@ namespace Xyglo
         {
             Vector3 rV = m_position;
             rV.Y = -rV.Y; // invert Y
-            rV.X += m_project.getFontManager().getCharWidth() * m_bufferShowWidth / 2;
-            rV.Y -= m_project.getFontManager().getLineSpacing() * m_bufferShowLength / 2;
+            rV.X += m_project.getFontManager().getCharWidth(m_project.getSelectedBufferView().getViewSize()) * m_project.getSelectedBufferView().getBufferShowWidth() / 2;
+            rV.Y -= m_project.getFontManager().getLineSpacing(m_project.getSelectedBufferView().getViewSize()) * m_project.getSelectedBufferView().getBufferShowLength() / 2;
             rV.Z += 600.0f;
             return rV;
         }
@@ -286,29 +281,6 @@ namespace Xyglo
             return file;
         }
 
-        /// <summary>
-        /// Length of visible buffer
-        /// </summary>
-        protected int m_bufferShowLength = 20;
-
-        /// <summary>
-        /// Get BufferShow length
-        /// </summary>
-        /// <returns></returns>
-        public int getBufferShowLength()
-        {
-            return m_bufferShowLength;
-        }
-
-        /// <summary>
-        /// Accessor for BufferShowWidth
-        /// </summary>
-        /// <returns></returns>
-        public int getBufferShowWidth()
-        {
-            return m_bufferShowWidth;
-        }
-
         List<string> m_fileHolder = new List<string>();
 
         public void directorySearch(string sDir, string filename) 
@@ -339,6 +311,5 @@ namespace Xyglo
         {
             m_fileHolder.Clear();
         }
-
     }
 }

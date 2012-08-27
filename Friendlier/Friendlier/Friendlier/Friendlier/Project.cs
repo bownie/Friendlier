@@ -2187,15 +2187,15 @@ namespace Xyglo
 
                 // This leaves the relative position within the BufferView adjusting for offsets
                 //
-                rFP.X = (int)(intersectPos.X / getFontManager().getCharWidth()) + rBV.getBufferShowStartX();
-                rFP.Y = (int)(intersectPos.Y / getFontManager().getLineSpacing()) + rBV.getBufferShowStartY();
+                rFP.X = (int)(intersectPos.X / getFontManager().getCharWidth(rBV.getViewSize())) + rBV.getBufferShowStartX();
+                rFP.Y = (int)(intersectPos.Y / getFontManager().getLineSpacing(rBV.getViewSize())) + rBV.getBufferShowStartY();
 
                 // We also want to store the ScreenPosition at this point and return it 
                 // as we have no way of calculating externally (easily) the relative position
                 // on the screen considering wrappedlines (tailing buffers).
                 //
-                rSP.X = (int)(intersectPos.X / getFontManager().getCharWidth());
-                rSP.Y = (int)(intersectPos.Y / getFontManager().getLineSpacing());
+                rSP.X = (int)(intersectPos.X / getFontManager().getCharWidth(rBV.getViewSize()));
+                rSP.Y = (int)(intersectPos.Y / getFontManager().getLineSpacing(rBV.getViewSize()));
 
                 Logger.logMsg("Project::testRayIntersection() - got FilePosition of X = " + rFP.X + ", Y = " + rFP.Y);
 

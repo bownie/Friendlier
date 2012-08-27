@@ -257,12 +257,12 @@ namespace Xyglo
 
             // Only calculate a position if we have the information necessary to do it
             //
-            if (m_fontManager.getCharWidth() != 0 && m_fontManager.getLineSpacing() != 0)
+            if (m_fontManager.getCharWidth(m_viewSize) != 0 &&
+                m_fontManager.getLineSpacing(m_viewSize) != 0)
             {
                 m_position = rootBV.calculateRelativePositionVector(position);
             }
         }
-
 
 
         //////// METHODS ///////
@@ -537,7 +537,7 @@ namespace Xyglo
         /// <returns></returns>
         public float getVisibleWidth()
         {
-            return (m_bufferShowWidth * m_fontManager.getCharWidth());
+            return (m_bufferShowWidth * m_fontManager.getCharWidth(m_viewSize));
         }
 
         /// <summary>
@@ -546,7 +546,7 @@ namespace Xyglo
         /// <returns></returns>
         public float getVisibleHeight()
         {
-            return (m_bufferShowLength * m_fontManager.getLineSpacing());
+            return (m_bufferShowLength * m_fontManager.getLineSpacing(m_viewSize));
         }
 
         /// <summary>
@@ -556,8 +556,8 @@ namespace Xyglo
         {
             // Return the cursor coordinates taking into account paging using m_bufferShowStartY
             //
-            m_cursorCoordinates.X = m_position.X + (m_cursorPosition.X - m_bufferShowStartX) * m_fontManager.getCharWidth();
-            m_cursorCoordinates.Y = m_position.Y + (m_cursorPosition.Y - m_bufferShowStartY) * m_fontManager.getLineSpacing();
+            m_cursorCoordinates.X = m_position.X + (m_cursorPosition.X - m_bufferShowStartX) * m_fontManager.getCharWidth(m_viewSize);
+            m_cursorCoordinates.Y = m_position.Y + (m_cursorPosition.Y - m_bufferShowStartY) * m_fontManager.getLineSpacing(m_viewSize);
 
             return m_cursorCoordinates;
         }
@@ -569,7 +569,7 @@ namespace Xyglo
         /// <returns></returns>
         public Vector3 getSpaceCoordinates(ScreenPosition sp)
         {
-            Vector3 rV = new Vector3(m_position.X + sp.X * m_fontManager.getCharWidth(), m_position.Y + sp.Y * m_fontManager.getLineSpacing(), 0);
+            Vector3 rV = new Vector3(m_position.X + sp.X * m_fontManager.getCharWidth(m_viewSize), m_position.Y + sp.Y * m_fontManager.getLineSpacing(m_viewSize), 0);
             return rV;
         }
 
@@ -896,7 +896,7 @@ namespace Xyglo
         /// <returns></returns>
         public float getLineSpacing()
         {
-            return m_fontManager.getLineSpacing();
+            return m_fontManager.getLineSpacing(m_viewSize);
         }
         
         /// <summary>
@@ -930,7 +930,7 @@ namespace Xyglo
         /// </summary>
         public void calculateMyRelativePosition()
         {
-            if (m_fontManager.getCharWidth() == 0 || m_fontManager.getLineSpacing() == 0)
+            if (m_fontManager.getCharWidth(m_viewSize) == 0 || m_fontManager.getLineSpacing(m_viewSize) == 0)
             {
                 return;
             }
@@ -951,8 +951,8 @@ namespace Xyglo
         {
             Vector3 rV = m_position;
             rV.Y = -rV.Y; // insert Y
-            rV.X += m_fontManager.getCharWidth() * m_bufferShowWidth / 2;
-            rV.Y -= m_fontManager.getLineSpacing() * m_bufferShowLength / 2;
+            rV.X += m_fontManager.getCharWidth(m_viewSize) * m_bufferShowWidth / 2;
+            rV.Y -= m_fontManager.getLineSpacing(m_viewSize) * m_bufferShowLength / 2;
             rV.Z = 0.0f;
             return rV;
         }
@@ -965,8 +965,8 @@ namespace Xyglo
         {
             Vector3 rV = m_position;
             rV.Y = -rV.Y; // invert Y
-            rV.X += m_fontManager.getCharWidth() * m_bufferShowWidth / 2;
-            rV.Y -= m_fontManager.getLineSpacing() * m_bufferShowLength / 2;
+            rV.X += m_fontManager.getCharWidth(m_viewSize) * m_bufferShowWidth / 2;
+            rV.Y -= m_fontManager.getLineSpacing(m_viewSize) * m_bufferShowLength / 2;
             rV.Z += 600.0f;
             return rV;
         }
@@ -1018,8 +1018,8 @@ namespace Xyglo
             Vector3 rV = m_position;
 
             rV.Y = -rV.Y; // invert Y
-            rV.X += m_fontManager.getCharWidth() * m_bufferShowWidth / 2;
-            rV.Y -= m_fontManager.getLineSpacing() * m_bufferShowLength / 2;
+            rV.X += m_fontManager.getCharWidth(m_viewSize) * m_bufferShowWidth / 2;
+            rV.Y -= m_fontManager.getLineSpacing(m_viewSize) * m_bufferShowLength / 2;
             rV.Z = zoomLevel;
 
 #if QUADRANT_ZOOMING
@@ -1083,19 +1083,19 @@ namespace Xyglo
             // want to spill out over the end of the line.
             //
             float minPosX = m_position.X;
-            float maxPosX = m_position.X + m_bufferShowWidth * m_fontManager.getCharWidth();
+            float maxPosX = m_position.X + m_bufferShowWidth * m_fontManager.getCharWidth(m_viewSize);
 
             if (m_highlightStart.Y == m_highlightEnd.Y)
             {
                 // Set start position
                 //
-                startPos.X = m_position.X + (m_highlightStart.X - m_bufferShowStartX) * m_fontManager.getCharWidth();
-                startPos.Y = m_position.Y + (m_highlightStart.Y - m_bufferShowStartY) * m_fontManager.getLineSpacing();
+                startPos.X = m_position.X + (m_highlightStart.X - m_bufferShowStartX) * m_fontManager.getCharWidth(m_viewSize);
+                startPos.Y = m_position.Y + (m_highlightStart.Y - m_bufferShowStartY) * m_fontManager.getLineSpacing(m_viewSize);
 
                 // Set end position
                 //
-                endPos.X = m_position.X + (m_highlightEnd.X - m_bufferShowStartX) * m_fontManager.getCharWidth();
-                endPos.Y = m_position.Y + (m_highlightEnd.Y + 1 - m_bufferShowStartY) * m_fontManager.getLineSpacing();
+                endPos.X = m_position.X + (m_highlightEnd.X - m_bufferShowStartX) * m_fontManager.getCharWidth(m_viewSize);
+                endPos.Y = m_position.Y + (m_highlightEnd.Y + 1 - m_bufferShowStartY) * m_fontManager.getLineSpacing(m_viewSize);
 
                 // Adjust ends
                 //
@@ -1144,30 +1144,30 @@ namespace Xyglo
                         }
                         else
                         {
-                            startPos.X = m_position.X + m_highlightStart.X * m_fontManager.getCharWidth();
+                            startPos.X = m_position.X + m_highlightStart.X * m_fontManager.getCharWidth(m_viewSize);
                         }
-                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth();
+                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth(m_viewSize);
                     }
                     else if (i == m_highlightEnd.Y)
                     {
                         startPos.X = m_position.X;
-                        endPos.X = m_position.X + m_highlightEnd.X * m_fontManager.getCharWidth();
+                        endPos.X = m_position.X + m_highlightEnd.X * m_fontManager.getCharWidth(m_viewSize);
                     }
                     else
                     {
                         startPos.X = m_position.X;
-                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth();
+                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth(m_viewSize);
                     }
 
-                    startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_fontManager.getLineSpacing();
-                    endPos.Y = m_position.Y + (i + 1 - m_bufferShowStartY) * m_fontManager.getLineSpacing();
+                    startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_fontManager.getLineSpacing(m_viewSize);
+                    endPos.Y = m_position.Y + (i + 1 - m_bufferShowStartY) * m_fontManager.getLineSpacing(m_viewSize);
 
                     // If we have nothing highlighted in the line then indicate this with a
                     // half box line
                     //
                     if (startPos.X == endPos.X && endPos.X == m_position.X)
                     {
-                        startPos.X += m_fontManager.getCharWidth() / 2;
+                        startPos.X += m_fontManager.getCharWidth(m_viewSize) / 2;
                     }
 
                     // Adjust ends
@@ -1219,9 +1219,9 @@ namespace Xyglo
                         }
                         else
                         {
-                            startPos.X = m_position.X + m_cursorPosition.X * m_fontManager.getCharWidth();
+                            startPos.X = m_position.X + m_cursorPosition.X * m_fontManager.getCharWidth(m_viewSize);
                         }
-                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth();
+                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth(m_viewSize);
                     }
                     else if (i == maxStart)
                     {
@@ -1229,28 +1229,28 @@ namespace Xyglo
 
                         if (fullLineAtEnd)
                         {
-                            endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth();
+                            endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth(m_viewSize);
                         }
                         else
                         {
-                            endPos.X = m_position.X + m_highlightStart.X * m_fontManager.getCharWidth();
+                            endPos.X = m_position.X + m_highlightStart.X * m_fontManager.getCharWidth(m_viewSize);
                         }
                     }
                     else
                     {
                         startPos.X = m_position.X;
-                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth();
+                        endPos.X = m_position.X + m_fileBuffer.getLine(i).Replace("\t", project.getTab()).Length * m_fontManager.getCharWidth(m_viewSize);
                     }
 
-                    startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_fontManager.getLineSpacing();
-                    endPos.Y = m_position.Y + (i + 1 - m_bufferShowStartY) * m_fontManager.getLineSpacing();
+                    startPos.Y = m_position.Y + (i - m_bufferShowStartY) * m_fontManager.getLineSpacing(m_viewSize);
+                    endPos.Y = m_position.Y + (i + 1 - m_bufferShowStartY) * m_fontManager.getLineSpacing(m_viewSize);
 
                     // If we have nothing highlighted in the line then indicate this with a negative
                     // half box line
                     //
                     if (startPos.X == endPos.X && endPos.X == m_position.X)
                     {
-                        startPos.X += m_fontManager.getCharWidth() / 2;
+                        startPos.X += m_fontManager.getCharWidth(m_viewSize) / 2;
                     }
 
                     // Adjust ends
@@ -2467,7 +2467,7 @@ namespace Xyglo
         /// <returns></returns>
         public override float getWidth()
         {
-            return m_fontManager.getCharWidth() * m_bufferShowWidth;
+            return m_fontManager.getCharWidth(m_viewSize) * m_bufferShowWidth;
         }
 
         /// <summary>
@@ -2476,7 +2476,7 @@ namespace Xyglo
         /// <returns></returns>
         public override float getHeight()
         {
-            return m_fontManager.getLineSpacing() * m_bufferShowLength;
+            return m_fontManager.getLineSpacing(m_viewSize) * m_bufferShowLength;
         }
 
         /// <summary>
@@ -2535,7 +2535,7 @@ namespace Xyglo
 
             try
             {
-                if (m_fontManager.getLineSpacing() == 0 || m_fontManager.getCharWidth() == 0)
+                if (m_fontManager.getLineSpacing(m_viewSize) == 0 || m_fontManager.getCharWidth(m_viewSize) == 0)
                 {
                     throw new Exception("XygloView::calculateRelativePosition() - some of our basic settings are zero - cannot calculate");
                 }
@@ -2548,19 +2548,19 @@ namespace Xyglo
             switch (position)
             {
                 case ViewPosition.Above:
-                    rP = m_position - (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(), 0.0f));
+                    rP = m_position - (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(m_viewSize), 0.0f));
                     break;
 
                 case ViewPosition.Below:
-                    rP = m_position + (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(), 0.0f));
+                    rP = m_position + (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(m_viewSize), 0.0f));
                     break;
 
                 case ViewPosition.Left:
-                    rP = m_position - (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
+                    rP = m_position - (new Vector3(factor * m_fontManager.getCharWidth(m_viewSize) * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
                     break;
 
                 case ViewPosition.Right:
-                    rP = m_position + (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
+                    rP = m_position + (new Vector3(factor * m_fontManager.getCharWidth(m_viewSize) * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
                     break;
 
                 default:

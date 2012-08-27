@@ -249,28 +249,30 @@ namespace Xyglo
             }
         }
 
+        /// <summary>
+        /// Increment view size
+        /// </summary>
         public void incrementViewSize()
         {
-            m_viewSize++;
-
-            if (m_viewSize > ViewSize.Large)
+            if (m_viewSize < ViewSize.Large)
             {
-                m_viewSize = ViewSize.Small;
+                m_viewSize++;
             }
+
             setViewSize(m_viewSize);
         }
 
+        /// <summary>
+        /// Decrement view size
+        /// </summary>
         public void decrementViewSize()
         {
-            m_viewSize--;
-
-            if (m_viewSize < 0)
+            if (m_viewSize > ViewSize.Small)
             {
-                m_viewSize = ViewSize.Large;
+                m_viewSize--;
             }
 
             setViewSize(m_viewSize);
         }
-
     }
 }

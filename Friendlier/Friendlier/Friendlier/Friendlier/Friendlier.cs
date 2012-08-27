@@ -274,9 +274,14 @@ namespace Xyglo
         double m_temporaryMessageEndTime;
 
         /// <summary>
-        /// Texture for a Directory Node
+        /// Used when displaying licence messages
         /// </summary>
-        //Texture2D m_dirNodeTexture;
+        private bool m_flipFlop = true;
+
+        /// <summary>
+        /// Something to do with licence messages
+        /// </summary>
+        private double m_nextLicenceMessage = 0.0f;
 
         /// <summary>
         /// File system watcher
@@ -406,11 +411,6 @@ namespace Xyglo
         protected string m_saveFileName;
 
         /// <summary>
-        /// Greyed out colour for background text
-        /// </summary>
-        protected Color m_greyedColour = new Color(30, 30, 30, 50);
-
-        /// <summary>
         /// Position in configuration list when selecting something
         /// </summary>
         protected int m_configPosition;
@@ -499,31 +499,6 @@ namespace Xyglo
         /// Model builder realises a model from a tree
         /// </summary>
         protected ModelBuilder m_modelBuilder;
-
-        /// <summary>
-        /// Start time for a banner
-        /// </summary>
-        protected double m_bannerStartTime = -1;
-
-        /// <summary>
-        /// Banner message
-        /// </summary>
-        protected string m_bannerString;
-
-        /// <summary>
-        /// Duration of a banner
-        /// </summary>
-        protected float m_bannerDuration;
-
-        /// <summary>
-        /// Strings within a banner if there are multiple
-        /// </summary>
-        protected List<string> m_bannerStringList;
-
-        /// <summary>
-        /// The colour of our banner
-        /// </summary>
-        protected Color m_bannerColour = new Color(180, 180, 180, 180);
 
         /// <summary>
         /// Text information screen y offset for page up and page down purposes
@@ -615,17 +590,6 @@ namespace Xyglo
         protected Vector3 m_lastClickVector = Vector3.Zero;
 
         /// <summary>
-        /// How dark should our non-highlighted BufferViews be?
-        /// </summary>
-        protected float m_greyDivisor = 2.0f;
-
-        /// <summary>
-        /// List of highlights we're going to draw.  We don't want to fetch this everytime we
-        /// draw the BufferView.
-        /// </summary>
-        protected List<Highlight> m_highlights;
-
-        /// <summary>
         /// A helper class for drawing things
         /// </summary>
         protected DrawingHelper m_drawingHelper;
@@ -654,7 +618,6 @@ namespace Xyglo
         }
 
         /////////////////////////////// METHODS //////////////////////////////////////
-
 
         /// <summary>
         /// Initialise some stuff in the constructor
@@ -1097,10 +1060,10 @@ namespace Xyglo
 
             // Log these sizes 
             //
-            Logger.logMsg("Friendlier:setSpriteFont() - Font getCharWidth = " + m_project.getFontManager().getCharWidth());
-            Logger.logMsg("Friendlier:setSpriteFont() - Font getCharHeight = " + m_project.getFontManager().getCharHeight());
-            Logger.logMsg("Friendlier:setSpriteFont() - Font getLineSpacing = " + m_project.getFontManager().getLineSpacing());
-            Logger.logMsg("Friendlier:setSpriteFont() - Font getTextScale = " + m_project.getFontManager().getTextScale());
+            //Logger.logMsg("Friendlier:setSpriteFont() - Font getCharWidth = " + m_project.getFontManager().getCharWidth());
+            //Logger.logMsg("Friendlier:setSpriteFont() - Font getCharHeight = " + m_project.getFontManager().getCharHeight());
+            //Logger.logMsg("Friendlier:setSpriteFont() - Font getLineSpacing = " + m_project.getFontManager().getLineSpacing());
+            //Logger.logMsg("Friendlier:setSpriteFont() - Font getTextScale = " + m_project.getFontManager().getTextScale());
 
             /*
             // Now we need to make all of our BufferViews have this setting too
@@ -2497,7 +2460,7 @@ namespace Xyglo
             else if (checkKeyState(Keys.F4, gameTime))
             {
                 m_project.setViewMode(Project.ViewMode.Fun);
-                startBanner(gameTime, "Friendlier\nv1.0", 5);
+                m_drawingHelper.startBanner(gameTime, "Friendlier\nv1.0", 5);
             }
             else if (checkKeyState(Keys.F6, gameTime))
             {
@@ -3193,6 +3156,7 @@ namespace Xyglo
                     if (m_shiftDown)
                     {
                         m_project.getSelectedBufferView().incrementViewSize();
+                        setActiveBuffer();
                     }
                     else
                     {
@@ -3208,6 +3172,7 @@ namespace Xyglo
                     if (m_shiftDown)
                     {
                         m_project.getSelectedBufferView().decrementViewSize();
+                        setActiveBuffer();
                     }
                     else
                     {
@@ -3446,7 +3411,7 @@ namespace Xyglo
             //
             if (m_gameTime == null)
             {
-                startBanner(gameTime, VersionInformation.getProductName() + "\n" + VersionInformation.getProductVersion(), 5);
+                m_drawingHelper.startBanner(gameTime, VersionInformation.getProductName() + "\n" + VersionInformation.getProductVersion(), 5);
             }
 
             // Store gameTime for use in helper functions
@@ -4562,16 +4527,16 @@ namespace Xyglo
                         leftBox.Y = (int)(m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * 3);
 
                         Vector2 leftBoxEnd = leftBox;
-                        leftBoxEnd.X += (int)(m_project.getFontManager().getCharWidth() * 16);
-                        leftBoxEnd.Y += (int)(m_project.getFontManager().getLineSpacing() * 10);
+                        leftBoxEnd.X += (int)(m_project.getFontManager().getCharWidth(bv1.getViewSize()) * 16);
+                        leftBoxEnd.Y += (int)(m_project.getFontManager().getLineSpacing(bv1.getViewSize()) * 10);
 
                         Vector2 rightBox = Vector2.Zero;
                         rightBox.X = (int)((m_graphics.GraphicsDevice.Viewport.Width / 2) + m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 4);
                         rightBox.Y = leftBox.Y;
 
                         Vector2 rightBoxEnd = rightBox;
-                        rightBoxEnd.X += (int)(m_project.getFontManager().getCharWidth() * 16);
-                        rightBoxEnd.Y += (int)(m_project.getFontManager().getLineSpacing() * 10);
+                        rightBoxEnd.X += (int)(m_project.getFontManager().getCharWidth(bv2.getViewSize()) * 16);
+                        rightBoxEnd.Y += (int)(m_project.getFontManager().getLineSpacing(bv2.getViewSize()) * 10);
 
                         // Now generate some previews and store these positions
                         //
@@ -5085,9 +5050,6 @@ namespace Xyglo
 
         }
 
-        private bool m_flipFlop = true;
-        private double m_nextLicenceMessage = 0.0f;
-
         /// <summary>
         /// This is called when the game should draw itself.
         /// </summary>
@@ -5221,7 +5183,7 @@ namespace Xyglo
                     //if (m_frustrum.Contains(bb) != ContainmentType.Disjoint)
                     if (m_frustrum.Intersects(bb))
                     {
-                        drawFileBuffer(m_project.getBufferViews()[i], gameTime);
+                        m_drawingHelper.drawFileBuffer(m_spriteBatch, m_project.getBufferViews()[i], gameTime, m_state, m_buildStdOutView, m_buildStdErrView, m_zoomLevel);
                     }
 
                     // Draw a background square for all buffer views if they are coloured
@@ -5291,7 +5253,8 @@ namespace Xyglo
 
                 // Draw the Overlay HUD
                 //
-                drawOverlay(gameTime, m_overlaySpriteBatch);
+                m_drawingHelper.drawOverlay(m_overlaySpriteBatch, gameTime, m_graphics, m_state, m_gotoLine, m_shiftDown, m_ctrlDown, m_altDown,
+                                            m_eye, m_temporaryMessage, m_temporaryMessageStartTime, m_temporaryMessageEndTime);
 
                 // Draw map of BufferViews
                 //
@@ -5323,9 +5286,9 @@ namespace Xyglo
 
             // Draw a welcome banner
             //
-            if (m_bannerStartTime != -1 && m_project.getViewMode() != Project.ViewMode.Formal)
+            if (m_drawingHelper.getBannerStartTime() != -1 && m_project.getViewMode() != Project.ViewMode.Formal)
             {
-                drawBanner(gameTime);
+                m_drawingHelper.drawBanner(m_spriteBatch, gameTime, m_basicEffect, m_splashScreen);
             }
 
             // Any Kinect information to share
@@ -5356,319 +5319,7 @@ namespace Xyglo
 #endif // GOT_KINECT
         }
 
-
-
-        /// <summary>
-        /// Split at string along a given length along word boundaries.   We try to split on space first,
-        /// then forwardslash, then backslash.
-        /// </summary>
-        /// <param name="line"></param>
-        /// <param name="width"></param>
-        /// <returns></returns>
-        protected List<string> splitStringNicely(string line, int width)
-        {
-            List<string> rS = new List<string>();
-
-            if (line.Length < width)
-            {
-                rS.Add(line);
-                return rS;
-            }
-
-            int splitPos = 0;
-            while (splitPos < line.Length)
-            {
-                // Split to max width
-                //
-                string splitString = line.Substring(splitPos, Math.Min(width, line.Length - splitPos));
-
-                int findPos = splitString.LastIndexOf(" ");
-
-                if (findPos == -1)
-                {
-                    findPos = splitString.LastIndexOf("/");
-
-                    if (findPos == -1)
-                    {
-                        findPos = splitString.LastIndexOf("\\");
-
-                        if (findPos == -1)
-                        {
-                            findPos = splitString.LastIndexOf("/");
-                        }
-                    }
-                }
-
-                if (findPos != -1)
-                {
-                    // Step past this match character for next match
-                    //
-                    if (findPos + splitPos < line.Length)
-                    {
-                        findPos++;
-                    }
-                    splitString = line.Substring(splitPos, findPos);
-                }
-
-                /*
-                // If there's no space in our substring then we cheat
-                //
-                if (splitString == "")
-                {
-                    if ((line.Length - splitPos) < width)
-                    {
-                        rS.Add(line.Substring(splitPos, line.Length - splitPos));
-                        splitPos = line.Length; // and exit
-                    }
-                    else // greater than width
-                    {
-                        rS.Add(line.Substring(splitPos, width));
-                        splitPos += width; // and continue splitting
-                    }
-                }
-                else
-                {*/
-                    splitPos += splitString.Length;
-
-//                    if (splitPos < line.Length)
-                    //{
-                      //  splitPos++;
-                    //}
-
-                    rS.Add(splitString);
-                //}
-            }
-
-            return rS;
-        }
-
-        /// <summary>
-        /// Draw temporary message by fade in/fade out
-        /// </summary>
-        /// <param name="gameTime"></param>
-        /// <param name="overlayColour"></param>
-        protected void drawTemporaryMessage(GameTime gameTime, Color overlayColour)
-        {
-            if (m_temporaryMessage == "" || gameTime.TotalGameTime.TotalSeconds > m_temporaryMessageEndTime)
-            {
-                return;
-            }
-
-            // Now calculate the colour according to the time - fade in/fade out is currently linear
-            //
-            Color fadeColour = overlayColour;
-            
-            float blankTime = 0.1f; // seconds
-            float fadeTime = 0.4f; // seconds
-            if (gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime < blankTime)
-            {
-                fadeColour = Color.Black;
-                fadeColour.A = 0;
-            }
-            else if (gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime < fadeTime)
-            {
-                double percent = (gameTime.TotalGameTime.TotalSeconds - m_temporaryMessageStartTime - blankTime) / (fadeTime - blankTime);
-                fadeColour.R = (byte)((double)overlayColour.R * percent);
-                fadeColour.G = (byte)((double)overlayColour.G * percent);
-                fadeColour.B = (byte)((double)overlayColour.B * percent);
-                fadeColour.A = (byte)((double)overlayColour.A * percent);
-            }
-            else if (gameTime.TotalGameTime.TotalSeconds > m_temporaryMessageEndTime - fadeTime)
-            {
-                double percent = (m_temporaryMessageEndTime - gameTime.TotalGameTime.TotalSeconds) / fadeTime;
-                fadeColour.R = (byte)((double)overlayColour.R * percent);
-                fadeColour.G = (byte)((double)overlayColour.G * percent);
-                fadeColour.B = (byte)((double)overlayColour.B * percent);
-                fadeColour.A = (byte)((double)overlayColour.A * percent);
-            }
-
-            // How many lines are we going to show for this temporary message?
-            //
-            List<string> splitString = splitStringNicely(m_temporaryMessage, m_project.getSelectedBufferView().getBufferShowWidth());
-
-            // Set x and Y accordingly
-            //
-            float yPos = m_graphics.GraphicsDevice.Viewport.Height - ((splitString.Count + 3) * m_project.getFontManager().getOverlayFont().LineSpacing);
-
-            //m_overlaySpriteBatch.Begin();
-            for (int i = 0; i < splitString.Count; i++)
-            {
-                float xPos = m_graphics.GraphicsDevice.Viewport.Width / 2 - m_project.getFontManager().getOverlayFont().MeasureString("X").X * splitString[i].Length / 2;
-                m_overlaySpriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), splitString[i], new Vector2(xPos, yPos), fadeColour, 0, Vector2.Zero, 1.0f, 0, 0);
-                yPos += m_project.getFontManager().getOverlayFont().LineSpacing;
-            }
-            //m_overlaySpriteBatch.End();
-        }
-
-
-        /// <summary>
-        /// Draw the HUD Overlay for the editor with information about the current file we're viewing
-        /// and position in that file.
-        /// </summary>
-        protected void drawOverlay(GameTime gameTime, SpriteBatch spriteBatch)
-        {
-#if SCROLLING_TEXT
-            // Flag that we set during this method
-            //
-            bool drawScrollingText = false;
-#endif
-
-            // Set our colour according to the state of Friendlier
-            //
-            Color overlayColour = Color.White;
-            if (m_state != FriendlierState.TextEditing && m_state != FriendlierState.GotoLine && m_state != FriendlierState.FindText && m_state != FriendlierState.DiffPicker)
-            {
-                overlayColour = m_greyedColour; 
-            }
-
-            // Set up some of these variables here
-            //
-            string positionString = m_project.getSelectedBufferView().getCursorPosition().Y + "," + m_project.getSelectedBufferView().getCursorPosition().X;
-            float positionStringXPos = m_graphics.GraphicsDevice.Viewport.Width - positionString.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) - (m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 14);
-            float filePercent = 0.0f;
-
-            // Filename is where we put the filename plus other assorted gubbins or we put a
-            // search string in there depending on the mode.
-            //
-            string fileName = "";
-
-            if (m_state == FriendlierState.FindText)
-            {
-                // Draw the search string down there
-                fileName = "Search: " + m_project.getSelectedBufferView().getSearchText();
-            }
-            else if (m_state == FriendlierState.GotoLine)
-            {
-                fileName = "Goto line: " + m_gotoLine;
-            }
-            else
-            {
-                if (m_project.getSelectedBufferView() != null && m_project.getSelectedBufferView().getFileBuffer() != null)
-                {
-                    // Set the filename
-                    if (m_project.getSelectedBufferView().getFileBuffer().getShortFileName() != "")
-                    {
-                        fileName = "\"" + m_project.getSelectedBufferView().getFileBuffer().getShortFileName() + "\"";
-                    }
-                    else
-                    {
-                        fileName = "<New Buffer>";
-                    }
-
-                    if (m_project.getSelectedBufferView().getFileBuffer().isModified())
-                    {
-                        fileName += " [Modified]";
-                    }
-
-                    fileName += " " + m_project.getSelectedBufferView().getFileBuffer().getLineCount() + " lines";
-                }
-                else
-                {
-                    fileName = "<New Buffer>";
-                }
-
-                // Add some other useful states to our status line
-                //
-                if (m_project.getSelectedBufferView().isReadOnly())
-                {
-                    fileName += " [RDONLY]";
-                }
-
-                if (m_project.getSelectedBufferView().isTailing())
-                {
-                    fileName += " [TAIL]";
-                }
-
-                if (m_shiftDown)
-                {
-                    fileName += " [SHFT]";
-                }
-
-                if (m_ctrlDown)
-                {
-                    fileName += " [CTRL]";
-                }
-
-                if (m_altDown)
-                {
-                    fileName += " [ALT]";
-                }
-
-            }
-
-            // Convert lineHeight back to normal size by dividing by m_textSize modifier
-            //
-            float yPos = m_graphics.GraphicsDevice.Viewport.Height - (m_project.getFontManager().getLineSpacing() / m_project.getFontManager().getTextScale());
-
-            string modeString = "none";
-
-            switch (m_state)
-            {
-                case FriendlierState.TextEditing:
-                    modeString = "edit";
-                    break;
-
-                case FriendlierState.FileOpen:
-                    modeString = "browsing";
-                    break;
-
-                case FriendlierState.FileSaveAs:
-                    modeString = "saving file";
-                    break;
-
-                case FriendlierState.DiffPicker:
-                    modeString = "performing diff";
-                    break;
-
-                default:
-                    modeString = "free";
-                    break;
-            }
-
-            float modeStringXPos = m_graphics.GraphicsDevice.Viewport.Width - modeString.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) - (m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 8);
-
-            if (m_project.getSelectedBufferView().getFileBuffer() != null && m_project.getSelectedBufferView().getFileBuffer().getLineCount() > 0)
-            {
-                filePercent = (float)(m_project.getSelectedBufferView().getCursorPosition().Y) /
-                              (float)(Math.Max(1, m_project.getSelectedBufferView().getFileBuffer().getLineCount() - 1));
-            }
-
-            string filePercentString = ((int)(filePercent * 100.0f)) + "%";
-            float filePercentStringXPos = m_graphics.GraphicsDevice.Viewport.Width - filePercentString.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) - (m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 3);
-
-            // Debug eye position
-            //
-            if (m_project.getViewMode() != Project.ViewMode.Formal)
-            {
-                string eyePosition = "[EyePosition] X " + m_eye.X + ",Y " + m_eye.Y + ",Z " + m_eye.Z;
-                float xPos = m_graphics.GraphicsDevice.Viewport.Width - eyePosition.Length * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay);
-                spriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), eyePosition, new Vector2(0.0f, 0.0f), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
-            }
-
-            // hardcode the font size to 1.0f so it looks nice
-            //
-            spriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), fileName, new Vector2(0.0f, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
-            spriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), modeString, new Vector2((int)modeStringXPos, 0.0f), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
-            spriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), positionString, new Vector2((int)positionStringXPos, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
-            spriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), filePercentString, new Vector2((int)filePercentStringXPos, (int)yPos), overlayColour, 0, Vector2.Zero, 1.0f, 0, 0);
-
-            // Draw any temporary message
-            //
-            drawTemporaryMessage(gameTime, Color.HotPink);
-
-#if SCROLLING_TEXT
-            // Draw the scrolling text
-            //
-            if (m_textScrollTexture != null && drawScrollingText)
-            {
-                m_spriteBatch.Begin();
-                m_spriteBatch.Draw(m_textScrollTexture, new Rectangle((int)((fileName.Length + 1) * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay)), (int)yPos, m_textScrollTexture.Width, m_textScrollTexture.Height), Color.White);
-                m_spriteBatch.End();
-            }
-#endif
-
-        }
-
+  
         /// <summary>
         /// Draw the system CPU load and memory usage next to the FileBuffer
         /// </summary>
@@ -5678,11 +5329,14 @@ namespace Xyglo
             Vector2 startPosition = Vector2.Zero;
             int linesHigh = 6;
 
-            startPosition.X += m_graphics.GraphicsDevice.Viewport.Width - m_project.getFontManager().getCharWidth() * 8;
-            startPosition.Y += ( m_graphics.GraphicsDevice.Viewport.Height / 2 ) - m_project.getFontManager().getLineSpacing() * linesHigh / 2;
+            // Bufferview
+            BufferView bv = m_project.getSelectedBufferView();
 
-            float height = m_project.getFontManager().getLineSpacing() * linesHigh;
-            float width = m_project.getFontManager().getCharWidth() / 2;
+            startPosition.X += m_graphics.GraphicsDevice.Viewport.Width - m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) * 3;
+            startPosition.Y += (m_graphics.GraphicsDevice.Viewport.Height / 2) - m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * linesHigh / 2;
+
+            float height = m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) * linesHigh;
+            float width = m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2;
 
             // Only fetch some new samples when this timespan has elapsed
             //
@@ -5739,7 +5393,7 @@ namespace Xyglo
 
             // Draw background for Memory counter
             //
-            startPosition.X += m_project.getFontManager().getCharWidth();
+            startPosition.X += m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) *0.5f;
             p1 = startPosition;
             p2 = startPosition;
 
@@ -5884,7 +5538,7 @@ namespace Xyglo
 
                 // Add some height here so we can see the highlight
                 //
-                h2.Y += m_project.getFontManager().getLineSpacing();
+                h2.Y += m_project.getFontManager().getLineSpacing(m_project.getSelectedBufferView().getViewSize());
 
                 m_drawingHelper.renderQuad(h1, h2, h.getColour(), spriteBatch);
             }
@@ -6065,7 +5719,7 @@ namespace Xyglo
                         }
                         else
                         {
-                            yPosition += m_project.getFontManager().getLineSpacing();
+                            yPosition += m_project.getFontManager().getDefaultLineSpacing();
                             line = "...";
                         }
 
@@ -6218,7 +5872,7 @@ namespace Xyglo
                 }
 
                 m_spriteBatch.DrawString(
-                                m_project.getFontManager().getFont(),
+                                m_project.getFontManager().getViewFont(view.getViewSize()),
                                 drawLine,
                                 new Vector2((int)viewSpaceTextPosition.X /* + m_project.getFontManager().getCharWidth() * xPos */, (int)(viewSpaceTextPosition.Y + yPosition)),
                                 colour,
@@ -6230,300 +5884,12 @@ namespace Xyglo
 
                 //sourceLine++;
 
-                yPosition += m_project.getFontManager().getLineSpacing();
+                yPosition += m_project.getFontManager().getLineSpacing(view.getViewSize());
 
             }
         }
 
-        /// <summary>
-        /// Draw a BufferView in any state that we wish to - this means showing the lines of the
-        /// file/buffer we want to see at the current cursor position with highlighting as required.
-        /// </summary>
-        /// <param name="view"></param>
-        /// <param name="gameTime"></param>
-        protected void drawFileBuffer(BufferView view, GameTime gameTime)
-        {
-            Color bufferColour = view.getTextColour();
 
-            if (m_state != FriendlierState.TextEditing && m_state != FriendlierState.GotoLine && m_state != FriendlierState.FindText && m_state != FriendlierState.DiffPicker)
-            {
-                bufferColour = m_greyedColour;
-            }
-
-            // Take down the colours and alpha of the non selected buffer views to draw a visual distinction
-            //
-            if (view != m_project.getSelectedBufferView())
-            {
-                bufferColour.R = (byte)(bufferColour.R / m_greyDivisor);
-                bufferColour.G = (byte)(bufferColour.G / m_greyDivisor);
-                bufferColour.B = (byte)(bufferColour.B / m_greyDivisor);
-                bufferColour.A = (byte)(bufferColour.A / m_greyDivisor);
-            }
-
-            float yPosition = 0.0f;
-
-            //Vector2 lineOrigin = new Vector2();
-            Vector3 viewSpaceTextPosition = view.getPosition();
-
-            // Draw all the text lines to the height of the buffer
-            //
-            // This is default empty line character
-            string line, fetchLine;
-            int bufPos = view.getBufferShowStartY();
-            Color highlightColour;
-
-            // If we are tailing a file then let's look at the last X lines of it only
-            //
-            if (view.isTailing())
-            {
-                // We don't do this all the time so let the FileBuffer work out when we've updated
-                // the file and need to change the viewing position to tail it.
-                //
-                view.getFileBuffer().refetchFile(gameTime, m_project.getSyntaxManager());
-                //bufPos = view.getFileBuffer().getLineCount() - view.getBufferShowLength();
-
-
-                // Ensure that we're always at least at zero
-                //
-                if (bufPos < 0)
-                {
-                    bufPos = 0;
-                }
-            }
-
-            // We do tailing and read only files here
-            //
-            if (view.isTailing() && view.isReadOnly())
-            {
-                // Ensure that we're tailing correctly by adjusting bufferview position
-                //
-
-
-                // We let the view do the hard work with the wrapped lines
-                //
-                List<string> lines;
-
-                if (view == m_buildStdOutView)
-                {
-                    lines = view.getWrappedEndofBuffer(m_project.getStdOutLastLine());
-                }
-                else if (view == m_buildStdErrView)
-                {
-                    lines = view.getWrappedEndofBuffer(m_project.getStdErrLastLine());
-                }
-                else
-                {
-                    // Default
-                    //
-                    lines = view.getWrappedEndofBuffer();
-                }
-
-                Color bufferColourLastRun = new Color(50, 50, 50, 50);
-
-                for (int i = 0; i < lines.Count; i++)
-                {
-                    m_spriteBatch.DrawString(m_project.getFontManager().getFont(), lines[i], new Vector2((int)viewSpaceTextPosition.X, (int)viewSpaceTextPosition.Y + yPosition),
-                        (i < view.getLogRunTerminator() ? bufferColourLastRun : bufferColour), 0, Vector2.Zero, m_project.getFontManager().getTextScale(), 0, 0);
-                    yPosition += m_project.getFontManager().getLineSpacing();
-                }
-            }
-            else
-            {
-                for (int i = 0; i < view.getBufferShowLength(); i++)
-                {
-                    line = "~";
-
-                    if (i + bufPos < view.getFileBuffer().getLineCount() && view.getFileBuffer().getLineCount() != 0)
-                    {
-                        // Fetch the line and convert any tabs to relevant spaces
-                        //
-                        fetchLine = view.getFileBuffer().getLine(i + bufPos).Replace("\t", m_project.getTab());
-
-                        if (fetchLine.Length - view.getBufferShowStartX() > view.getBufferShowWidth())
-                        {
-                            // Get a valid section of it
-                            //
-                            line = fetchLine.Substring(view.getBufferShowStartX(), Math.Min(fetchLine.Length - view.getBufferShowStartX(), view.getBufferShowWidth()));
-
-                            if (view.getBufferShowStartX() + view.getBufferShowWidth() < fetchLine.Length)
-                            {
-                                line += " [>]";
-                            }
-                        }
-                        else
-                        {
-                            if (view.getBufferShowStartX() >= 0 && view.getBufferShowStartX() < fetchLine.Length)
-                            {
-                                line = fetchLine.Substring(view.getBufferShowStartX(), fetchLine.Length - view.getBufferShowStartX());
-                            }
-                            else
-                            {
-                                line = "";
-                            }
-                        }
-                    }
-
-                    // Get the highlighting for the line
-                    //
-                    m_highlights = view.getFileBuffer().getHighlighting(i + bufPos, view.getBufferShowStartX(), view.getBufferShowWidth());
-
-                    // Only do syntax highlighting when we're not greyed out
-                    //
-                    // !!! Could be performance problem here with highlights
-                    //
-                    if (m_highlights.Count > 0 && bufferColour != m_greyedColour)
-                    {
-                        // Need to print the line by section with some unhighlighted
-                        //
-                        int nextHighlight = 0;
-
-                        // Start from wherever we're showing from
-                        //
-                        int xPos = 0; // view.getBufferShowStartX();
-
-                        // Step through with xPos all the highlights in our collection
-                        //
-                        while (nextHighlight < m_highlights.Count && xPos < line.Length)
-                        {
-                            // Sort out the colour
-                            //
-                            highlightColour = m_highlights[nextHighlight].getColour();
-
-                            // If not active view then temper colour
-                            //
-                            if (view != m_project.getSelectedBufferView())
-                            {
-                                highlightColour.R = (byte)(highlightColour.R / m_greyDivisor);
-                                highlightColour.G = (byte)(highlightColour.G / m_greyDivisor);
-                                highlightColour.B = (byte)(highlightColour.B / m_greyDivisor);
-                                highlightColour.A = (byte)(highlightColour.A / m_greyDivisor);
-                            }
-
-                            // If the highlight starts beyond the string end then skip it -
-                            // and we quit out of the highlighting process as highlights are
-                            // sorted (hopefully correctly).
-                            //
-                            if (m_highlights[nextHighlight].m_startHighlight.X >= line.Length)
-                            {
-                                xPos = line.Length;
-                                continue;
-                            }
-
-                            if (xPos < m_highlights[nextHighlight].m_startHighlight.X || nextHighlight >= m_highlights.Count)
-                            {
-                                string subLineToHighlight = line.Substring(xPos, m_highlights[nextHighlight].m_startHighlight.X - xPos);
-
-                                // Not sure we need this for the moment
-                                //
-                                int screenXpos = m_project.fileToScreen(line.Substring(0, xPos)).Length;
-
-                                //if (screenXpos != xPos)
-                                //{
-                                    //Logger.logMsg("GOT TAB");
-                                //}
-
-                                m_spriteBatch.DrawString(
-                                    m_project.getFontManager().getFont(),
-                                    subLineToHighlight,
-                                    new Vector2((int)viewSpaceTextPosition.X + m_project.getFontManager().getCharWidth() * xPos, (int)(viewSpaceTextPosition.Y + yPosition)),
-                                    bufferColour,
-                                    0,
-                                    Vector2.Zero,
-                                    m_project.getFontManager().getTextScale(),
-                                    0,
-                                    0);
-
-                                xPos = m_highlights[nextHighlight].m_startHighlight.X;
-                            }
-
-                            if (xPos == m_highlights[nextHighlight].m_startHighlight.X)
-                            {
-                                // Capture substring, increment xPos and draw the highlighted area - watch for
-                                // highlights that span lines longer than our presented line (line).
-                                //
-                                string subLineInHighlight = line.Substring(m_highlights[nextHighlight].m_startHighlight.X,
-                                                                           Math.Min(m_highlights[nextHighlight].m_endHighlight.X - m_highlights[nextHighlight].m_startHighlight.X, line.Length - m_highlights[nextHighlight].m_startHighlight.X));
-
-                                m_spriteBatch.DrawString(
-                                    m_project.getFontManager().getFont(),
-                                    subLineInHighlight,
-                                    new Vector2((int)viewSpaceTextPosition.X + m_project.getFontManager().getCharWidth() * xPos, (int)(viewSpaceTextPosition.Y + yPosition)),
-                                    highlightColour,
-                                    0,
-                                    Vector2.Zero,
-                                    m_project.getFontManager().getTextScale(),
-                                    0,
-                                    0);
-
-                                // Step past this highlight
-                                //
-                                xPos = m_highlights[nextHighlight].m_endHighlight.X;
-                                nextHighlight++;
-                            }
-                        }
-
-                        // Draw the remainder of the line
-                        //
-                        if (xPos < line.Length)
-                        {
-                            string remainder = line.Substring(xPos, line.Length - xPos);
-
-                            m_spriteBatch.DrawString(
-                                m_project.getFontManager().getFont(),
-                                remainder,
-                                new Vector2((int)viewSpaceTextPosition.X + m_project.getFontManager().getCharWidth() * xPos, (int)(viewSpaceTextPosition.Y + yPosition)),
-                                bufferColour,
-                                0,
-                                Vector2.Zero,
-                                m_project.getFontManager().getTextScale(),
-                                0,
-                                0);
-                        }
-                    }
-                    else  // draw the line without highlighting
-                    {
-                        m_spriteBatch.DrawString(
-                            m_project.getFontManager().getFont(),
-                            line,
-                            new Vector2((int)viewSpaceTextPosition.X, (int)(viewSpaceTextPosition.Y + yPosition)),
-                            bufferColour,
-                            0,
-                            Vector2.Zero,
-                            m_project.getFontManager().getTextScale(),
-                            0,
-                            0);
-                    }
-
-                    yPosition += m_project.getFontManager().getLineSpacing();
-                }
-            }
-
-            // Draw overlaid ID on this window if we're far enough away to use it
-            //
-            if (m_zoomLevel > 950.0f)
-            {
-                int viewId = m_project.getBufferViews().IndexOf(view);
-                string bufferId = viewId.ToString();
-
-                if (view.isTailing())
-                {
-                    bufferId += "(T)";
-                }
-                else if (view.isReadOnly())
-                {
-                    bufferId += "(RO)";
-                }
-
-                Color seeThroughColour = bufferColour;
-                seeThroughColour.A = 70;
-                m_spriteBatch.DrawString(m_project.getFontManager().getFont(), bufferId, new Vector2((int)viewSpaceTextPosition.X, (int)viewSpaceTextPosition.Y), seeThroughColour, 0, Vector2.Zero, m_project.getFontManager().getTextScale() * 16.0f, 0, 0);
-
-                // Show a filename
-                //
-                string fileName = view.getFileBuffer().getShortFileName();
-                m_spriteBatch.DrawString(m_project.getFontManager().getFont(), fileName, new Vector2((int)viewSpaceTextPosition.X, (int)viewSpaceTextPosition.Y), seeThroughColour, 0, Vector2.Zero, m_project.getFontManager().getTextScale() * 4.0f, 0, 0);
-            }
-        }
 
         /// <summary>
         /// Render some scrolling text to a texture.  This takes the current m_temporaryMessage and renders
@@ -6590,7 +5956,7 @@ namespace Xyglo
         protected void drawScrollbar(BufferView view)
         {
             Vector3 sbPos = view.getPosition();
-            float height = view.getBufferShowLength() * m_project.getFontManager().getLineSpacing();
+            float height = view.getBufferShowLength() * m_project.getFontManager().getLineSpacing(view.getViewSize());
 
             Rectangle sbBackGround = new Rectangle(Convert.ToInt16(sbPos.X - m_project.getFontManager().getTextScale() * 30.0f),
                                                    Convert.ToInt16(sbPos.Y),
@@ -6978,7 +6344,7 @@ namespace Xyglo
                         // Inform that we're starting the build
                         //
                         setTemporaryMessage("Starting build..", 4, gameTime);
-                        startBanner(m_gameTime, "Build started", 5);
+                        m_drawingHelper.startBanner(m_gameTime, "Build started", 5);
 
                         /*
                         // Handle any immediate exit error code
@@ -7105,7 +6471,7 @@ namespace Xyglo
                 setTemporaryMessage("Build failed with exit code " + m_buildProcess.ExitCode, 5, m_gameTime);
                 m_buildStdErrView.setTailColour(Color.Red);
 
-                startBanner(m_gameTime, "Build failed", 5);
+                m_drawingHelper.startBanner(m_gameTime, "Build failed", 5);
             }
             else
             {
@@ -7115,135 +6481,12 @@ namespace Xyglo
                 //
                 m_buildStdErrView.setTailColour(Color.Green);
 
-                startBanner(m_gameTime, "Build completed", 5);
+                m_drawingHelper.startBanner(m_gameTime, "Build completed", 5);
             }
 
             // Invalidate the build process
             //
             m_buildProcess = null;
-        }
-
-        /// <summary>
-        /// Start drawing a zooming banner
-        /// </summary>
-        /// <param name="gameTime"></param>
-        /// <param name="bannerString"></param>
-        /// <param name="seconds"></param>
-        protected void startBanner(GameTime gameTime, string bannerString, float seconds)
-        {
-            m_bannerStartTime = gameTime.TotalGameTime.TotalSeconds;
-            m_bannerString = bannerString;
-            m_bannerDuration = seconds;
-            m_bannerColour.R = 255;
-            m_bannerColour.B = 255;
-            m_bannerColour.G = 255;
-            m_bannerColour.A = 180;
-
-            m_bannerStringList = new List<string>();
-
-            foreach (string str in m_bannerString.Split('\n'))
-            {
-                m_bannerStringList.Add(str);
-            }
-        }
-
-        /// <summary>
-        /// Draw a zooming banner
-        /// </summary>
-        /// <param name="gameTime"></param>
-        protected void drawBanner(GameTime gameTime)
-        {
-            // Don't do anything if we don't have anything to draw
-            //
-            if (m_bannerStringList == null || m_bannerStringList.Count == 0)
-            {
-                return;
-            }
-
-            float scale = (float)(Math.Pow(gameTime.TotalGameTime.TotalSeconds - m_bannerStartTime + 0.4, 6));
-
-            // Stop display this at some point by resetting the m_bannerStartTime - we can also stop displaying if the scale is too big
-            //
-            if ((m_bannerStartTime + m_bannerDuration) < gameTime.TotalGameTime.TotalSeconds)
-            {
-                m_bannerStartTime = -1;
-                return;
-            }
-
-            if (scale > 100.0f)
-            {
-                m_bannerColour.A--; ;
-                m_bannerColour.R--;
-                m_bannerColour.B--;
-                m_bannerColour.G--;
-            }
-
-            //if (m_bannerAlpha < 0)
-            //{
-                //m_bannerStartTime = -1;
-                //return;
-            //}
-
-            Vector3 position = m_project.getSelectedBufferView().getPosition();
-
-            // Start with centering adjustments
-            //
-            int maxLength = 0;
-            foreach(string banner in m_bannerStringList)
-            {
-                if (banner.Length > maxLength)
-                {
-                    maxLength = banner.Length;
-                }
-            }
-            int xPosition = 0;
-            int yPosition = 0;
-
-            bool isText = false;
-
-            m_spriteBatch.Begin(SpriteSortMode.Texture, BlendState.Additive, SamplerState.AnisotropicClamp, DepthStencilState.DepthRead, RasterizerState.CullNone, m_basicEffect);
-
-            if (isText)
-            {
-                xPosition = -(int)((scale * maxLength * m_project.getFontManager().getCharWidth(FontManager.FontType.Overlay) / 2));
-                yPosition = -(int)((m_bannerStringList.Count * scale * m_project.getFontManager().getLineSpacing(FontManager.FontType.Overlay) / 2));
-
-                // Add half the editing window width and height
-                //
-                xPosition += (int)(m_project.getSelectedBufferView().getVisibleWidth() / 2);
-                yPosition += (int)(m_project.getSelectedBufferView().getVisibleHeight() / 2);
-
-                // Add window position - so we're doing this a bit backwards but you get the idea
-                //
-                xPosition += (int)(position.X);
-                yPosition += (int)(position.Y);
-
-                if (m_bannerColour.R == m_bannerColour.G && m_bannerColour.G == m_bannerColour.B && m_bannerColour.B == 0)
-                {
-                    m_bannerStartTime = -1;
-                    return;
-                }
-
-
-                //float scale = diff.Ticks;
-                // Draw to the render target
-                //
-                Vector3 curPos = m_project.getSelectedBufferView().getPosition();
-
-                m_spriteBatch.DrawString(m_project.getFontManager().getOverlayFont(), m_bannerString, new Vector2((int)xPosition, (int)yPosition), m_bannerColour, 0, new Vector2(0, 0), scale, 0, 0);
-            }
-            else
-            {
-                xPosition = (int)m_project.getEyePosition().X;
-                yPosition = (int)m_project.getEyePosition().Y;
-
-                xPosition += (int)(scale * (float)m_splashScreen.Width / 2.0f);
-                yPosition += (int)(scale * (float)m_splashScreen.Height / 2.0f);
-
-                m_spriteBatch.Draw(m_splashScreen, new Vector2((int)xPosition, (int)yPosition), null, Color.White, 0f, Vector2.Zero, scale, 0, 0);
-            }
-
-            m_spriteBatch.End();
         }
 
         /// <summary>
@@ -7381,6 +6624,5 @@ namespace Xyglo
         {
             Logger.logMsg("Friendlier::addNewDirectory() - adding directory " + dirPath);
         }
-
     }
 }

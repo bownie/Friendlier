@@ -231,10 +231,10 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Return the font we have selected
+        /// Return the font we have selected in our font manager - default font for screen size
         /// </summary>
         /// <returns></returns>
-        public SpriteFont getFont()
+        public SpriteFont getDefaultFont()
         {
             switch(m_state)
             {
@@ -254,17 +254,38 @@ namespace Xyglo
         }
 
         /// <summary>
+        /// Get a font for a view size
+        /// </summary>
+        /// <param name="viewSize"></param>
+        /// <returns></returns>
+        public SpriteFont getViewFont(XygloView.ViewSize viewSize)
+        {
+            switch (viewSize)
+            {
+                case XygloView.ViewSize.Small:
+                    return m_smallWindowFont;
+
+                default:
+                case XygloView.ViewSize.Medium:
+                    return m_windowFont;
+
+                case XygloView.ViewSize.Large:
+                    return m_fullScreenFont;
+            }
+        }
+
+        /// <summary>
         /// Get the character width of the given font
         /// </summary>
         /// <returns></returns>
-        public float getCharWidth()
+        public float getCharWidth(XygloView.ViewSize viewSize)
         {
-            if (getFont() == null)
-            {
-                throw new Exception("No font defined");
-            }
+            //if (getDefaultFont() == null)
+            //{
+                //throw new Exception("No font defined");
+            //}
 
-            return getTextScale() * getFont().MeasureString("X").X;
+            return getTextScale() * getViewFont(viewSize).MeasureString("X").X;
         }
 
 
@@ -272,19 +293,19 @@ namespace Xyglo
         /// Get the Line spacing of the selected font - gap plus font height
         /// </summary>
         /// <returns></returns>
-        public float getLineSpacing()
+        public float getLineSpacing(XygloView.ViewSize viewSize)
         {
-            if (getFont() == null)
-            {
-                throw new Exception("No font defined");
-            }
+            //if (getDefaultFont() == null)
+            //{
+                //throw new Exception("No font defined");
+            //}
 
             if (m_processor.ToLower() == "nuclex")
             {
-                return getTextScale() * getFont().LineSpacing * 1.12f; // Kludge for Nuclex issue 
+                return getTextScale() * getViewFont(viewSize).LineSpacing * 1.12f; // Kludge for Nuclex issue 
             }
 
-            return getTextScale() * getFont().LineSpacing;
+            return getTextScale() * getViewFont(viewSize).LineSpacing;
             //return getTextScale() * getFont().MeasureString("X").Y;
         }
 
@@ -292,14 +313,14 @@ namespace Xyglo
         /// Character height
         /// </summary>
         /// <returns></returns>
-        public float getCharHeight()
+        public float getCharHeight(XygloView.ViewSize viewSize)
         {
-            if (getFont() == null)
-            {
-                throw new Exception("No font defined");
-            }
+            //if (getFont() == null)
+            //{
+                //throw new Exception("No font defined");
+            //}
 
-            return getTextScale() * getFont().MeasureString("X").Y;
+            return getTextScale() * getViewFont(viewSize).MeasureString("X").Y;
         }
 
         /// <summary>
@@ -364,7 +385,7 @@ namespace Xyglo
         /// <returns></returns>
         public float getDefaultLineSpacing()
         {
-            return (float)(getFont().LineSpacing);
+            return (float)(getDefaultFont().LineSpacing);
         }
 
         /// <summary>

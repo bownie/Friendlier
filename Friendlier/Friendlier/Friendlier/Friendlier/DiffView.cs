@@ -446,7 +446,7 @@ namespace Xyglo
         /// <returns></returns>
         public override float getWidth()
         {
-            return m_fontManager.getCharWidth() * (m_targetBufferView1.getBufferShowWidth() + m_targetBufferView2.getBufferShowWidth() + m_viewWidthSpacing);
+            return m_fontManager.getCharWidth(m_viewSize) * (m_targetBufferView1.getBufferShowWidth() + m_targetBufferView2.getBufferShowWidth() + m_viewWidthSpacing);
         }
 
         /// <summary>
@@ -455,7 +455,7 @@ namespace Xyglo
         /// <returns></returns>
         public override float getHeight()
         {
-            return m_fontManager.getCharWidth() * (m_targetBufferView1.getBufferShowLength() + m_targetBufferView2.getBufferShowLength() + m_viewHeightSpacing);
+            return m_fontManager.getCharWidth(m_viewSize) * (m_targetBufferView1.getBufferShowLength() + m_targetBufferView2.getBufferShowLength() + m_viewHeightSpacing);
         }
 
         /// <summary>
@@ -542,13 +542,13 @@ namespace Xyglo
                     {
                         Vector3 startQuad = viewSpaceTextPosition;
                         startQuad.Y += yPosition;
-                        Vector3 endQuad = startQuad + new Vector3(m_targetBufferView2.getVisibleWidth(), project.getFontManager().getLineSpacing(), 0);
+                        Vector3 endQuad = startQuad + new Vector3(m_targetBufferView2.getVisibleWidth(), project.getFontManager().getLineSpacing(m_viewSize), 0);
                         m_highlightList.Add(new Pair<Pair<Vector3, Vector3>, Color>(new Pair<Vector3, Vector3>(startQuad, endQuad), m_targetBufferView1.getLineHighlightColour(i + m_targetBufferView1.getBufferShowStartY())));
                     }
                 }
 
                 spriteBatch.DrawString(
-                    project.getFontManager().getFont(),
+                    project.getFontManager().getViewFont(m_targetBufferView1.getViewSize()),
                     m_fileBuffer1.getLine(i + m_targetBufferView1.getBufferShowStartY()),
                     new Vector2((int)viewSpaceTextPosition.X, (int)(viewSpaceTextPosition.Y + yPosition)),
                     lineColour,
@@ -579,12 +579,12 @@ namespace Xyglo
                     m_highlightList.Add(new Pair<Pair<Vector3, Vector3>, Color>(new Pair<Vector3, Vector3>(startQuad, endQuad), m_targetBufferView1.getLineHighlightColour(i + m_targetBufferView1.getBufferShowStartY())));
                 }*/
 
-                yPosition += project.getFontManager().getLineSpacing();
+                yPosition += project.getFontManager().getLineSpacing(m_viewSize);
             }
 
             // Move the start X position and reset Y
             //
-            viewSpaceTextPosition.X += (m_targetBufferView1.getBufferShowWidth() + m_viewWidthSpacing) * m_fontManager.getCharWidth();
+            viewSpaceTextPosition.X += (m_targetBufferView1.getBufferShowWidth() + m_viewWidthSpacing) * m_fontManager.getCharWidth(m_viewSize);
             yPosition = 0.0f;
 
             // Now draw the second BufferView
@@ -601,7 +601,7 @@ namespace Xyglo
                 }
 
                 spriteBatch.DrawString(
-                    project.getFontManager().getFont(),
+                    project.getFontManager().getViewFont(m_viewSize),
                     m_fileBuffer2.getLine(i + m_targetBufferView2.getBufferShowStartY()),
                     new Vector2((int)viewSpaceTextPosition.X, (int)(viewSpaceTextPosition.Y + yPosition)),
                     lineColour,
@@ -634,7 +634,7 @@ namespace Xyglo
                     m_highlightList.Add(new Pair<Pair<Vector3, Vector3>, Color>(new Pair<Vector3, Vector3>(startQuad, endQuad), m_targetBufferView2.getLineHighlightColour(i + m_targetBufferView2.getBufferShowStartY())));
                 }*/
 
-                yPosition += project.getFontManager().getLineSpacing();
+                yPosition += project.getFontManager().getLineSpacing(m_viewSize);
             }
         }
 
@@ -690,8 +690,8 @@ namespace Xyglo
             Vector3 rV = m_position;
 
             rV.Y = -rV.Y; // invert Y
-            rV.X += m_fontManager.getCharWidth() * (m_targetBufferView1.getBufferShowWidth() + m_targetBufferView2.getBufferShowWidth() + m_viewWidthSpacing) / 2;
-            rV.Y -= m_fontManager.getLineSpacing() * (m_targetBufferView1.getBufferShowLength() + m_targetBufferView2.getBufferShowLength() + m_viewHeightSpacing) / 2;
+            rV.X += m_fontManager.getCharWidth(m_viewSize) * (m_targetBufferView1.getBufferShowWidth() + m_targetBufferView2.getBufferShowWidth() + m_viewWidthSpacing) / 2;
+            rV.Y -= m_fontManager.getLineSpacing(m_viewSize) * (m_targetBufferView1.getBufferShowLength() + m_targetBufferView2.getBufferShowLength() + m_viewHeightSpacing) / 2;
             rV.Z = zoomLevel;
 
             return rV;
@@ -705,8 +705,8 @@ namespace Xyglo
         {
             Vector3 rV = m_position;
             rV.Y = -rV.Y; // invert Y
-            rV.X += m_fontManager.getCharWidth() * (m_targetBufferView1.getBufferShowWidth() + m_targetBufferView2.getBufferShowWidth() + m_viewWidthSpacing) / 2;
-            rV.Y -= m_fontManager.getLineSpacing() * (m_targetBufferView1.getBufferShowLength() + m_targetBufferView2.getBufferShowLength() + m_viewHeightSpacing) / 2;
+            rV.X += m_fontManager.getCharWidth(m_viewSize) * (m_targetBufferView1.getBufferShowWidth() + m_targetBufferView2.getBufferShowWidth() + m_viewWidthSpacing) / 2;
+            rV.Y -= m_fontManager.getLineSpacing(m_viewSize) * (m_targetBufferView1.getBufferShowLength() + m_targetBufferView2.getBufferShowLength() + m_viewHeightSpacing) / 2;
             rV.Z += 600.0f;
             return rV;
         }
@@ -742,7 +742,7 @@ namespace Xyglo
 
             try
             {
-                if (m_fontManager.getLineSpacing() == 0 || m_fontManager.getCharWidth() == 0)
+                if (m_fontManager.getLineSpacing(m_viewSize) == 0 || m_fontManager.getCharWidth(m_viewSize) == 0)
                 {
                     throw new Exception("XygloView::calculateRelativePosition() - some of our basic settings are zero - cannot calculate");
                 }
@@ -755,19 +755,19 @@ namespace Xyglo
             switch (position)
             {
                 case ViewPosition.Above:
-                    rP = m_position - (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(), 0.0f));
+                    rP = m_position - (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(m_viewSize), 0.0f));
                     break;
 
                 case ViewPosition.Below:
-                    rP = m_position + (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(), 0.0f));
+                    rP = m_position + (new Vector3(0.0f, factor * (m_bufferShowLength + m_viewHeightSpacing) * m_fontManager.getLineSpacing(m_viewSize), 0.0f));
                     break;
 
                 case ViewPosition.Left:
-                    rP = m_position - (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
+                    rP = m_position - (new Vector3(factor * m_fontManager.getCharWidth(m_viewSize) * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
                     break;
 
                 case ViewPosition.Right:
-                    rP = m_position + (new Vector3(factor * m_fontManager.getCharWidth() * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
+                    rP = m_position + (new Vector3(factor * m_fontManager.getCharWidth(m_viewSize) * (m_bufferShowWidth + m_viewWidthSpacing), 0.0f, 0.0f));
                     break;
 
                 default:
