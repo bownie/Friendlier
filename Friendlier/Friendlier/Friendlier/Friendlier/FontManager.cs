@@ -22,9 +22,14 @@ namespace Xyglo
         //
         public enum FontType
         {
+            Micro,
+            Tiny,
             Small,
-            Window,
-            Full,
+            Medium,
+            Large,
+            VeryLarge,
+            Huge,
+            Enormous,
             Overlay
         }
 
@@ -59,19 +64,45 @@ namespace Xyglo
         protected string m_fontFamily;
 
         /// <summary>
-        /// SpriteFont
+        /// Sprite Font micro size
         /// </summary>
-        protected SpriteFont m_smallWindowFont;
+        protected SpriteFont m_microFont;
+
+        /// <summary>
+        /// Sprite Font tiny size
+        /// </summary>
+        protected SpriteFont m_tinyFont;
 
         /// <summary>
         /// SpriteFont
         /// </summary>
-        protected SpriteFont m_windowFont;
+        protected SpriteFont m_smallFont;
 
         /// <summary>
         /// SpriteFont
         /// </summary>
-        protected SpriteFont m_fullScreenFont;
+        protected SpriteFont m_mediumFont;
+
+        /// <summary>
+        /// SpriteFont
+        /// </summary>
+        protected SpriteFont m_largeFont;
+
+        /// <summary>
+        /// SpriteFont - very large
+        /// </summary>
+        protected SpriteFont m_veryLargeFont;
+
+        /// <summary>
+        /// SpriteFont - huge
+        /// </summary>
+        protected SpriteFont m_hugeFont;
+
+        /// <summary>
+        /// SpriteFont - enormous
+        /// </summary>
+        protected SpriteFont m_enormousFont;
+
 
         /// <summary>
         /// Overlay font is the font used for HUD - small screen is just a smaller size
@@ -113,14 +144,30 @@ namespace Xyglo
             Logger.logMsg("FontManager.initialise() - attempting to load fonts");
             try
             {
-                m_smallWindowFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_smallWindow");
-                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_smallWindow");
 
-                m_windowFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_window");
-                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_window");
+                m_microFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_micro");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_micro");
 
-                m_fullScreenFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_fullScreen");
-                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_fullScreen");
+                m_tinyFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_tiny");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_tiny");
+
+                m_smallFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_small");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_small");
+
+                m_mediumFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_medium");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_medium");
+
+                m_largeFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_large");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_large");
+
+                m_veryLargeFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_verylarge");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_verylarge");
+
+                m_hugeFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_huge");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_huge");
+
+                m_enormousFont = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_enormous");
+                Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_enormous");
 
                 m_overlayFontSmallScreen = m_contentManager.Load<SpriteFont>(processor + fontFamily + "_overlaySmallScreen");
                 Logger.logMsg("FontManager.initialise() - Loaded font " + processor + fontFamily + "_overlaySmallScreen");
@@ -130,16 +177,17 @@ namespace Xyglo
 
                 // Set default characters
                 //
-                m_smallWindowFont.DefaultCharacter = ' ';
-                m_windowFont.DefaultCharacter = ' ';
-                m_fullScreenFont.DefaultCharacter = ' ';
+                m_smallFont.DefaultCharacter = ' ';
+                m_mediumFont.DefaultCharacter = ' ';
+                m_largeFont.DefaultCharacter = ' ';
                 m_overlayFontSmallScreen.DefaultCharacter = ' ';
                 m_overlayFontBigScreen.DefaultCharacter = ' ';
 
             }
             catch (Exception e)
             {
-                Console.WriteLine("Failed to load font : " + e);
+                Console.WriteLine("FontManager::initialise() - failed to load font : " + e);
+                throw (e);
             }
         }
 
@@ -199,7 +247,7 @@ namespace Xyglo
             {
                 if (m_zoomLevel == 500.0f)
                 {
-                    m_state = FontType.Window;
+                    m_state = FontType.Medium;
                     Logger.logMsg("FontManager::setScreenState() - setting FontType.Window");
 
                 }
@@ -238,14 +286,29 @@ namespace Xyglo
         {
             switch(m_state)
             {
+                case FontType.Tiny:
+                    return m_tinyFont;
+
+                case FontType.Micro:
+                    return m_microFont;
+
                 case FontType.Small:
-                    return m_smallWindowFont;
+                    return m_smallFont;
 
-                case FontType.Window:
-                    return m_windowFont;
+                case FontType.Medium:
+                    return m_mediumFont;
 
-                case FontType.Full:
-                    return m_fullScreenFont;
+                case FontType.Large:
+                    return m_largeFont;
+
+                case FontType.VeryLarge:
+                    return m_veryLargeFont;
+
+                case FontType.Huge:
+                    return m_hugeFont;
+
+                case FontType.Enormous:
+                    return m_enormousFont;
 
                 default:
                 case FontType.Overlay:
@@ -262,15 +325,30 @@ namespace Xyglo
         {
             switch (viewSize)
             {
+                case XygloView.ViewSize.Micro:
+                    return m_microFont;
+
+                case XygloView.ViewSize.Tiny:
+                    return m_tinyFont;
+
                 case XygloView.ViewSize.Small:
-                    return m_smallWindowFont;
+                    return m_smallFont;
 
                 default:
                 case XygloView.ViewSize.Medium:
-                    return m_windowFont;
+                    return m_mediumFont;
 
                 case XygloView.ViewSize.Large:
-                    return m_fullScreenFont;
+                    return m_largeFont;
+
+                case XygloView.ViewSize.VeryLarge:
+                    return m_veryLargeFont;
+
+                case XygloView.ViewSize.Huge:
+                    return m_hugeFont;
+
+                case XygloView.ViewSize.Enormous:
+                    return m_enormousFont;
             }
         }
 
@@ -332,17 +410,32 @@ namespace Xyglo
         {
             switch (type)
             {
+                case FontType.Micro:
+                    return getTextScale() * m_microFont.LineSpacing;
+
+                case FontType.Tiny:
+                    return getTextScale() * m_tinyFont.LineSpacing;
+
                 case FontType.Small:
-                    return getTextScale() * m_smallWindowFont.LineSpacing;
+                    return getTextScale() * m_smallFont.LineSpacing;
                     //return getTextScale() * m_smallWindowFont.MeasureString("X").Y;
 
-                case FontType.Window:
-                    return getTextScale() * m_windowFont.LineSpacing;
+                case FontType.Medium:
+                    return getTextScale() * m_mediumFont.LineSpacing;
                     //return getTextScale() * m_windowFont.MeasureString("X").Y;
 
-                case FontType.Full:
-                    return getTextScale() * m_fullScreenFont.LineSpacing;
+                case FontType.Large:
+                    return getTextScale() * m_largeFont.LineSpacing;
                     //return getTextScale() * m_fullScreenFont.MeasureString("X").Y;
+
+                case FontType.VeryLarge:
+                    return getTextScale() * m_veryLargeFont.LineSpacing;
+
+                case FontType.Huge:
+                    return getTextScale() * m_hugeFont.LineSpacing;
+
+                case FontType.Enormous:
+                    return getTextScale() * m_enormousFont.LineSpacing;
 
                 case FontType.Overlay:
                     return  getOverlayFont().LineSpacing;
@@ -362,14 +455,19 @@ namespace Xyglo
         {
             switch (type)
             {
+                case FontType.Micro:
+                case FontType.Tiny:
+                case FontType.VeryLarge:
+                case FontType.Huge:
+                case FontType.Enormous:
                 case FontType.Small:
-                    return getTextScale() * m_smallWindowFont.MeasureString("X").X;
+                    return getTextScale() * m_smallFont.MeasureString("X").X;
 
-                case FontType.Window:
-                    return getTextScale() * m_windowFont.MeasureString("X").X;
+                case FontType.Medium:
+                    return getTextScale() * m_mediumFont.MeasureString("X").X;
 
-                case FontType.Full:
-                    return getTextScale() * m_fullScreenFont.MeasureString("X").X;
+                case FontType.Large:
+                    return getTextScale() * m_largeFont.MeasureString("X").X;
 
                 case FontType.Overlay:
                     return getOverlayFont().MeasureString("X").X;
@@ -399,8 +497,8 @@ namespace Xyglo
             switch (m_state)
             {
                 case FontType.Small:
-                case FontType.Window:
-                case FontType.Full:
+                case FontType.Medium:
+                case FontType.Large:
                     return 8.0f / getDefaultLineSpacing() * m_aspectRatio;
 
                 default:

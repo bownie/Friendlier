@@ -84,18 +84,18 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Nuclex_Bitstream Vera Sans Mono_fullScreen.spritefont">
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_large.spritefont">
       <SubType>Designer</SubType>
-      <Name>Nuclex_Bitstream Vera Sans Mono_fullScreen</Name>
+      <Name>Nuclex_Bitstream Vera Sans Mono_large</Name>
       <Importer>FontDescriptionImporter</Importer>
       <Processor>NuclexSpriteFontDescriptionProcessor</Processor>
       <ProcessorParameters_Hinter>AutoHinter</ProcessorParameters_Hinter>
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Nuclex_Bitstream Vera Sans Mono_window.spritefont">
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_medium.spritefont">
       <SubType>Designer</SubType>
-      <Name>Nuclex_Bitstream Vera Sans Mono_window</Name>
+      <Name>Nuclex_Bitstream Vera Sans Mono_medium</Name>
       <Importer>FontDescriptionImporter</Importer>
       <Processor>NuclexSpriteFontDescriptionProcessor</Processor>
       <ProcessorParameters_Hinter>AutoHinter</ProcessorParameters_Hinter>
@@ -111,9 +111,9 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Nuclex_Bitstream Vera Sans Mono_smallWindow.spritefont">
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_small.spritefont">
       <SubType>Designer</SubType>
-      <Name>Nuclex_Bitstream Vera Sans Mono_smallWindow</Name>
+      <Name>Nuclex_Bitstream Vera Sans Mono_small</Name>
       <Importer>FontDescriptionImporter</Importer>
       <Processor>NuclexSpriteFontDescriptionProcessor</Processor>
       <ProcessorParameters_Hinter>AutoHinter</ProcessorParameters_Hinter>
@@ -157,6 +157,46 @@
       <Name>splash</Name>
       <Importer>TextureImporter</Importer>
       <Processor>TextureProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_tiny.spritefont">
+      <SubType>Designer</SubType>
+      <Name>Nuclex_Bitstream Vera Sans Mono_tiny</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>FontDescriptionProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_micro.spritefont">
+      <SubType>Designer</SubType>
+      <Name>Nuclex_Bitstream Vera Sans Mono_micro</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>FontDescriptionProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_verylarge.spritefont">
+      <SubType>Designer</SubType>
+      <Name>Nuclex_Bitstream Vera Sans Mono_verylarge</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>FontDescriptionProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_enormous.spritefont">
+      <SubType>Designer</SubType>
+      <Name>Nuclex_Bitstream Vera Sans Mono_enormous</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>FontDescriptionProcessor</Processor>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Nuclex_Bitstream Vera Sans Mono_huge.spritefont">
+      <SubType>Designer</SubType>
+      <Name>Nuclex_Bitstream Vera Sans Mono_huge</Name>
+      <Importer>FontDescriptionImporter</Importer>
+      <Processor>FontDescriptionProcessor</Processor>
     </Compile>
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Microsoft\XNA Game Studio\$(XnaFrameworkVersion)\Microsoft.Xna.GameStudio.ContentPipeline.targets" />

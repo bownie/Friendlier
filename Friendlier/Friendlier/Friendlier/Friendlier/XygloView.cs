@@ -27,9 +27,14 @@ namespace Xyglo
         /// </summary>
         public enum ViewSize
         {
+            Micro,
+            Tiny,
             Small,
             Medium,
-            Large
+            Large,
+            VeryLarge,
+            Huge,
+            Enormous
         };
 
 
@@ -84,6 +89,12 @@ namespace Xyglo
         protected Color m_cursorColour = Color.Yellow;
 
         /// <summary>
+        /// Current cursor coordinates in this BufferView
+        /// </summary>
+        [DataMember]
+        protected ScreenPosition m_cursorPosition = new ScreenPosition(0, 0);
+
+        /// <summary>
         /// Default highlight colour
         /// </summary>
         [DataMember]
@@ -130,6 +141,18 @@ namespace Xyglo
         /// </summary>
         [DataMember]
         protected ViewSize m_viewSize = ViewSize.Medium;
+
+        /// <summary>
+        /// How many characters across we are showing the FileBuffer view from
+        /// </summary>
+        [DataMember]
+        protected int m_bufferShowStartX = 0;
+
+        /// <summary>
+        /// How many lines we are stepped into the underlying FileBuffer
+        /// </summary>
+        [DataMember]
+        protected int m_bufferShowStartY = 0;
 
         // ----------------------------------------- METHODS ------------------------------------------------------
         //
@@ -222,15 +245,30 @@ namespace Xyglo
         }
 
         /// <summary>
-        /// Set the view size and dimensions accordingly
+        /// Set the view size and dimensions accordingly.  Width and height of a BufferView/XygloView
+        /// has to be adjusted in accordance with the window size so we need to pass that in too along
+        /// with the font manager so we can measure the font size.
         /// </summary>
         /// <param name="viewSize"></param>
-        public void setViewSize(ViewSize viewSize)
+        public void setViewSize(ViewSize viewSize, int windowWidth, int windowHeight, FontManager fontmanager)
         {
             m_viewSize = viewSize;
 
+            SpriteFont font = fontmanager.getViewFont(viewSize);
+
+            int lines = windowHeight / font.LineSpacing;
+            int cols = (int)((float)windowWidth / (font.MeasureString("X").X));
+
+            lines = Math.Max(lines - 6, 8);
+            cols = Math.Max(cols - 10, 12);
+
+            m_bufferShowWidth = cols;
+            m_bufferShowLength = lines;
+            /*
             switch (viewSize)
             {
+                case ViewSize.Micro:
+                case ViewSize.Tiny:
                 case ViewSize.Small:
                     m_bufferShowWidth = 140;
                     m_bufferShowLength = 40;
@@ -243,36 +281,80 @@ namespace Xyglo
                     break;
 
                 case ViewSize.Large:
+                case ViewSize.VeryLarge:
+                case ViewSize.Huge:
+                case ViewSize.Enormous:
                     m_bufferShowWidth = 50;
                     m_bufferShowLength = 12;
                     break;
-            }
+            }*/
         }
 
         /// <summary>
-        /// Increment view size
+        /// Increment view size - returning the scale of the current font according to the new font we're
+        /// selecting so we can scale up smoothly.
         /// </summary>
-        public void incrementViewSize()
+        public double incrementViewSize(int windowWidth, int windowHeight, FontManager fontManager)
         {
-            if (m_viewSize < ViewSize.Large)
+            double scale = 1.0f;
+
+            if (m_viewSize < ViewSize.Enormous)
             {
+                scale = fontManager.getViewFont(m_viewSize).MeasureString("X").X / fontManager.getViewFont(m_viewSize + 1).MeasureString("X").X;
                 m_viewSize++;
             }
 
-            setViewSize(m_viewSize);
+            setViewSize(m_viewSize, windowWidth, windowHeight, fontManager);
+
+            return scale;
         }
 
         /// <summary>
-        /// Decrement view size
+        /// Decrement view size - returning the scale of the current font according to the new font
+        /// we're selecting so we can scale down smoothly.
         /// </summary>
-        public void decrementViewSize()
+        public double decrementViewSize(int windowWidth, int windowHeight, FontManager fontManager)
         {
-            if (m_viewSize > ViewSize.Small)
+            double scale = 1.0f;
+            if (m_viewSize > ViewSize.Micro)
             {
+                scale = fontManager.getViewFont(m_viewSize).MeasureString("X").X / fontManager.getViewFont(m_viewSize - 1).MeasureString("X").X;
                 m_viewSize--;
             }
 
-            setViewSize(m_viewSize);
+            setViewSize(m_viewSize, windowWidth, windowHeight, fontManager);
+
+            return scale;
         }
+
+        /// <summary>
+        /// Ensure that the cursor is on the screen
+        /// </summary>
+        protected void keepVisible()
+        {
+            // Ensure Y is visible
+            //
+            if (m_cursorPosition.Y < m_bufferShowStartY)
+            {
+                m_bufferShowStartY = m_cursorPosition.Y;
+            }
+            else if (m_cursorPosition.Y > (m_bufferShowStartY + m_bufferShowLength - 1))
+            {
+                m_bufferShowStartY = m_cursorPosition.Y - (m_bufferShowLength - 1);
+            }
+
+            // Ensure X is visible
+            //
+            if (m_cursorPosition.X < m_bufferShowStartX)
+            {
+                m_bufferShowStartX = m_cursorPosition.X;
+            }
+            else if (m_cursorPosition.X > (m_bufferShowStartX + m_bufferShowWidth - 1))
+            {
+                m_bufferShowStartX = m_cursorPosition.X - (m_bufferShowWidth - 1);
+            }
+        }
+
+
     }
 }

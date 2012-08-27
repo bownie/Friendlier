@@ -585,7 +585,7 @@ namespace Xyglo
         /// </summary>
         /// <param name="view"></param>
         /// <param name="gameTime"></param>
-        public void drawFileBuffer(SpriteBatch spriteBatch, BufferView view, GameTime gameTime, FriendlierState state, BufferView buildStdOutView, BufferView buildStdErrView, float zoomLevel)
+        public void drawFileBuffer(SpriteBatch spriteBatch, BufferView view, GameTime gameTime, FriendlierState state, BufferView buildStdOutView, BufferView buildStdErrView, float zoomLevel, double textScale)
         {
             Color bufferColour = view.getTextColour();
 
@@ -773,7 +773,7 @@ namespace Xyglo
                                     bufferColour,
                                     0,
                                     Vector2.Zero,
-                                    m_project.getFontManager().getTextScale(),
+                                    m_project.getFontManager().getTextScale() * (float)textScale,
                                     0,
                                     0);
 
@@ -795,7 +795,7 @@ namespace Xyglo
                                     highlightColour,
                                     0,
                                     Vector2.Zero,
-                                    m_project.getFontManager().getTextScale(),
+                                    m_project.getFontManager().getTextScale() * (float)textScale,
                                     0,
                                     0);
 
@@ -819,7 +819,7 @@ namespace Xyglo
                                 bufferColour,
                                 0,
                                 Vector2.Zero,
-                                m_project.getFontManager().getTextScale(),
+                                m_project.getFontManager().getTextScale() * (float)textScale,
                                 0,
                                 0);
                         }
@@ -833,7 +833,7 @@ namespace Xyglo
                             bufferColour,
                             0,
                             Vector2.Zero,
-                            m_project.getFontManager().getTextScale(),
+                            m_project.getFontManager().getTextScale() * (float)textScale,
                             0,
                             0);
                     }

@@ -102,24 +102,32 @@ namespace Xyglo
                         System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
                         sw.Start();
 #endif
-                        FilePosition startPosition = new FilePosition(0, m_requestQueue[0].m_startLine);
-                        FilePosition endPosition = new FilePosition(m_requestQueue[0].m_fileBuffer.getLine(m_requestQueue[0].m_endLine).Length, m_requestQueue[0].m_endLine);
-                        
-                        // Now background regenerate everything - this must be interruptable and if it is interruppted (by other
-                        // thread calling SyntaxManager.interruptProcessing() then the copyBackground will not happen (the
-                        // generateAllHighlighting call will return false).
-                        //
-                        if (m_requestQueue[0].m_syntaxManager.generateAllHighlighting(m_requestQueue[0].m_fileBuffer, true))
-                        {
-                            // And copy once this completes succesfully
-                            //
-                            m_requestQueue[0].m_fileBuffer.copyBackgroundHighlighting();
-                            Logger.logMsg("Updated all highlighting");
-                        }
 
-                        // Remove this instance of something to process
-                        //
-                        m_requestQueue.RemoveAt(0);
+                        try
+                        {
+                            FilePosition startPosition = new FilePosition(0, m_requestQueue[0].m_startLine);
+                            FilePosition endPosition = new FilePosition(m_requestQueue[0].m_fileBuffer.getLine(m_requestQueue[0].m_endLine).Length, m_requestQueue[0].m_endLine);
+
+                            // Now background regenerate everything - this must be interruptable and if it is interruppted (by other
+                            // thread calling SyntaxManager.interruptProcessing() then the copyBackground will not happen (the
+                            // generateAllHighlighting call will return false).
+                            //
+                            if (m_requestQueue[0].m_syntaxManager.generateAllHighlighting(m_requestQueue[0].m_fileBuffer, true))
+                            {
+                                // And copy once this completes succesfully
+                                //
+                                m_requestQueue[0].m_fileBuffer.copyBackgroundHighlighting();
+                                Logger.logMsg("Updated all highlighting");
+                            }
+
+                            // Remove this instance of something to process
+                            //
+                            m_requestQueue.RemoveAt(0);
+                        }
+                        catch (Exception e)
+                        {
+                            Logger.logMsg("SmartHelpWorker::startWorking() - " + e.Message);
+                        }
 
                         // And rest
                         //

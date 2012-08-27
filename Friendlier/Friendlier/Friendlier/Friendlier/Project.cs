@@ -1203,9 +1203,10 @@ namespace Xyglo
             }
 
 
-            // Remove the BufferViews and any associated FileBuffers from the storage classes
+            // Remove the BufferViews and any associated FileBuffers from the storage classes - only does this if
+            // we have more than one bufferview as we always need to have at least one active.
             //
-            if (removeList.Count > 0)
+            if (removeList.Count < m_bufferViews.Count())
             {
                 foreach (BufferView bv in removeList)
                 {
@@ -1215,7 +1216,7 @@ namespace Xyglo
                     //
                     if (m_selectedViewId < 0 || m_selectedViewId >= m_bufferViews.Count())
                     {
-                        m_selectedViewId = Math.Min(0, m_bufferViews.Count() - 1);
+                        m_selectedViewId = Math.Max(0, m_bufferViews.Count() - 1);
                     }
 
                     if (m_fileBuffers.Contains(bv.getFileBuffer()))

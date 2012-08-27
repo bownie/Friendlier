@@ -88,11 +88,6 @@ namespace Xyglo
         BasicEffect m_lineEffect;
 
         /// <summary>
-        /// BasicEffect for panner
-        /// </summary>
-        //BasicEffect m_pannerEffect;
-
-        /// <summary>
         /// Projection Matrix
         /// </summary>
         Matrix m_projection;
@@ -367,6 +362,31 @@ namespace Xyglo
         /// The new destination for our Eye position
         /// </summary>
         protected Vector3 m_newEyePosition;
+
+        /// <summary>
+        /// Original eye position - we know where we came from
+        /// </summary>
+        protected Vector3 m_originalEyePosition;
+
+        /// <summary>
+        /// Eye acceleration vector
+        /// </summary>
+        protected Vector3 m_eyeAcc = Vector3.Zero;
+
+        /// <summary>
+        /// Eye velocity vector
+        /// </summary>
+        protected Vector3 m_eyeVely = Vector3.Zero;
+
+        /// <summary>
+        /// Used to hold initial fractional value of a target font size when changing font sizes
+        /// </summary>
+        protected double m_fontScaleOriginal;
+
+        /// <summary>
+        /// Holds current font scale whilst scaling current BufferView
+        /// </summary>
+        protected double m_currentFontScale;
 
         /// <summary>
         /// Are we changing eye position?
@@ -1044,13 +1064,13 @@ namespace Xyglo
             }
             else if (m_graphics.GraphicsDevice.Viewport.Width < 1024)
             {
-                m_project.getFontManager().setFontState(FontManager.FontType.Window);
+                m_project.getFontManager().setFontState(FontManager.FontType.Medium);
                 Logger.logMsg("Friendlier:setSpriteFont() - using Window font");
             }
             else
             {
                 Logger.logMsg("Friendlier:setSpriteFont() - using Full font");
-                m_project.getFontManager().setFontState(FontManager.FontType.Full);
+                m_project.getFontManager().setFontState(FontManager.FontType.Large);
             }
 
             // to handle tabs for the moment convert them to single spaces
@@ -3155,7 +3175,8 @@ namespace Xyglo
                 {
                     if (m_shiftDown)
                     {
-                        m_project.getSelectedBufferView().incrementViewSize();
+                        m_fontScaleOriginal = m_project.getSelectedBufferView().incrementViewSize(m_graphics.GraphicsDevice.Viewport.Width, m_graphics.GraphicsDevice.Viewport.Height, m_project.getFontManager());
+                        m_currentFontScale = 0.0f;
                         setActiveBuffer();
                     }
                     else
@@ -3171,7 +3192,8 @@ namespace Xyglo
                 {
                     if (m_shiftDown)
                     {
-                        m_project.getSelectedBufferView().decrementViewSize();
+                        m_fontScaleOriginal = m_project.getSelectedBufferView().decrementViewSize(m_graphics.GraphicsDevice.Viewport.Width, m_graphics.GraphicsDevice.Viewport.Height, m_project.getFontManager());
+                        m_currentFontScale = 0.0f;
                         setActiveBuffer();
                     }
                     else
@@ -4239,18 +4261,21 @@ namespace Xyglo
 
 
         /// <summary>
-        /// Move the eye to a new position
+        /// Move the eye to a new position - store the original one so we can tell how far along the path we've moved
         /// </summary>
         /// <param name="newPosition"></param>
         protected void flyToPosition(Vector3 newPosition)
         {
+            m_originalEyePosition = m_eye;
             m_newEyePosition = newPosition;
             m_changingPositionLastGameTime = TimeSpan.Zero;
             m_changingEyePosition = true;
         }
 
         /// <summary>
-        /// Transform current eye position to an intended eye position over time
+        /// Transform current eye position to an intended eye position over time.  We use the orignal eye position to enable us
+        /// to accelerate and deccelerate.  We have to modify both the eye position and the target that the eye is looking at
+        /// by the same amount to keep our orientation constant.
         /// </summary>
         /// <param name="delta"></param>
         protected void changeEyePosition(GameTime gameTime)
@@ -4293,16 +4318,57 @@ namespace Xyglo
                     }
                     */
 
+                    // Add an acceleration and decceleration component
+                    //
+                    float acc = 0.2f;
+
+                    // Percentage position along way of track
+                    //
+                    float percTrack = (m_eye - m_originalEyePosition).Length() - (m_newEyePosition - m_originalEyePosition).Length();
+                    //float deltaPos = 
+                    //Logger.logMsg("Position = " + percTrack);
+
+                    if (percTrack < 0.5f)
+                    {
+                        acc = percTrack; // *percTrack;
+                    }
+                    else
+                    {
+                        acc = 1.0f - (percTrack); // * percTrack);
+                    }
+
+                    acc = Math.Min(acc, 0.01f);
+                    //Logger.logMsg("ACC = " + acc);
+                    acc = 1.0f;
+
+
+                    if (m_currentFontScale == 0.0f)
+                    {
+                        m_currentFontScale = m_fontScaleOriginal;
+                    }
+                    else if (m_currentFontScale != 1.0f)
+                    {
+                        if (m_fontScaleOriginal < 1.0f)
+                        {
+                            m_currentFontScale = m_fontScaleOriginal + ((1.0f - m_fontScaleOriginal) * percTrack);
+                        }
+                        else
+                        {
+                            m_currentFontScale = m_fontScaleOriginal - ((m_fontScaleOriginal - 1.0f) * percTrack);
+                        }
+                    }
+
+
                     // Perform movement of the eye by the movement vector
                     //
                     if (gameTime.TotalGameTime - m_changingPositionLastGameTime > m_movementPause)
                     {
-                        m_eye += m_vFly;
+                        m_eye += m_vFly * acc;
 
-                        // modify target by the other vector
+                        // modify target by the other vector (this is to keep our eye level constan
                         //
-                        m_target.X += m_vFlyTarget.X;
-                        m_target.Y += m_vFlyTarget.Y;
+                        m_target.X += m_vFlyTarget.X * acc;
+                        m_target.Y += m_vFlyTarget.Y * acc;
                         m_changingPositionLastGameTime = gameTime.TotalGameTime;
                         //m_view = Matrix.CreateLookAt(m_eye, Vector3.Zero, Vector3.Up);
 #if DEBUG_FLYING
@@ -4323,6 +4389,7 @@ namespace Xyglo
                         m_target.X = m_newEyePosition.X;
                         m_target.Y = m_newEyePosition.Y;
                         m_changingEyePosition = false;
+                        m_currentFontScale = 1.0f;
                     }
 
                 }
@@ -5183,7 +5250,7 @@ namespace Xyglo
                     //if (m_frustrum.Contains(bb) != ContainmentType.Disjoint)
                     if (m_frustrum.Intersects(bb))
                     {
-                        m_drawingHelper.drawFileBuffer(m_spriteBatch, m_project.getBufferViews()[i], gameTime, m_state, m_buildStdOutView, m_buildStdErrView, m_zoomLevel);
+                        m_drawingHelper.drawFileBuffer(m_spriteBatch, m_project.getBufferViews()[i], gameTime, m_state, m_buildStdOutView, m_buildStdErrView, m_zoomLevel, m_currentFontScale);
                     }
 
                     // Draw a background square for all buffer views if they are coloured

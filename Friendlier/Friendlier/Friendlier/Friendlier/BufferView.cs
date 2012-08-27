@@ -61,12 +61,6 @@ namespace Xyglo
         protected int m_fileBufferIndex = 0;
 
         /// <summary>
-        /// What line the buffer is showing from
-        /// </summary>
-        [DataMember]
-        protected int m_bufferShowStartY = 0;
-
-        /// <summary>
         /// The BufferView remembers its own highlight positions
         /// </summary>
         [DataMember]
@@ -90,20 +84,11 @@ namespace Xyglo
         [XmlIgnore]
         static public ScreenPosition NoHighlightPosition = new ScreenPosition(-1, -1);
 
-        [DataMember]
-        protected int m_bufferShowStartX = 0;
-
         /// <summary>
         /// Store the cursor coordinates locally
         /// </summary>
         [DataMember]
         protected Vector3 m_cursorCoordinates = new Vector3();
-
-        /// <summary>
-        /// Current cursor coordinates in this BufferView
-        /// </summary>
-        [DataMember]
-        protected ScreenPosition m_cursorPosition = new ScreenPosition(0, 0);
 
         /// <summary>
         /// The position in the buffer at which this view is locked
@@ -1439,34 +1424,6 @@ namespace Xyglo
 
             // Cancel the highlight
             noHighlight();
-        }
-
-        /// <summary>
-        /// Ensure that the cursor is on the screen
-        /// </summary>
-        protected void keepVisible()
-        {
-            // Ensure Y is visible
-            //
-            if (m_cursorPosition.Y < m_bufferShowStartY)
-            {
-                m_bufferShowStartY = m_cursorPosition.Y;
-            }
-            else if (m_cursorPosition.Y > (m_bufferShowStartY + m_bufferShowLength - 1))
-            {
-                m_bufferShowStartY = m_cursorPosition.Y - (m_bufferShowLength - 1);
-            }
-
-            // Ensure X is visible
-            //
-            if (m_cursorPosition.X < m_bufferShowStartX)
-            {
-                m_bufferShowStartX = m_cursorPosition.X;
-            }
-            else if (m_cursorPosition.X > (m_bufferShowStartX + m_bufferShowWidth - 1))
-            {
-                m_bufferShowStartX = m_cursorPosition.X - (m_bufferShowWidth - 1);
-            }
         }
 
         /// <summary>
