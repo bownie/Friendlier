@@ -49,7 +49,7 @@ namespace Xyglo
         /// <summary>
         /// Define a drop dead date for this piece of software if unlicenced
         /// </summary>
-        static private DateTime m_dropDead = new DateTime(2012, 8, 31);
+        static private DateTime m_dropDead = new DateTime(2014, 8, 31);
 
         /// <summary>
         /// Current version
